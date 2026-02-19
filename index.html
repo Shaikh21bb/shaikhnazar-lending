@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>shaikh_lending | Бизнес в цифре — на автопилоте</title>
+    <meta name="description"
+        content="Премиальные лендинги и AI автоматизация для бизнеса. shaikh_lending — сайты, которые работают пока вы спите.">
+
+    <!-- Fonts: Syne (headings) + Manrope (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Custom Cursor -->
+    <div id="cursor"></div>
+
+    <!-- Background Particles -->
+    <canvas id="particles-canvas"></canvas>
+
+    <!-- =========================================
+         HEADER
+    ========================================= -->
+    <header>
+        <div class="container">
+            <a href="#" class="logo magnet-target">
+                <img src="images/avatar.jpg" alt="Shaikh" class="logo-img">
+                shaikh_lending
+            </a>
+            <div class="header-right">
+                <!-- Language Switcher -->
+                <div class="lang-switcher">
+                    <button class="lang-btn active" data-lang="ru">RU</button>
+                    <button class="lang-btn" data-lang="kz">KZ</button>
+                </div>
+                <a href="#contact" class="btn btn-ghost magnet-target"
+                    style="padding: 0.5rem 1.4rem; font-size: 0.9rem;" data-i18n="nav.contact">Связаться</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- =========================================
+         HERO
+    ========================================= -->
+    <section class="hero">
+        <div class="glow-orb"></div>
+        <div class="hero-content container">
+            <h1 class="hero-title" id="hero-text" data-i18n="hero.title">
+                Бизнес в цифре.<br>На автопилоте.
+            </h1>
+            <p class="hero-subtitle" data-i18n="hero.subtitle" style="max-width: 600px; margin: 0 auto 2.5rem;">
+                shaikh_lending — премиальные сайты и AI-системы.
+            </p>
+            <div class="hero-actions">
+                <a href="#contact" class="btn btn-primary magnet-target" data-i18n="hero.cta1">Обсудить</a>
+                <a href="#portfolio" class="btn btn-ghost magnet-target" data-i18n="hero.cta2">Портфолио</a>
+            </div>
+        </div>
+        <div class="scroll-indicator">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 13l5 5 5-5M7 6l5 5 5-5" />
+            </svg>
+        </div>
+    </section>
+
+    <!-- =========================================
+         SERVICES (Horizontal Scroll)
+    ========================================= -->
+    <div class="services-outer" id="work">
+        <div class="services-sticky">
+            <div class="services-header">
+                <h2 class="section-title fade-in-up" data-i18n="services.title">Услуги</h2>
+            </div>
+            <div class="services-track-container">
+                <div class="services-track">
+
+                    <div class="service-card magnet-target">
+                        <div>
+                            <div class="service-icon">🌐</div>
+                            <h3 data-i18n="services.card1.title">Лендинг</h3>
+                            <p data-i18n="services.card1.desc">Продающий дизайн. Высокая конверсия. Быстрый запуск.</p>
+                        </div>
+                    </div>
+
+                    <div class="service-card magnet-target">
+                        <div>
+                            <div class="service-icon">🤖</div>
+                            <h3 data-i18n="services.card2.title">AI Автоматизация</h3>
+                            <p data-i18n="services.card2.desc">Чат-боты и автоворонки. Ваш бизнес работает 24/7.</p>
+                        </div>
+                    </div>
+
+                    <div class="service-card magnet-target">
+                        <div>
+                            <div class="service-icon">📊</div>
+                            <h3 data-i18n="services.card3.title">CRM Системы</h3>
+                            <p data-i18n="services.card3.desc">Порядок в клиентах. Ни одной потерянной заявки.</p>
+                        </div>
+                    </div>
+
+                    <div class="service-card magnet-target">
+                        <div>
+                            <div class="service-icon">⚡</div>
+                            <h3 data-i18n="services.card4.title">Под ключ</h3>
+                            <p data-i18n="services.card4.desc">От идеи до прибыли. Техническая часть — на нас.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================
+         PORTFOLIO (Works)
+         Data is loaded from js/portfolio.js
+    ========================================= -->
+    <section class="portfolio" id="portfolio">
+        <div class="container">
+            <h2 class="section-title fade-in-up" data-i18n="portfolio.title">Работы</h2>
+            <!-- Cards are rendered by main.js using data from portfolio.js -->
+            <div class="portfolio-grid" id="portfolio-grid"></div>
+        </div>
+    </section>
+
+    <!-- =========================================
+         WHY ME
+    ========================================= -->
+    <section class="why-me">
+        <div class="container why-grid">
+            <div class="why-left fade-in-up">
+                <h2 data-i18n="why.years">2+ года</h2>
+                <p class="text-muted" style="font-size: 1.3rem; margin-top: 1rem;" data-i18n="why.yearsDesc">
+                    в digital-разработке
+                </p>
+                <p style="margin-top: 2rem; line-height: 1.7; max-width: 420px;" data-i18n="why.desc">
+                    Симбиоз дизайна и технологий. Строю системы, которые приносят деньги.
+                </p>
+            </div>
+            <div class="why-right stats-grid">
+                <div class="stat-item fade-in-up">
+                    <h4 class="counter" data-target="50">0</h4>
+                    <p data-i18n="why.stat1">Клиентов</p>
+                </div>
+                <div class="stat-item fade-in-up">
+                    <h4 class="counter" data-target="120">0</h4>
+                    <p data-i18n="why.stat2">Проектов</p>
+                </div>
+                <div class="stat-item fade-in-up">
+                    <h4 class="counter" data-target="5000">0</h4>
+                    <p data-i18n="why.stat3">Часов AI</p>
+                </div>
+                <div class="stat-item fade-in-up">
+                    <h4 class="counter" data-target="100">0</h4>
+                    <p data-i18n="why.stat4">В срок</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================
+         HOW IT WORKS
+    ========================================= -->
+    <section class="how-it-works">
+        <div class="container">
+            <h2 class="section-title fade-in-up" style="text-align: center;" data-i18n="how.title">Процесс</h2>
+            <div class="steps-container">
+                <div class="step-line"></div>
+                <div class="step-line-progress" id="line-progress"></div>
+
+                <div class="step-item fade-in-up">
+                    <div class="step-number">01</div>
+                    <div class="step-content">
+                        <h3 data-i18n="how.step1.title">Анализ</h3>
+                        <p data-i18n="how.step1.desc">Изучаем бизнес. Строим стратегию победы.</p>
+                    </div>
+                </div>
+                <div class="step-item fade-in-up">
+                    <div class="step-number">02</div>
+                    <div class="step-content">
+                        <h3 data-i18n="how.step2.title">Разработка</h3>
+                        <p data-i18n="how.step2.desc">Дизайн, код, интеграции. Создаём продукт.</p>
+                    </div>
+                </div>
+                <div class="step-item fade-in-up">
+                    <div class="step-number">03</div>
+                    <div class="step-content">
+                        <h3 data-i18n="how.step3.title">Запуск</h3>
+                        <p data-i18n="how.step3.desc">Старт продаж. Поддержка. Обучение.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================
+         SOCIAL PROOF (Telegram Channel)
+    ========================================= -->
+    <section class="testimonials">
+        <div class="container" style="text-align: center;">
+            <h2 class="section-title fade-in-up" data-i18n="reviews.title">Отзывы в Telegram</h2>
+            <div class="fade-in-up">
+                <p style="font-size: 1.2rem; margin-bottom: 2rem; color: var(--text-muted);" data-i18n="reviews.desc">
+                    Больше реальных кейсов и отзывов в моём Telegram канале
+                </p>
+                <a href="https://t.me/+HRL459eipoQ4OGRi" target="_blank" class="btn btn-primary magnet-target">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M21.057 5.462s1.789-.672 1.642 1.043c-.048.586-.488 2.976-.878 5.833l-1.317 8.324s-.097.952-.878 1.124c-.78.171-1.95-.757-2.097-.878l-3.704-2.66-2.828 2.683s-.414.148-.585 0c-.35-.302-.33-.952-.33-.952l.317-4.288 9.058-8.493s.78-.708-.098-.049L7.748 14.88l-3.827-1.243s-.633-.195-.681-.659c-.049-.465.853-.757.853-.757L19.163 6.464l1.894-1.002z" />
+                    </svg>
+                    <span data-i18n="reviews.btn">Читать отзывы</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================
+         CTA
+    ========================================= -->
+    <section class="cta-section" id="contact">
+        <div class="container">
+            <h2 class="section-title fade-in-up" data-i18n="cta.title">Масштабируем?</h2>
+            <p class="fade-in-up" style="font-size: 1.15rem; margin-bottom: 3rem; color: var(--text-muted);"
+                data-i18n="cta.sub">
+                Напишите мне напрямую. Обсудим ваш проект.
+            </p>
+            <div class="fade-in-up" style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <!-- WhatsApp -->
+                <a href="https://wa.me/7777122574" target="_blank" class="btn btn-ghost magnet-target"
+                    style="border-color: #25D366; color: #25D366;">
+                    WhatsApp
+                </a>
+                <!-- Telegram -->
+                <a href="https://t.me/shaqtg" target="_blank" class="btn btn-primary magnet-target"
+                    style="background-color: #229ED9; box-shadow: 0 0 20px rgba(34,158,217,0.3);">
+                    Telegram @shaqtg
+                </a>
+                <!-- Instagram -->
+                <a href="https://instagram.com/shaikhhnazar" target="_blank" class="btn btn-ghost magnet-target"
+                    style="border-color: #E1306C; color: #E1306C;">
+                    Instagram
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================
+         FOOTER
+    ========================================= -->
+    <footer>
+        <div class="container">
+            <p class="footer-logo">shaikh_lending</p>
+            <p data-i18n="footer.tagline">Digital-решения для лидеров</p>
+            <p style="margin-top: 3rem; opacity: 0.4;">&copy; 2025 shaikh_lending.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts: portfolio data first, then main logic -->
+    <script src="js/portfolio.js"></script>
+    <script src="js/main.js"></script>
+</body>
+
+</html>
