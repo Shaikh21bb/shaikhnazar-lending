@@ -543,18 +543,48 @@ header .container {
 }
 
 @media (max-width: 768px) {
+    .hero {
+        min-height: 80vh;
+        padding-top: 15vh;
+    }
+    .hero-title-wrap {
+        font-size: clamp(2.5rem, 12vw, 4rem);
+    }
     .hero-bottom {
         flex-direction: column;
         align-items: flex-start;
         gap: 2rem;
     }
+    .section {
+        padding: 20vw 0;
+    }
     .section-header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 10vw;
+    }
+    .portfolio-img-wrap {
+        aspect-ratio: 4/3; /* Выше на мобильных для лучшего вида */
+    }
+    .numbers-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    .number-val {
+        font-size: 2.5rem;
+    }
+    .social-links {
+        flex-direction: column;
+        width: 100%;
+    }
+    .social-links .btn {
+        width: 100%;
     }
     .footer-bottom {
         flex-direction: column;
         gap: 1rem;
+        text-align: center;
     }
 }
     </style>
@@ -851,9 +881,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentScroll = 0;
     let targetScroll = 0;
     const ease = 0.08;
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
     
     function updateScrollHeight() {
-        document.body.style.height = `${scrollContainer.getBoundingClientRect().height}px`;
+        if (!isMobile) {
+            document.body.style.height = `${scrollContainer.getBoundingClientRect().height}px`;
+        } else {
+            scrollContainer.style.position = 'static';
+            document.body.style.height = 'auto';
+        }
     }
     
     // Initial height set
@@ -907,13 +943,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const countersStarted = new Set();
     
     function renderFrame() {
-        // 1. Calculate Smooth Scroll
-        targetScroll = window.scrollY;
-        currentScroll += (targetScroll - currentScroll) * ease;
-        
-        // Stop sub-pixel rendering jitter by rounding slightly
-        const scrollAmount = Math.round(currentScroll * 100) / 100;
-        scrollContainer.style.transform = `translate3d(0, -${scrollAmount}px, 0)`;
+        // 1. Calculate Smooth Scroll (Only on Desktop)
+        if (!isMobile) {
+            targetScroll = window.scrollY;
+            currentScroll += (targetScroll - currentScroll) * ease;
+            const scrollAmount = Math.round(currentScroll * 100) / 100;
+            scrollContainer.style.transform = `translate3d(0, -${scrollAmount}px, 0)`;
+        }
 
         // 2. Parallax Images based on screen position
         parallaxImages.forEach(img => {
