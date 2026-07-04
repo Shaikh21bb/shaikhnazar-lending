@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>shaikh_lending — Minimal Premium</title>
+    <meta name="description" content="Премиальные сайты и AI-системы. Ваш бизнес на автопилоте.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+/* =========================================
+   VARIABLES & BASE
+========================================= */
+:root {
+    --bg-color: #050505;
+    --text-primary: #F5F5F5;
+    --text-secondary: #7A7A7A;
+    --border-color: #1A1A1A;
+    
+    --font-heading: 'Syne', sans-serif;
+    --font-body: 'Manrope', sans-serif;
+    
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    cursor: none; /* Custom cursor */
+}
+
+::selection {
+    background-color: var(--text-primary);
+    color: var(--bg-color);
+}
+
+html {
+    scroll-behavior: auto;
+    font-size: 16px;
+    background-color: var(--bg-color);
+    overflow-anchor: none; /* Fix for smooth scroll */
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-weight: 400;
+    line-height: 1.5;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* =========================================
+   SMOOTH SCROLL WRAPPER
+========================================= */
+#scroll-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    will-change: transform;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+a, button {
+    text-decoration: none;
+    color: inherit;
+    background: none;
+    border: none;
+    font-family: inherit;
+}
+
+/* =========================================
+   CUSTOM CURSOR
+========================================= */
+#cursor {
+    position: fixed;
+    top: 0; left: 0;
+    width: 12px; height: 12px;
+    background-color: var(--text-primary);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s var(--ease-out), height 0.3s var(--ease-out), background-color 0.3s var(--ease-out);
+    mix-blend-mode: difference;
+}
+
+body.hovering #cursor {
+    width: 60px; height: 60px;
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(2px);
+    border: 1px solid rgba(255,255,255,0.2);
+    mix-blend-mode: normal;
+}
+
+@media (hover: none) and (pointer: coarse) {
+    #cursor { display: none; }
+    * { cursor: auto !important; }
+}
+
+/* =========================================
+   LAYOUT UTILS
+========================================= */
+.container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 4vw;
+}
+
+.section {
+    padding: 12vw 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 6vw;
+    gap: 2rem;
+}
+
+.section-title {
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.section-subtitle {
+    font-size: clamp(1rem, 1.5vw, 1.25rem);
+    color: var(--text-secondary);
+    max-width: 400px;
+    font-weight: 300;
+}
+
+/* =========================================
+   ANIMATIONS (SMOOTH REVEAL)
+========================================= */
+.reveal-wrap {
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: top;
+}
+
+.reveal-up {
+    transform: translateY(110%);
+    opacity: 0;
+    transition: transform 1.2s var(--ease-out), opacity 1.2s var(--ease-out);
+    will-change: transform, opacity;
+}
+
+.reveal-up.is-visible {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.fade-in {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 1.2s var(--ease-out), transform 1.2s var(--ease-out);
+    will-change: transform, opacity;
+}
+
+.fade-in.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* =========================================
+   BUTTONS
+========================================= */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.2rem 3rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-radius: 100px;
+    transition: background-color 0.4s var(--ease-out), color 0.4s var(--ease-out), transform 0.4s var(--ease-out);
+}
+
+.btn-solid {
+    background-color: var(--text-primary);
+    color: var(--bg-color);
+}
+.btn-solid:hover {
+    background-color: var(--text-secondary);
+    transform: scale(0.97);
+}
+
+.btn-outline {
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+.btn-outline:hover {
+    border-color: var(--text-primary);
+}
+
+/* =========================================
+   HEADER
+========================================= */
+header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    padding: 2rem 0;
+    z-index: 100;
+    mix-blend-mode: difference;
+}
+
+header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1.5rem;
+    text-transform: uppercase;
+    letter-spacing: -0.04em;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+}
+
+.lang-switcher {
+    display: flex;
+    gap: 1rem;
+}
+
+.lang-btn {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    transition: color 0.3s;
+}
+
+.lang-btn.active {
+    color: var(--text-primary);
+}
+
+.lang-btn:hover {
+    color: var(--text-primary);
+}
+
+.nav-contact {
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    position: relative;
+}
+.nav-contact::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; left: 0;
+    width: 100%; height: 1px;
+    background-color: var(--text-primary);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.4s var(--ease-out);
+}
+.nav-contact:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+}
+
+/* =========================================
+   HERO SECTION
+========================================= */
+.hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: 10vh;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.hero-title-wrap {
+    font-size: clamp(3rem, 9vw, 9rem);
+    line-height: 0.95;
+    text-transform: uppercase;
+    margin-bottom: 4vh;
+}
+
+.hero-title-line {
+    display: block;
+    overflow: hidden;
+}
+
+.hero-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 5vh;
+}
+
+.hero-desc {
+    max-width: 450px;
+    font-size: clamp(1rem, 1.2vw, 1.2rem);
+    color: var(--text-secondary);
+    font-weight: 300;
+}
+
+/* =========================================
+   SERVICES
+========================================= */
+.services-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    border-top: 1px solid var(--border-color);
+}
+
+.service-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    padding: 4vw 0;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.4s;
+    align-items: start;
+}
+
+.service-row:hover {
+    background-color: rgba(255,255,255,0.02);
+}
+
+.service-num {
+    font-family: var(--font-heading);
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+}
+
+.service-name {
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.service-desc {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 300;
+}
+
+/* =========================================
+   PORTFOLIO (PARALLAX & IMAGE STYLING)
+========================================= */
+.portfolio-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4vw;
+}
+
+.portfolio-item {
+    display: block;
+    position: relative;
+}
+
+.portfolio-item:nth-child(even) {
+    margin-top: 8vw;
+}
+
+.portfolio-img-wrap {
+    overflow: hidden;
+    position: relative;
+    aspect-ratio: 16/9; /* Изменено под десктопные скриншоты 16:9 */
+    margin-bottom: 2rem;
+    /* Темная рамка/фон на случай, если картинка не на весь блок */
+    background-color: #0A0A0A;
+    border: 1px solid var(--border-color);
+}
+
+.portfolio-img {
+    width: 100%;
+    height: 120%; /* Extra height for parallax */
+    object-fit: cover;
+    object-position: top center; /* Чтобы шапка сайта всегда была видна */
+    will-change: transform, filter;
+    
+    /* Приглушаем яркие скриншоты под темный дизайн */
+    filter: grayscale(100%) contrast(0.8) brightness(0.6);
+    transition: filter 0.6s var(--ease-out);
+}
+
+.portfolio-item:hover .portfolio-img {
+    /* При наведении возвращаем цвета */
+    filter: grayscale(0%) contrast(1) brightness(0.9);
+}
+
+.portfolio-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.portfolio-title {
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin-bottom: 0.5rem;
+}
+
+.portfolio-category {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* =========================================
+   WHY ME / NUMBERS
+========================================= */
+.numbers-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+}
+
+.number-item {
+    padding: 2rem 0;
+    border-top: 1px solid var(--border-color);
+}
+
+.number-val {
+    font-family: var(--font-heading);
+    font-size: clamp(3rem, 6vw, 5rem);
+    font-weight: 400;
+    margin-bottom: 1rem;
+}
+
+.number-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+/* =========================================
+   PROCESS
+========================================= */
+.process-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3vw;
+}
+
+.process-item {
+    border-top: 1px solid var(--border-color);
+    padding-top: 2rem;
+}
+
+.process-num {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    color: var(--text-secondary);
+}
+
+.process-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 400;
+}
+
+.process-desc {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 300;
+}
+
+/* =========================================
+   FOOTER (CTA)
+========================================= */
+.social-links {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.footer {
+    padding: 12vw 0 4vw;
+    text-align: center;
+}
+
+.footer-title {
+    font-size: clamp(3rem, 8vw, 7rem);
+    text-transform: uppercase;
+    font-weight: 400;
+    margin-bottom: 4vw;
+}
+
+.footer-bottom {
+    margin-top: 8vw;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    border-top: 1px solid var(--border-color);
+    padding-top: 2rem;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+@media (max-width: 992px) {
+    .service-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    .portfolio-grid {
+        grid-template-columns: 1fr;
+    }
+    .portfolio-item:nth-child(even) {
+        margin-top: 0;
+    }
+    .numbers-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .process-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .hero-bottom {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2rem;
+    }
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .footer-bottom {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+    </style>
+</head>
+<body>
+
+    <!-- Custom Cursor -->
+    <div id="cursor"></div>
+
+    <!-- Header (Fixed Outside Scroll Container) -->
+    <header>
+        <div class="container">
+            <a href="#" class="logo interactive">shaikh</a>
+            <div class="header-right">
+                <div class="lang-switcher">
+                    <button class="lang-btn active interactive" data-lang="ru">RU</button>
+                    <button class="lang-btn interactive" data-lang="kz">KZ</button>
+                </div>
+                <a href="#contact" class="nav-contact interactive" data-i18n="nav.contact">Связаться</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Smooth Scroll Wrapper -->
+    <main id="scroll-container">
+        
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container">
+                <h1 class="hero-title-wrap">
+                    <span class="hero-title-line"><span class="reveal-up hero-reveal" data-i18n="hero.title1">Бизнес в цифре.</span></span>
+                    <span class="hero-title-line"><span class="reveal-up hero-reveal" data-i18n="hero.title2">На автопилоте.</span></span>
+                </h1>
+                <div class="hero-bottom">
+                    <p class="hero-desc fade-in hero-reveal" data-i18n="hero.subtitle">
+                        Премиальная разработка и внедрение искусственного интеллекта. Эстетика, лишенная визуального шума. Инженерия, работающая безупречно.
+                    </p>
+                    <div class="fade-in hero-reveal">
+                        <a href="#contact" class="btn btn-solid interactive" data-i18n="hero.cta">Обсудить проект</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Services -->
+        <section class="section" id="services">
+            <div class="container">
+                <div class="section-header fade-in reveal-trigger">
+                    <h2 class="section-title" data-i18n="services.title">Экспертиза</h2>
+                    <p class="section-subtitle" data-i18n="services.desc">Комплексный подход к созданию цифровых продуктов премиум-класса.</p>
+                </div>
+                
+                <div class="services-list">
+                    <div class="service-row fade-in reveal-trigger">
+                        <div class="service-num">01</div>
+                        <div class="service-name" data-i18n="services.card1.title">Лендинги</div>
+                        <div class="service-desc" data-i18n="services.card1.desc">Строгий дизайн, безупречная типографика и высокая конверсия. Сайт как произведение искусства.</div>
+                    </div>
+                    <div class="service-row fade-in reveal-trigger">
+                        <div class="service-num">02</div>
+                        <div class="service-name" data-i18n="services.card2.title">AI Интеграция</div>
+                        <div class="service-desc" data-i18n="services.card2.desc">Нейросети для автоматизации процессов. Ваш бизнес работает системно 24/7.</div>
+                    </div>
+                    <div class="service-row fade-in reveal-trigger">
+                        <div class="service-num">03</div>
+                        <div class="service-name" data-i18n="services.card3.title">CRM Системы</div>
+                        <div class="service-desc" data-i18n="services.card3.desc">Оцифровка пути клиента. Идеальный порядок и ни одной потерянной заявки.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Portfolio -->
+        <section class="section" id="portfolio">
+            <div class="container">
+                <div class="section-header fade-in reveal-trigger">
+                    <h2 class="section-title" data-i18n="portfolio.title">Работы</h2>
+                    <p class="section-subtitle" data-i18n="portfolio.desc">Проекты, отражающие симбиоз эстетики и глубокой логики.</p>
+                </div>
+                
+                <div class="portfolio-grid" id="portfolio-grid">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Impact (Numbers) -->
+        <section class="section">
+            <div class="container">
+                <div class="section-header fade-in reveal-trigger">
+                    <h2 class="section-title" data-i18n="why.title">В цифрах</h2>
+                </div>
+                
+                <div class="numbers-grid">
+                    <div class="number-item fade-in reveal-trigger">
+                        <div class="number-val counter" data-target="40">0</div>
+                        <div class="number-label" data-i18n="why.stat1">Клиентов</div>
+                    </div>
+                    <div class="number-item fade-in reveal-trigger">
+                        <div class="number-val counter" data-target="60">0</div>
+                        <div class="number-label" data-i18n="why.stat2">Проектов</div>
+                    </div>
+                    <div class="number-item fade-in reveal-trigger">
+                        <div class="number-val counter" data-target="500">0</div>
+                        <div class="number-label" data-i18n="why.stat3">Часов AI</div>
+                    </div>
+                    <div class="number-item fade-in reveal-trigger">
+                        <div class="number-val counter" data-target="100">0</div>
+                        <div class="number-label" data-i18n="why.stat4">В срок (%)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Process -->
+        <section class="section">
+            <div class="container">
+                <div class="section-header fade-in reveal-trigger">
+                    <h2 class="section-title" data-i18n="how.title">Процесс</h2>
+                </div>
+                
+                <div class="process-list">
+                    <div class="process-item fade-in reveal-trigger">
+                        <div class="process-num">I</div>
+                        <h3 class="process-title" data-i18n="how.step1.title">Аналитика</h3>
+                        <p class="process-desc" data-i18n="how.step1.desc">Погружение в задачи бизнеса. Проектирование архитектуры и информационной структуры.</p>
+                    </div>
+                    <div class="process-item fade-in reveal-trigger" style="transition-delay: 0.1s;">
+                        <div class="process-num">II</div>
+                        <h3 class="process-title" data-i18n="how.step2.title">Создание</h3>
+                        <p class="process-desc" data-i18n="how.step2.desc">Отрисовка минималистичного дизайна, написание чистого кода, настройка нейросетей.</p>
+                    </div>
+                    <div class="process-item fade-in reveal-trigger" style="transition-delay: 0.2s;">
+                        <div class="process-num">III</div>
+                        <h3 class="process-title" data-i18n="how.step3.title">Релиз</h3>
+                        <p class="process-desc" data-i18n="how.step3.desc">Запуск проекта, техническая оптимизация и передача продукта клиенту.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer / CTA -->
+        <footer class="footer" id="contact">
+            <div class="container">
+                <div class="reveal-wrap">
+                    <h2 class="footer-title reveal-up reveal-trigger" data-i18n="cta.title">Начать проект</h2>
+                </div>
+                <div class="social-links fade-in reveal-trigger">
+                    <a href="https://t.me/Shaqtg" target="_blank" class="btn btn-outline interactive" data-i18n="cta.btn_tg">Telegram</a>
+                    <a href="https://www.instagram.com/shaikhhnazar?igsh=MTlvdHhwOGZueWdubQ==" target="_blank" class="btn btn-outline interactive" data-i18n="cta.btn_ig">Instagram</a>
+                </div>
+                
+                <div class="footer-bottom">
+                    <div>shaikh_lending © 2025</div>
+                    <div data-i18n="footer.tagline">Minimalist Digital Solutions</div>
+                </div>
+            </div>
+        </footer>
+
+    </main>
+
+    <script>
+/* =========================================
+   PORTFOLIO DATA
+========================================= */
+const PORTFOLIO_PROJECTS = [
+    {
+        title: "Urpaq.ai",
+        category: "EdTech Platform",
+        image: "./images/project1.jpg,",
+        link: "#"
+    },
+    {
+        title: "Pyrascope",
+        category: "AI Agent",
+        image: "./images/project2.png",
+        link: "#"
+    }
+];
+
+/* =========================================
+   TRANSLATIONS
+========================================= */
+const translations = {
+    ru: {
+        'nav.contact': 'Связаться',
+        'hero.title1': 'Бизнес в цифре.',
+        'hero.title2': 'На автопилоте.',
+        'hero.subtitle': 'Премиальная разработка и внедрение искусственного интеллекта. Эстетика, лишенная визуального шума. Инженерия, работающая безупречно.',
+        'hero.cta': 'Обсудить проект',
+        'services.title': 'Экспертиза',
+        'services.desc': 'Комплексный подход к созданию цифровых продуктов премиум-класса.',
+        'services.card1.title': 'Лендинги',
+        'services.card1.desc': 'Строгий дизайн, безупречная типографика и высокая конверсия. Сайт как произведение искусства.',
+        'services.card2.title': 'AI Интеграция',
+        'services.card2.desc': 'Нейросети для автоматизации процессов. Ваш бизнес работает системно 24/7.',
+        'services.card3.title': 'CRM Системы',
+        'services.card3.desc': 'Оцифровка пути клиента. Идеальный порядок и ни одной потерянной заявки.',
+        'portfolio.title': 'Работы',
+        'portfolio.desc': 'Проекты, отражающие симбиоз эстетики и глубокой логики.',
+        'why.title': 'В цифрах',
+        'why.stat1': 'Клиентов',
+        'why.stat2': 'Проектов',
+        'why.stat3': 'Часов AI',
+        'why.stat4': 'В срок (%)',
+        'how.title': 'Процесс',
+        'how.step1.title': 'Аналитика',
+        'how.step1.desc': 'Погружение в задачи бизнеса. Проектирование архитектуры и информационной структуры.',
+        'how.step2.title': 'Создание',
+        'how.step2.desc': 'Отрисовка минималистичного дизайна, написание чистого кода, настройка нейросетей.',
+        'how.step3.title': 'Релиз',
+        'how.step3.desc': 'Запуск проекта, техническая оптимизация и передача продукта клиенту.',
+        'cta.title': 'Начать проект',
+        'cta.btn_tg': 'Telegram',
+        'cta.btn_ig': 'Instagram',
+        'footer.tagline': 'Minimalist Digital Solutions'
+    },
+    kz: {
+        'nav.contact': 'Байланыс',
+        'hero.title1': 'Цифрлы бизнес.',
+        'hero.title2': 'Автопилотта.',
+        'hero.subtitle': 'Жасанды интеллектіні енгізу және премиум әзірлеу. Артық визуалды шусыз эстетика. Мінсіз жұмыс істейтін инженерия.',
+        'hero.cta': 'Жобаны талқылау',
+        'services.title': 'Сараптама',
+        'services.desc': 'Премиум-класс цифрлық өнімдерін жасауға кешенді көзқарас.',
+        'services.card1.title': 'Лендингтер',
+        'services.card1.desc': 'Қатаң дизайн, мінсіз типографика және жоғары конверсия. Өнер туындысы іспеттес сайт.',
+        'services.card2.title': 'AI Интеграция',
+        'services.card2.desc': 'Процестерді автоматтандыруға арналған нейрожелілер. Бизнесіңіз 24/7 жүйелі жұмыс істейді.',
+        'services.card3.title': 'CRM Жүйелер',
+        'services.card3.desc': 'Клиент жолын цифрландыру. Мінсіз тәртіп және бірде-бір жоғалған өтінім жоқ.',
+        'portfolio.title': 'Жұмыстар',
+        'portfolio.desc': 'Эстетика мен терең логиканың үндестігін көрсететін жобалар.',
+        'why.title': 'Сандармен',
+        'why.stat1': 'Клиенттер',
+        'why.stat2': 'Жобалар',
+        'why.stat3': 'AI сағаттары',
+        'why.stat4': 'Мерзімінде (%)',
+        'how.title': 'Процесс',
+        'how.step1.title': 'Аналитика',
+        'how.step1.desc': 'Бизнес міндеттерге бойлау. Сәулет және ақпараттық құрылымды жобалау.',
+        'how.step2.title': 'Жасау',
+        'how.step2.desc': 'Минималистік дизайн сызу, таза код жазу, нейрожелілерді баптау.',
+        'how.step3.title': 'Релиз',
+        'how.step3.desc': 'Жобаны іске қосу, техникалық оңтайландыру және өнімді клиентке табыстау.',
+        'cta.title': 'Жобаны бастау',
+        'cta.btn_tg': 'Telegram',
+        'cta.btn_ig': 'Instagram',
+        'footer.tagline': 'Minimalist Digital Solutions'
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    /* =========================================
+       CUSTOM CURSOR
+    ========================================= */
+    const cursor = document.getElementById('cursor');
+    const interactives = document.querySelectorAll('.interactive, a, button');
+
+    document.addEventListener('mousemove', (e) => {
+        cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+    });
+
+    interactives.forEach(el => {
+        el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
+        el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
+    });
+
+    /* =========================================
+       PORTFOLIO RENDER
+    ========================================= */
+    const grid = document.getElementById('portfolio-grid');
+    if(grid) {
+        PORTFOLIO_PROJECTS.forEach((proj) => {
+            grid.innerHTML += `
+                <a href="${proj.link}" target="_blank" class="portfolio-item interactive fade-in reveal-trigger">
+                    <div class="portfolio-img-wrap">
+                        <img src="${proj.image}" alt="${proj.title}" class="portfolio-img" data-speed="0.15">
+                    </div>
+                    <div class="portfolio-info">
+                        <h3 class="portfolio-title">${proj.title}</h3>
+                        <div class="portfolio-category">${proj.category}</div>
+                    </div>
+                </a>
+            `;
+        });
+    }
+
+    /* =========================================
+       SMOOTH SCROLL (MOMENTUM)
+    ========================================= */
+    const scrollContainer = document.getElementById('scroll-container');
+    let currentScroll = 0;
+    let targetScroll = 0;
+    const ease = 0.08;
+    
+    function updateScrollHeight() {
+        document.body.style.height = `${scrollContainer.getBoundingClientRect().height}px`;
+    }
+    
+    // Initial height set
+    setTimeout(updateScrollHeight, 100);
+    window.addEventListener('resize', updateScrollHeight);
+
+    // Watch for size changes inside container (e.g. images loading)
+    if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => updateScrollHeight());
+        ro.observe(scrollContainer);
+    }
+
+    /* =========================================
+       SCROLL REVEAL (INTERSECTION OBSERVER)
+    ========================================= */
+    const observerOptions = {
+        threshold: 0.1,
+        // Since we are translating the container, the actual viewport for the observer 
+        // doesn't move perfectly if we rely on native scroll + translated body.
+        // Wait, IntersectionObserver uses the element's actual position on screen!
+        // So translating the element via CSS means IntersectionObserver perfectly tracks it 
+        // relative to the real viewport. It just works.
+        rootMargin: '0px 0px -10% 0px'
+    };
+
+    const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+            }
+        });
+    }, observerOptions);
+
+    // Initial triggers
+    document.querySelectorAll('.reveal-trigger').forEach(el => revealObserver.observe(el));
+    
+    // Hero explicit animation
+    setTimeout(() => {
+        document.querySelectorAll('.hero-reveal').forEach((el, index) => {
+            setTimeout(() => {
+                el.classList.add('is-visible');
+            }, index * 200);
+        });
+    }, 200);
+
+    /* =========================================
+       PARALLAX & COUNTERS (REQUEST ANIMATION FRAME)
+    ========================================= */
+    const parallaxImages = document.querySelectorAll('.portfolio-img');
+    const counters = document.querySelectorAll('.counter');
+    const countersStarted = new Set();
+    
+    function renderFrame() {
+        // 1. Calculate Smooth Scroll
+        targetScroll = window.scrollY;
+        currentScroll += (targetScroll - currentScroll) * ease;
+        
+        // Stop sub-pixel rendering jitter by rounding slightly
+        const scrollAmount = Math.round(currentScroll * 100) / 100;
+        scrollContainer.style.transform = `translate3d(0, -${scrollAmount}px, 0)`;
+
+        // 2. Parallax Images based on screen position
+        parallaxImages.forEach(img => {
+            const wrap = img.parentElement;
+            const rect = wrap.getBoundingClientRect();
+            if(rect.top < window.innerHeight && rect.bottom > 0) {
+                const speed = parseFloat(img.getAttribute('data-speed')) || 0.15;
+                const yPos = (rect.top - window.innerHeight / 2) * speed;
+                img.style.transform = `translate3d(0, ${yPos}px, 0)`;
+            }
+        });
+
+        // 3. Counters
+        counters.forEach(counter => {
+            const rect = counter.getBoundingClientRect();
+            if (rect.top < window.innerHeight * 0.9 && !countersStarted.has(counter)) {
+                countersStarted.add(counter);
+                const target = +counter.getAttribute('data-target');
+                const duration = 2000;
+                const start = performance.now();
+                
+                const step = (timestamp) => {
+                    const progress = Math.min((timestamp - start) / duration, 1);
+                    const ease = 1 - Math.pow(1 - progress, 4); // easeOutQuart
+                    const current = Math.floor(ease * target);
+                    counter.innerText = current + (target >= 100 ? '+' : '');
+                    if (progress < 1) requestAnimationFrame(step);
+                    else counter.innerText = target + (target >= 100 ? '+' : '');
+                };
+                requestAnimationFrame(step);
+            }
+        });
+
+        requestAnimationFrame(renderFrame);
+    }
+    
+    // Start RAF loop
+    requestAnimationFrame(renderFrame);
+
+    /* =========================================
+       I18N LANGUAGE SWITCHER
+    ========================================= */
+    function applyTranslation(lang) {
+        const t = translations[lang];
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (t[key]) {
+                el.innerText = t[key];
+            }
+        });
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.lang === lang);
+        });
+        
+        // Let the scroll container adjust height after text changes
+        setTimeout(updateScrollHeight, 50);
+    }
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => applyTranslation(btn.dataset.lang));
+    });
+});
+    </script>
+</body>
+</html>
