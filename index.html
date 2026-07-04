@@ -755,7 +755,7 @@ const PORTFOLIO_PROJECTS = [
         title: "Urpaq.ai",
         category: "EdTech Platform",
         image: "./images/project1.png",
-        link: "#"
+        link: "https://urpaq-edu.vercel.app/"
     },
     {
         title: "Pyrascope",
@@ -860,8 +860,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const grid = document.getElementById('portfolio-grid');
     if(grid) {
         PORTFOLIO_PROJECTS.forEach((proj) => {
+            const isClickable = proj.link && proj.link !== "#";
+            const tag = isClickable ? "a" : "div";
+            const hrefAttr = isClickable ? `href="${proj.link}" target="_blank"` : "";
             grid.innerHTML += `
-                <a href="${proj.link}" target="_blank" class="portfolio-item interactive fade-in reveal-trigger">
+                <${tag} ${hrefAttr} class="portfolio-item interactive fade-in reveal-trigger">
                     <div class="portfolio-img-wrap">
                         <img src="${proj.image}" alt="${proj.title}" class="portfolio-img" data-speed="0.15">
                     </div>
@@ -869,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h3 class="portfolio-title">${proj.title}</h3>
                         <div class="portfolio-category">${proj.category}</div>
                     </div>
-                </a>
+                </${tag}>
             `;
         });
     }
