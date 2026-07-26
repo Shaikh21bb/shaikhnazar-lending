@@ -5,18 +5,15 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { leads } = req.body;
+        const { leads, pdfData } = req.body;
 
-        if (!leads || !Array.isArray(leads)) {
-            return res.status(400).json({ error: 'Invalid input: expected an array of leads in the body.' });
+        if (!leads && !pdfData) {
+            return res.status(400).json({ error: 'Invalid input: expected "leads" array or "pdfData" base64 string.' });
         }
-
-        // Limit the number of leads sent to Gemini to avoid token limits
-        const limitedLeads = leads.slice(0, 150); 
 
         // We prepare the prompt for Google Gemini
         const promptText = `
-            Ты — эксперт-аналитик по продажам. Я отправляю тебе JSON-массив данных о зрителях вебинара.
+            Ты — эксперт-аналитик по продажам. Я отправляю тебе данные о зрителях вебинара (либо в виде JSON массива, либо в виде прикрепленного PDF файла).
             Твоя задача — проанализировать их и вернуть только "теплых" лидов в формате валидного JSON-массива.
             
             Критерии "теплого" лида:
@@ -32,10 +29,25 @@ export default async function handler(req, res) {
             }
             
             Если подходящих лидов нет, верни пустой массив [].
-
-            Данные зрителей:
-            ${JSON.stringify(limitedLeads)}
         `;
+
+        let parts = [{ text: promptText }];
+
+        if (pdfData) {
+            // Append PDF data as inlineData
+            parts.push({
+                inlineData: {
+                    mimeType: 'application/pdf',
+                    data: pdfData
+                }
+            });
+        } else if (leads) {
+            // Limit the number of leads sent to Gemini to avoid token limits
+            const limitedLeads = leads.slice(0, 150); 
+            parts.push({
+                text: `\n\nДанные зрителей:\n${JSON.stringify(limitedLeads)}`
+            });
+        }
 
         // Check if GEMINI_API_KEY is configured
         if (!process.env.GEMINI_API_KEY) {
@@ -51,9 +63,7 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{
-                        text: promptText
-                    }]
+                    parts: parts
                 }],
                 generationConfig: {
                     temperature: 0.1

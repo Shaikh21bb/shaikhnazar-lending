@@ -39,39 +39,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Process the file
     function handleFile(file) {
-        if (!file.name.endsWith('.csv')) {
-            alert('Пожалуйста, загрузите файл в формате CSV.');
+        if (!file.name.endsWith('.csv') && !file.name.endsWith('.pdf')) {
+            alert('Пожалуйста, загрузите файл в формате CSV или PDF.');
             return;
         }
 
         dropZone.classList.add('is-loading');
 
-        // Parse CSV using PapaParse
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            complete: function(results) {
-                console.log("Parsed CSV Data:", results.data);
-                analyzeData(results.data);
-            },
-            error: function(error) {
-                console.error("Error parsing CSV:", error);
-                alert("Ошибка при чтении файла.");
+        if (file.name.endsWith('.csv')) {
+            // Parse CSV using PapaParse
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    console.log("Parsed CSV Data:", results.data);
+                    analyzeData({ leads: results.data });
+                },
+                error: function(error) {
+                    console.error("Error parsing CSV:", error);
+                    alert("Ошибка при чтении CSV файла.");
+                    dropZone.classList.remove('is-loading');
+                }
+            });
+        } else if (file.name.endsWith('.pdf')) {
+            // Read PDF as Base64 Data URL
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // e.target.result is a Data URL like "data:application/pdf;base64,JVBER..."
+                const base64Data = e.target.result.split(',')[1];
+                analyzeData({ pdfData: base64Data });
+            };
+            reader.onerror = function() {
+                console.error("Error reading PDF file");
+                alert("Ошибка при чтении PDF файла.");
                 dropZone.classList.remove('is-loading');
-            }
-        });
+            };
+            reader.readAsDataURL(file);
+        }
     }
 
     // Send parsed data to our serverless API
-    async function analyzeData(data) {
+    async function analyzeData(payload) {
         try {
-            // We assume the API is deployed on Vercel at /api/analyze
+            // payload is either { leads: [...] } or { pdfData: "base64..." }
             const response = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ leads: data })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
