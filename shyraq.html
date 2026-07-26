@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shyraq — AI Analysis</title>
+    <meta name="description" content="AI Анализ зрителей вебинара Shyraq.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/style.css">
+    
+    <style>
+        /* =========================================
+           SHYRAQ SPECIFIC STYLES
+        ========================================= */
+        .shyraq-hero {
+            padding-top: 20vh;
+            text-align: center;
+        }
+
+        .upload-zone {
+            margin: 4vw auto;
+            max-width: 600px;
+            padding: 4rem 2rem;
+            border: 2px dashed var(--border-color);
+            border-radius: 20px;
+            background-color: rgba(255, 255, 255, 0.02);
+            transition: all 0.3s var(--ease-out);
+            position: relative;
+            cursor: pointer !important; /* Allow pointer cursor for upload */
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--text-primary);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .upload-zone:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-subtext {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* Loading State */
+        .loading-overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(5, 5, 5, 0.8);
+            backdrop-filter: blur(5px);
+            border-radius: 18px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .upload-zone.is-loading .loading-overlay {
+            display: flex;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--text-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Results Section */
+        #results-section {
+            display: none;
+            padding: 4vw 0 10vw;
+        }
+
+        .results-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .lead-card {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            border-radius: 15px;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        
+        .lead-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .lead-name {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-family: var(--font-heading);
+        }
+
+        .lead-detail {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .lead-value {
+            color: var(--text-primary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 100px;
+            font-size: 0.75rem;
+            margin-top: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Custom Cursor -->
+    <div id="cursor"></div>
+
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <a href="index.html" class="logo interactive">shaikh</a>
+            <div class="header-right">
+                <a href="index.html" class="nav-contact interactive">На главную</a>
+            </div>
+        </div>
+    </header>
+
+    <main id="scroll-container">
+        <!-- Hero & Upload Zone -->
+        <section class="hero shyraq-hero">
+            <div class="container">
+                <h1 class="hero-title-wrap">
+                    <span class="hero-title-line"><span class="reveal-up hero-reveal">AI Анализ лидов</span></span>
+                </h1>
+                <p class="hero-desc fade-in hero-reveal" style="margin: 0 auto;">
+                    Загрузите выгрузку зрителей вебинара (CSV). Искусственный интеллект проанализирует вовлеченность и найдет самых "теплых" клиентов.
+                </p>
+
+                <!-- Drag & Drop Zone -->
+                <div class="upload-zone interactive fade-in hero-reveal" id="drop-zone" style="transition-delay: 0.2s;">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Перетащите CSV файл сюда</div>
+                    <div class="upload-subtext">или нажмите, чтобы выбрать файл</div>
+                    <input type="file" id="file-input" accept=".csv">
+                    
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <div>AI анализирует данные...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-section" class="section">
+            <div class="container">
+                <div class="results-header fade-in reveal-trigger">
+                    <h2 class="section-title">Теплые лиды</h2>
+                    <p class="section-subtitle">Зрители, смотревшие более 70% вебинара, но не совершившие покупку.</p>
+                </div>
+                
+                <div class="results-grid" id="results-grid">
+                    <!-- Cards will be injected here via JS -->
+                </div>
+            </div>
+        </section>
+        
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-bottom" style="margin-top: 0; padding-top: 0; border: none;">
+                    <div>shaikh_lending © 2026</div>
+                    <div>AI Powered Lead Scoring</div>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="./js/shyraq.js"></script>
+    <script>
+        // Initialize custom cursor (copied from main logic)
+        document.addEventListener('DOMContentLoaded', () => {
+            const cursor = document.getElementById('cursor');
+            const interactives = document.querySelectorAll('.interactive, a, button, .upload-zone');
+            
+            document.addEventListener('mousemove', (e) => {
+                cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+            });
+            
+            interactives.forEach(el => {
+                el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
+                el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
+            });
+
+            // Very simple smooth scroll for this page (no parallax needed)
+            const scrollContainer = document.getElementById('scroll-container');
+            let currentScroll = 0;
+            let targetScroll = 0;
+            const ease = 0.08;
+            const isMobile = window.matchMedia("(max-width: 768px)").matches;
+            
+            function updateScrollHeight() {
+                if (!isMobile) {
+                    document.body.style.height = `${scrollContainer.getBoundingClientRect().height}px`;
+                } else {
+                    scrollContainer.style.position = 'static';
+                    document.body.style.height = 'auto';
+                }
+            }
+            
+            setTimeout(updateScrollHeight, 100);
+            window.addEventListener('resize', updateScrollHeight);
+
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => updateScrollHeight());
+                ro.observe(scrollContainer);
+            }
+
+            function renderFrame() {
+                if (!isMobile) {
+                    targetScroll = window.scrollY;
+                    currentScroll += (targetScroll - currentScroll) * ease;
+                    const scrollAmount = Math.round(currentScroll * 100) / 100;
+                    scrollContainer.style.transform = `translate3d(0, -${scrollAmount}px, 0)`;
+                }
+                requestAnimationFrame(renderFrame);
+            }
+            requestAnimationFrame(renderFrame);
+
+            // Simple reveal logic
+            setTimeout(() => {
+                document.querySelectorAll('.hero-reveal').forEach((el, i) => {
+                    setTimeout(() => el.classList.add('is-visible'), i * 150);
+                });
+            }, 100);
+        });
+    </script>
+</body>
+</html>
