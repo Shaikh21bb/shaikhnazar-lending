@@ -62,19 +62,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         } else if (file.name.endsWith('.pdf')) {
-            // Read PDF as Base64 Data URL
+            // Read PDF and extract text using pdf.js
             const reader = new FileReader();
-            reader.onload = function(e) {
-                // e.target.result is a Data URL like "data:application/pdf;base64,JVBER..."
-                const base64Data = e.target.result.split(',')[1];
-                analyzeData({ pdfData: base64Data });
+            reader.onload = async function(e) {
+                try {
+                    // Set up pdf.js worker
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+                    
+                    const typedarray = new Uint8Array(e.target.result);
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\\n';
+                    }
+                    
+                    console.log("Parsed PDF Text:", fullText.substring(0, 200) + '...');
+                    analyzeData({ pdfText: fullText });
+                } catch (err) {
+                    console.error("Error extracting PDF text:", err);
+                    alert("Ошибка при разборе PDF файла.");
+                    dropZone.classList.remove('is-loading');
+                }
             };
             reader.onerror = function() {
                 console.error("Error reading PDF file");
                 alert("Ошибка при чтении PDF файла.");
                 dropZone.classList.remove('is-loading');
             };
-            reader.readAsDataURL(file);
+            reader.readAsArrayBuffer(file);
         }
     }
 
@@ -108,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error("Analysis Error:", error);
-            alert("Произошла ошибка при анализе данных. Проверьте консоль для деталей.");
+            alert("Ошибка ИИ: " + error.message);
         } finally {
             dropZone.classList.remove('is-loading');
         }

@@ -5,10 +5,10 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { leads, pdfData } = req.body;
+        const { leads, pdfText } = req.body;
 
-        if (!leads && !pdfData) {
-            return res.status(400).json({ error: 'Invalid input: expected "leads" array or "pdfData" base64 string.' });
+        if (!leads && !pdfText) {
+            return res.status(400).json({ error: 'Invalid input: expected "leads" array or "pdfText" string.' });
         }
 
         // We prepare the prompt for Google Gemini
@@ -35,17 +35,11 @@ export default async function handler(req, res) {
 
         let parts = [];
 
-        if (pdfData) {
-            // Document upload
-            parts = [
-                { text: finalPrompt },
-                {
-                    inlineData: {
-                        mimeType: 'application/pdf',
-                        data: pdfData
-                    }
-                }
-            ];
+        if (pdfText) {
+            // Document text extracted from frontend
+            const limitedText = pdfText.substring(0, 30000); // Prevent exceeding token limits wildly
+            finalPrompt += `\n\nДанные из PDF:\n${limitedText}`;
+            parts = [{ text: finalPrompt }];
         } else if (leads) {
             // Limit the number of leads sent to Gemini to avoid token limits
             const limitedLeads = leads.slice(0, 150); 
