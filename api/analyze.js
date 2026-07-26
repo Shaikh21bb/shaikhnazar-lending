@@ -11,13 +11,12 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Invalid input: expected an array of leads in the body.' });
         }
 
-        // Limit the number of leads sent to OpenAI to avoid token limits (optional, but good practice)
-        // You might want to implement a more robust batching mechanism if CSVs are very large.
+        // Limit the number of leads sent to Gemini to avoid token limits
         const limitedLeads = leads.slice(0, 150); 
 
-        // We prepare the prompt for OpenAI
-        const prompt = `
-            Я отправляю тебе JSON-массив данных о зрителях вебинара.
+        // We prepare the prompt for Google Gemini
+        const promptText = `
+            Ты — эксперт-аналитик по продажам. Я отправляю тебе JSON-массив данных о зрителях вебинара.
             Твоя задача — проанализировать их и вернуть только "теплых" лидов в формате валидного JSON-массива.
             
             Критерии "теплого" лида:
@@ -38,46 +37,48 @@ export default async function handler(req, res) {
             ${JSON.stringify(limitedLeads)}
         `;
 
-        // Check if OPENAI_API_KEY is configured
-        if (!process.env.OPENAI_API_KEY) {
-            console.error('OPENAI_API_KEY is not set in environment variables');
-            return res.status(500).json({ error: 'Server configuration error (OpenAI API key missing)' });
+        // Check if GEMINI_API_KEY is configured
+        if (!process.env.GEMINI_API_KEY) {
+            console.error('GEMINI_API_KEY is not set in environment variables');
+            return res.status(500).json({ error: 'Server configuration error (Gemini API key missing)' });
         }
 
-        // Call OpenAI API using native fetch
-        const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        // Call Google Gemini API using native fetch
+        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'gpt-4o-mini', // Using gpt-4o-mini for speed and cost-efficiency
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are an expert sales analyst assistant. You strictly output raw JSON arrays without markdown wrappers.'
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
-                temperature: 0.1
+                contents: [{
+                    parts: [{
+                        text: promptText
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.1
+                }
             })
         });
 
-        if (!openAiResponse.ok) {
-            const errorText = await openAiResponse.text();
-            console.error('OpenAI Error:', openAiResponse.status, errorText);
-            throw new Error(`OpenAI API error: ${openAiResponse.statusText}`);
+        if (!geminiResponse.ok) {
+            const errorText = await geminiResponse.text();
+            console.error('Gemini Error:', geminiResponse.status, errorText);
+            throw new Error(`Gemini API error: ${geminiResponse.statusText}`);
         }
 
-        const data = await openAiResponse.json();
+        const data = await geminiResponse.json();
         
-        let aiResult = data.choices[0].message.content.trim();
+        // Extract text from Gemini response
+        let aiResult = "";
+        try {
+            aiResult = data.candidates[0].content.parts[0].text.trim();
+        } catch (e) {
+            console.error("Unexpected Gemini response structure:", data);
+            return res.status(500).json({ error: 'Unexpected response from Gemini' });
+        }
         
-        // Safety: sometimes OpenAI still wraps in ```json ... ``` despite instructions
+        // Safety: sometimes AI still wraps in ```json ... ``` despite instructions
         if (aiResult.startsWith('```json')) {
             aiResult = aiResult.replace(/^```json/, '').replace(/```$/, '').trim();
         } else if (aiResult.startsWith('```')) {
