@@ -31,22 +31,26 @@ export default async function handler(req, res) {
             Если подходящих лидов нет, верни пустой массив [].
         `;
 
-        let parts = [{ text: promptText }];
+        let finalPrompt = promptText;
+
+        let parts = [];
 
         if (pdfData) {
-            // Append PDF data as inlineData
-            parts.push({
-                inlineData: {
-                    mimeType: 'application/pdf',
-                    data: pdfData
+            // Document upload
+            parts = [
+                { text: finalPrompt },
+                {
+                    inlineData: {
+                        mimeType: 'application/pdf',
+                        data: pdfData
+                    }
                 }
-            });
+            ];
         } else if (leads) {
             // Limit the number of leads sent to Gemini to avoid token limits
             const limitedLeads = leads.slice(0, 150); 
-            parts.push({
-                text: `\n\nДанные зрителей:\n${JSON.stringify(limitedLeads)}`
-            });
+            finalPrompt += `\n\nДанные зрителей:\n${JSON.stringify(limitedLeads)}`;
+            parts = [{ text: finalPrompt }];
         }
 
         // Check if GEMINI_API_KEY is configured
@@ -74,7 +78,7 @@ export default async function handler(req, res) {
         if (!geminiResponse.ok) {
             const errorText = await geminiResponse.text();
             console.error('Gemini Error:', geminiResponse.status, errorText);
-            throw new Error(`Gemini API error: ${geminiResponse.statusText}`);
+            return res.status(500).json({ error: 'Gemini API Error', details: errorText });
         }
 
         const data = await geminiResponse.json();
