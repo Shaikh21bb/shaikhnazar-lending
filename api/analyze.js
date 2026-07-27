@@ -54,25 +54,36 @@ export default async function handler(req, res) {
         }
 
         // Call Google Gemini API using native fetch
-        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: parts
-                }],
-                generationConfig: {
-                    temperature: 0.1
-                }
-            })
-        });
+        let geminiResponse;
+        const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.0-flash', 'gemini-pro', 'gemini-1.5-pro'];
+        let lastErrorText = "";
 
-        if (!geminiResponse.ok) {
-            const errorText = await geminiResponse.text();
-            console.error('Gemini Error:', geminiResponse.status, errorText);
-            return res.status(500).json({ error: 'Gemini API Error', details: errorText });
+        for (const modelName of modelsToTry) {
+            geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: parts
+                    }],
+                    generationConfig: {
+                        temperature: 0.1
+                    }
+                })
+            });
+
+            if (geminiResponse.ok) {
+                break; // Success!
+            } else {
+                lastErrorText = await geminiResponse.text();
+                console.error(`Model ${modelName} failed:`, geminiResponse.status, lastErrorText);
+            }
+        }
+
+        if (!geminiResponse || !geminiResponse.ok) {
+            return res.status(500).json({ error: 'Gemini API Error', details: lastErrorText });
         }
 
         const data = await geminiResponse.json();
