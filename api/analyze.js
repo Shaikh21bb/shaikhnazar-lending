@@ -5,55 +5,69 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { leads, pdfText } = req.body;
+        const { leads, pdfText, managersCount } = req.body;
 
         if (!leads && !pdfText) {
             return res.status(400).json({ error: 'Invalid input: expected "leads" array or "pdfText" string.' });
         }
 
-        // We prepare the prompt for Google Gemini
+        const numManagers = parseInt(managersCount) || 1;
+
+        // Deep expert prompt
         const promptText = `
-            Ты — эксперт-аналитик по продажам. Я отправляю тебе данные о зрителях вебинара (либо в виде JSON массива, либо в виде прикрепленного PDF файла).
-            Твоя задача — проанализировать их и вернуть только "теплых" лидов в формате валидного JSON-массива.
-            
-            Критерии "теплого" лида:
-            1. Зритель посмотрел более 70% вебинара (если указано время или процент в полях вроде "watchTime", "прогресс", "время просмотра" и т.д.).
-            2. Зритель НЕ совершил покупку (ищи поля "buy", "купил", "покупка", "статус" со значением false, "нет", "0", пустые и т.д.).
-            
-            Верни ТОЛЬКО JSON-массив объектов. Без форматирования markdown (без \`\`\`json), просто чистый массив.
-            Каждый объект должен иметь такую структуру:
-            {
-                "name": "Имя зрителя",
-                "contact": "Email или телефон",
-                "watchTime": "Время или % просмотра"
-            }
-            
-            Если подходящих лидов нет, верни пустой массив [].
+Ты — ведущий дата-аналитик и эксперт по оптимизации воронки продаж.
+
+Мне нужно найти скрытое «золото» в этой базе — самых горячих целевых клиентов, которые проявили максимальный интерес, но по какой-то причине не дошли до покупки. Отдел продаж должен забрать этот список в работу в первую очередь.
+
+Проведи глубокий анализ данных по следующим шагам:
+
+1. ФИЛЬТРАЦИЯ (ИСКЛЮЧЕНИЕ):
+   Полностью исключи из финального отчета всех клиентов, у которых в статусе стоит «Купил», «Оплачено», «Купить», «bought», «paid» или есть любые другие маркеры совершённой покупки. Они нам НЕ нужны.
+
+2. ВЫЯВЛЕНИЕ «ГОРЯЧИХ ЛИДОВ»:
+   Сформируй список потенциальных покупателей, которые:
+   - НЕ купили продукт
+   - Досмотрели вебинар до конца (максимальное или близкое к максимальному время нахождения в комнате / высокий процент удержания)
+   - Отранжируй их по убыванию времени участия (от самых стойких к менее стойким)
+
+3. РАСПРЕДЕЛЕНИЕ ПО МЕНЕДЖЕРАМ:
+   Раздели итоговый список лидов равномерно на ${numManagers} менеджер(ов). 
+   Менеджеры нумеруются: «Менеджер 1», «Менеджер 2» и т.д.
+   Каждый лид должен быть назначен только одному менеджеру.
+
+4. ИТОГОВЫЙ JSON:
+   Верни ТОЛЬКО валидный JSON-массив. Без markdown-форматирования (без \`\`\`json). Просто чистый массив.
+   Каждый объект ОБЯЗАТЕЛЬНО должен иметь следующую структуру:
+   {
+     "name": "Имя участника",
+     "contact": "Email или телефон",
+     "watchTime": "Время участия в минутах или % досмотра",
+     "verdict": "Краткий вердикт (например: Смотрел 95 мин из 120, не купил. Высокий потенциал.)",
+     "manager": "Менеджер 1"
+   }
+
+Если подходящих лидов нет, верни пустой массив [].
         `;
 
         let finalPrompt = promptText;
-
         let parts = [];
 
         if (pdfText) {
-            // Document text extracted from frontend
-            const limitedText = pdfText.substring(0, 30000); // Prevent exceeding token limits wildly
+            const limitedText = pdfText.substring(0, 30000);
             finalPrompt += `\n\nДанные из PDF:\n${limitedText}`;
             parts = [{ text: finalPrompt }];
         } else if (leads) {
-            // Limit the number of leads sent to Gemini to avoid token limits
-            const limitedLeads = leads.slice(0, 150); 
+            const limitedLeads = leads.slice(0, 200);
             finalPrompt += `\n\nДанные зрителей:\n${JSON.stringify(limitedLeads)}`;
             parts = [{ text: finalPrompt }];
         }
 
         // Check if GEMINI_API_KEY is configured
         if (!process.env.GEMINI_API_KEY) {
-            console.error('GEMINI_API_KEY is not set in environment variables');
             return res.status(500).json({ error: 'Server configuration error (Gemini API key missing)' });
         }
 
-        // Call Google Gemini API using native fetch
+        // Call Google Gemini API with model fallback
         let geminiResponse;
         const modelsToTry = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-pro-latest', 'gemini-2.0-flash'];
         let lastErrorText = "";
@@ -61,29 +75,19 @@ export default async function handler(req, res) {
         for (const modelName of modelsToTry) {
             geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{
-                        parts: parts
-                    }],
-                    generationConfig: {
-                        temperature: 0.1
-                    }
+                    contents: [{ parts: parts }],
+                    generationConfig: { temperature: 0.1 }
                 })
             });
 
-            if (geminiResponse.ok) {
-                break; // Success!
-            } else {
-                lastErrorText = await geminiResponse.text();
-                console.error(`Model ${modelName} failed:`, geminiResponse.status, lastErrorText);
-            }
+            if (geminiResponse.ok) break;
+            lastErrorText = await geminiResponse.text();
+            console.error(`Model ${modelName} failed:`, geminiResponse.status, lastErrorText);
         }
 
         if (!geminiResponse || !geminiResponse.ok) {
-            // Fetch the list of available models to help debug
             let availableModels = "Could not fetch models";
             try {
                 const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`);
@@ -94,27 +98,19 @@ export default async function handler(req, res) {
                         .map(m => m.name.replace('models/', ''))
                         .join(', ');
                 }
-            } catch (e) {
-                console.error("Error fetching models list", e);
-            }
-            return res.status(500).json({ 
-                error: 'Gemini API Error', 
-                details: `Ни одна модель не подошла. Доступные модели для вашего ключа: ${availableModels}. Последняя ошибка: ${lastErrorText}`
-            });
+            } catch (e) { console.error("Error fetching models list", e); }
+            return res.status(500).json({ error: 'Gemini API Error', details: `Ни одна модель не подошла. Доступные: ${availableModels}. Ошибка: ${lastErrorText}` });
         }
 
         const data = await geminiResponse.json();
-        
-        // Extract text from Gemini response
         let aiResult = "";
         try {
             aiResult = data.candidates[0].content.parts[0].text.trim();
         } catch (e) {
-            console.error("Unexpected Gemini response structure:", data);
             return res.status(500).json({ error: 'Unexpected response from Gemini' });
         }
-        
-        // Safety: sometimes AI still wraps in ```json ... ``` despite instructions
+
+        // Strip markdown code fences if present
         if (aiResult.startsWith('```json')) {
             aiResult = aiResult.replace(/^```json/, '').replace(/```$/, '').trim();
         } else if (aiResult.startsWith('```')) {
@@ -122,7 +118,6 @@ export default async function handler(req, res) {
         }
 
         const warmLeads = JSON.parse(aiResult);
-
         return res.status(200).json({ warmLeads });
 
     } catch (error) {
