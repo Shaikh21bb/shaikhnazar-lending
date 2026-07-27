@@ -159,8 +159,31 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="lead-value">${watchTime}</span>
                     </div>
                     <div class="badge">Высокий приоритет</div>
+                    <button class="copy-btn primary-btn" style="width: 100%; margin-top: 15px; padding: 10px; font-size: 14px; display: flex; justify-content: center; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        Копировать
+                    </button>
                 `;
                 
+                const copyBtn = card.querySelector('.copy-btn');
+                copyBtn.addEventListener('click', () => {
+                    const textToCopy = `Имя: ${name}\\nКонтакт: ${contact}\\nВремя просмотра: ${watchTime}`;
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        const originalText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = 'Скопировано! ✅';
+                        copyBtn.style.background = '#4CAF50';
+                        copyBtn.style.color = '#fff';
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalText;
+                            copyBtn.style.background = '';
+                            copyBtn.style.color = '';
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Ошибка копирования:', err);
+                        alert('Не удалось скопировать текст.');
+                    });
+                });
+
                 resultsGrid.appendChild(card);
             });
         }
