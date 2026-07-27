@@ -55,7 +55,7 @@ export default async function handler(req, res) {
 
         // Call Google Gemini API using native fetch
         let geminiResponse;
-        const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.0-flash', 'gemini-pro', 'gemini-1.5-pro'];
+        const modelsToTry = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-pro-latest', 'gemini-2.0-flash'];
         let lastErrorText = "";
 
         for (const modelName of modelsToTry) {
