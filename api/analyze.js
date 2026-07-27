@@ -83,7 +83,24 @@ export default async function handler(req, res) {
         }
 
         if (!geminiResponse || !geminiResponse.ok) {
-            return res.status(500).json({ error: 'Gemini API Error', details: lastErrorText });
+            // Fetch the list of available models to help debug
+            let availableModels = "Could not fetch models";
+            try {
+                const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`);
+                if (modelsRes.ok) {
+                    const modelsData = await modelsRes.json();
+                    availableModels = modelsData.models
+                        .filter(m => m.supportedGenerationMethods.includes("generateContent"))
+                        .map(m => m.name.replace('models/', ''))
+                        .join(', ');
+                }
+            } catch (e) {
+                console.error("Error fetching models list", e);
+            }
+            return res.status(500).json({ 
+                error: 'Gemini API Error', 
+                details: `Ни одна модель не подошла. Доступные модели для вашего ключа: ${availableModels}. Последняя ошибка: ${lastErrorText}`
+            });
         }
 
         const data = await geminiResponse.json();
