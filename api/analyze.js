@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-    // Only allow POST requests
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -13,7 +12,6 @@ export default async function handler(req, res) {
 
         const numManagers = parseInt(managersCount) || 1;
 
-        // Deep expert prompt
         const promptText = `
 Ты — ведущий дата-аналитик и эксперт по оптимизации воронки продаж.
 
@@ -30,19 +28,26 @@ export default async function handler(req, res) {
    - Досмотрели вебинар до конца (максимальное или близкое к максимальному время нахождения в комнате / высокий процент удержания)
    - Отранжируй их по убыванию времени участия (от самых стойких к менее стойким)
 
-3. РАСПРЕДЕЛЕНИЕ ПО МЕНЕДЖЕРАМ:
-   Раздели итоговый список лидов равномерно на ${numManagers} менеджер(ов). 
+3. ГЛУБОКИЙ АНАЛИЗ КАЖДОГО ЛИДА:
+   Для каждого горячего лида дополнительно определи:
+   - "need" (потребность): Исходя из имени, времени просмотра, контекста — предположи вероятную потребность клиента (например: "Хочет сменить профессию", "Повышение квалификации", "Интерес к онлайн-образованию", "Вероятно ищет работу").
+   - "probability" (вероятность продажи): Оцени вероятность покупки — строго одно из трёх значений: "Высокая", "Средняя" или "Низкая". Основывай на времени просмотра: 90-100% = Высокая, 70-89% = Средняя, ниже = Низкая.
+
+4. РАСПРЕДЕЛЕНИЕ ПО МЕНЕДЖЕРАМ:
+   Раздели итоговый список лидов равномерно на ${numManagers} менеджер(ов).
    Менеджеры нумеруются: «Менеджер 1», «Менеджер 2» и т.д.
    Каждый лид должен быть назначен только одному менеджеру.
 
-4. ИТОГОВЫЙ JSON:
+5. ИТОГОВЫЙ JSON:
    Верни ТОЛЬКО валидный JSON-массив. Без markdown-форматирования (без \`\`\`json). Просто чистый массив.
    Каждый объект ОБЯЗАТЕЛЬНО должен иметь следующую структуру:
    {
      "name": "Имя участника",
      "contact": "Email или телефон",
      "watchTime": "Время участия в минутах или % досмотра",
-     "verdict": "Краткий вердикт (например: Смотрел 95 мин из 120, не купил. Высокий потенциал.)",
+     "verdict": "Краткий аналитический вердикт (1-2 предложения)",
+     "need": "Предполагаемая потребность клиента",
+     "probability": "Высокая | Средняя | Низкая",
      "manager": "Менеджер 1"
    }
 
@@ -62,12 +67,10 @@ export default async function handler(req, res) {
             parts = [{ text: finalPrompt }];
         }
 
-        // Check if GEMINI_API_KEY is configured
         if (!process.env.GEMINI_API_KEY) {
             return res.status(500).json({ error: 'Server configuration error (Gemini API key missing)' });
         }
 
-        // Call Google Gemini API with model fallback
         let geminiResponse;
         const modelsToTry = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-pro-latest', 'gemini-2.0-flash'];
         let lastErrorText = "";
@@ -110,7 +113,6 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: 'Unexpected response from Gemini' });
         }
 
-        // Strip markdown code fences if present
         if (aiResult.startsWith('```json')) {
             aiResult = aiResult.replace(/^```json/, '').replace(/```$/, '').trim();
         } else if (aiResult.startsWith('```')) {

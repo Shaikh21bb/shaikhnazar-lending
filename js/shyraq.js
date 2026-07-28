@@ -5,97 +5,149 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsGrid = document.getElementById('results-grid');
     const managerTabsEl = document.getElementById('manager-tabs');
     const managersCountInput = document.getElementById('managers-count');
+    const historyList = document.getElementById('history-list');
+    const historySection = document.getElementById('history-section');
 
-    // All leads storage for filtering
+    const STORAGE_KEY = 'shyraq_sessions';
     let allLeads = [];
+    let currentFileName = '';
 
-    // Make drop zone clickable to trigger file input
-    dropZone.addEventListener('click', () => {
-        if (!dropZone.classList.contains('is-loading')) {
-            fileInput.click();
+    // ─── LocalStorage helpers ──────────────────────────────────────
+    function getSessions() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+        catch (e) { return []; }
+    }
+
+    function saveSession(leads, fileName, managersCount) {
+        const sessions = getSessions();
+        const session = {
+            id: Date.now(),
+            date: new Date().toLocaleString('ru-RU'),
+            fileName: fileName,
+            managersCount: managersCount,
+            leadsCount: leads.length,
+            leads: leads
+        };
+        sessions.unshift(session); // newest first
+        // Keep max 20 sessions
+        if (sessions.length > 20) sessions.pop();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+        renderHistory();
+    }
+
+    function deleteSession(id) {
+        const sessions = getSessions().filter(s => s.id !== id);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+        renderHistory();
+    }
+
+    function clearAllSessions() {
+        if (confirm('Вы уверены, что хотите удалить всю историю?')) {
+            localStorage.removeItem(STORAGE_KEY);
+            renderHistory();
         }
-    });
+    }
 
-    // Handle Drag & Drop events
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
+    // ─── Render history list ───────────────────────────────────────
+    function renderHistory() {
+        const sessions = getSessions();
+        if (!historyList || !historySection) return;
 
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('dragover');
-    });
+        if (sessions.length === 0) {
+            historySection.style.display = 'none';
+            return;
+        }
 
+        historySection.style.display = 'block';
+        historyList.innerHTML = sessions.map(s => `
+            <div class="history-card" id="hist-${s.id}">
+                <div class="history-card-info">
+                    <div class="history-card-title">📄 ${s.fileName}</div>
+                    <div class="history-card-meta">
+                        🗓 ${s.date} &nbsp;·&nbsp; 🔥 ${s.leadsCount} лидов &nbsp;·&nbsp; 👥 ${s.managersCount} менеджер(ов)
+                    </div>
+                </div>
+                <div class="history-card-actions">
+                    <button class="hist-open-btn" onclick="window.__openSession(${s.id})">Открыть</button>
+                    <button class="hist-delete-btn" onclick="window.__deleteSession(${s.id})">✕</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Expose to global scope for inline onclick handlers
+    window.__openSession = (id) => {
+        const session = getSessions().find(s => s.id === id);
+        if (!session) return;
+        allLeads = session.leads;
+        renderResults(session.leads, session.fileName);
+    };
+    window.__deleteSession = (id) => {
+        deleteSession(id);
+    };
+    window.__clearAllSessions = clearAllSessions;
+
+    // ─── File handling ─────────────────────────────────────────────
+    dropZone.addEventListener('click', () => {
+        if (!dropZone.classList.contains('is-loading')) fileInput.click();
+    });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.classList.remove('dragover');
-        if (e.dataTransfer.files.length) {
-            handleFile(e.dataTransfer.files[0]);
-        }
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
     });
-
-    // Handle File Input change
     fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) {
-            handleFile(e.target.files[0]);
-        }
+        if (e.target.files.length) handleFile(e.target.files[0]);
     });
 
-    // Process the file
     function handleFile(file) {
         if (!file.name.endsWith('.csv') && !file.name.endsWith('.pdf')) {
             alert('Пожалуйста, загрузите файл в формате CSV или PDF.');
             return;
         }
-
+        currentFileName = file.name;
         dropZone.classList.add('is-loading');
 
         if (file.name.endsWith('.csv')) {
             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
-                complete: function(results) {
-                    analyzeData({ leads: results.data });
-                },
-                error: function(error) {
-                    console.error("Error parsing CSV:", error);
+                complete: (results) => analyzeData({ leads: results.data }),
+                error: (err) => {
+                    console.error(err);
                     alert("Ошибка при чтении CSV файла.");
                     dropZone.classList.remove('is-loading');
                 }
             });
-        } else if (file.name.endsWith('.pdf')) {
+        } else {
             const reader = new FileReader();
-            reader.onload = async function(e) {
+            reader.onload = async (e) => {
                 try {
                     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-                    const typedarray = new Uint8Array(e.target.result);
-                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
-
+                    const pdf = await pdfjsLib.getDocument(new Uint8Array(e.target.result)).promise;
                     let fullText = '';
                     for (let i = 1; i <= pdf.numPages; i++) {
                         const page = await pdf.getPage(i);
-                        const textContent = await page.getTextContent();
-                        fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+                        const content = await page.getTextContent();
+                        fullText += content.items.map(item => item.str).join(' ') + '\n';
                     }
                     analyzeData({ pdfText: fullText });
                 } catch (err) {
-                    console.error("Error extracting PDF text:", err);
+                    console.error(err);
                     alert("Ошибка при разборе PDF файла.");
                     dropZone.classList.remove('is-loading');
                 }
             };
-            reader.onerror = function() {
-                alert("Ошибка при чтении PDF файла.");
-                dropZone.classList.remove('is-loading');
-            };
+            reader.onerror = () => { alert("Ошибка при чтении файла."); dropZone.classList.remove('is-loading'); };
             reader.readAsArrayBuffer(file);
         }
     }
 
-    // Send parsed data to our serverless API
+    // ─── API call ──────────────────────────────────────────────────
     async function analyzeData(payload) {
         try {
-            // Attach managers count
             payload.managersCount = parseInt(managersCountInput.value) || 1;
 
             const response = await fetch('/api/analyze', {
@@ -106,18 +158,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!response.ok) {
                 let errDetails = response.statusText;
-                try {
-                    const errData = await response.json();
-                    if (errData.details) errDetails = errData.details;
-                } catch (e) {}
+                try { const d = await response.json(); if (d.details) errDetails = d.details; } catch (e) {}
                 throw new Error('API Error: ' + errDetails);
             }
 
             const result = await response.json();
-
             if (result.warmLeads && Array.isArray(result.warmLeads)) {
                 allLeads = result.warmLeads;
-                renderResults(allLeads);
+                saveSession(allLeads, currentFileName, parseInt(managersCountInput.value) || 1);
+                renderResults(allLeads, currentFileName);
             } else {
                 alert("Не удалось найти горячих лидов в предоставленном файле.");
             }
@@ -129,14 +178,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Build manager filter tabs
+    // ─── Probability badge colour ──────────────────────────────────
+    function probColor(prob) {
+        if (!prob) return 'rgba(255,255,255,0.1)';
+        if (prob === 'Высокая') return 'rgba(76, 175, 80, 0.25)';
+        if (prob === 'Средняя') return 'rgba(255, 193, 7, 0.25)';
+        return 'rgba(244, 67, 54, 0.2)';
+    }
+    function probIcon(prob) {
+        if (prob === 'Высокая') return '🟢';
+        if (prob === 'Средняя') return '🟡';
+        return '🔴';
+    }
+
+    // ─── Manager tabs ──────────────────────────────────────────────
     function buildManagerTabs(leads) {
         managerTabsEl.innerHTML = '';
         const managers = [...new Set(leads.map(l => l.manager).filter(Boolean))].sort();
+        if (managers.length <= 1) {
+            // Single manager: just show copy-all button
+            appendCopyAllBtn(managerTabsEl, 'Все лиды', leads);
+            return;
+        }
 
-        if (managers.length <= 1) return; // No tabs needed for 1 manager
-
-        // "All" tab
         const allTab = document.createElement('button');
         allTab.className = 'manager-tab active';
         allTab.textContent = `Все (${leads.length})`;
@@ -144,78 +208,140 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.manager-tab').forEach(t => t.classList.remove('active'));
             allTab.classList.add('active');
             renderCards(leads);
+            updateCopyAllBtn(leads, 'Все лиды');
         });
         managerTabsEl.appendChild(allTab);
 
         managers.forEach(manager => {
-            const managerLeads = leads.filter(l => l.manager === manager);
+            const ml = leads.filter(l => l.manager === manager);
             const tab = document.createElement('button');
             tab.className = 'manager-tab';
-            tab.textContent = `${manager} (${managerLeads.length})`;
+            tab.textContent = `${manager} (${ml.length})`;
             tab.addEventListener('click', () => {
                 document.querySelectorAll('.manager-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
-                renderCards(managerLeads);
+                renderCards(ml);
+                updateCopyAllBtn(ml, manager);
             });
             managerTabsEl.appendChild(tab);
         });
+
+        // Copy-all button below tabs
+        const copyAllWrapper = document.createElement('div');
+        copyAllWrapper.id = 'copy-all-wrapper';
+        copyAllWrapper.style.cssText = 'width:100%; display:flex; justify-content:center; margin-top:1rem;';
+        managerTabsEl.after(copyAllWrapper);
+        appendCopyAllBtn(copyAllWrapper, 'Все лиды', leads);
     }
 
-    // Render results in the grid
-    function renderResults(leads) {
+    function appendCopyAllBtn(container, label, leads) {
+        container.innerHTML = '';
+        const btn = document.createElement('button');
+        btn.id = 'copy-all-btn';
+        btn.className = 'primary-btn';
+        btn.style.cssText = 'padding: 10px 24px; font-size: 14px; display:inline-flex; align-items:center; gap:8px;';
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> 📋 Скопировать всех для ${label}`;
+        btn.addEventListener('click', () => copyAllLeads(leads, label));
+        container.appendChild(btn);
+    }
+
+    function updateCopyAllBtn(leads, label) {
+        const wrapper = document.getElementById('copy-all-wrapper');
+        if (wrapper) appendCopyAllBtn(wrapper, label, leads);
+    }
+
+    // ─── Copy all leads for manager ────────────────────────────────
+    function copyAllLeads(leads, label) {
+        const now = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        let text = `=== ${label.toUpperCase()} | ${leads.length} лидов | ${now} ===\n\n`;
+        leads.forEach((lead, i) => {
+            const name = lead.name || 'Неизвестный клиент';
+            const contact = lead.contact || 'Нет контакта';
+            const watchTime = lead.watchTime || 'Неизвестно';
+            const verdict = lead.verdict || '';
+            const need = lead.need || '';
+            const probability = lead.probability || '';
+            const manager = lead.manager || '';
+
+            text += `${i + 1}. Имя: ${name}\n`;
+            text += `   Контакт: ${contact}\n`;
+            text += `   Время просмотра: ${watchTime}\n`;
+            if (need) text += `   Потребность: ${need}\n`;
+            if (probability) text += `   Вероятность продажи: ${probability}\n`;
+            if (verdict) text += `   Вердикт: ${verdict}\n`;
+            if (manager) text += `   Менеджер: ${manager}\n`;
+            text += '\n';
+        });
+        text += '--- Сгенерировано AI Shyraq ---';
+
+        const btn = document.getElementById('copy-all-btn');
+        navigator.clipboard.writeText(text).then(() => {
+            if (btn) {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '✅ Скопировано!';
+                btn.style.background = '#4CAF50';
+                setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 2500);
+            }
+        }).catch(() => alert('Не удалось скопировать.'));
+    }
+
+    // ─── Render results ────────────────────────────────────────────
+    function renderResults(leads, fileName) {
         const subtitle = document.getElementById('results-subtitle');
-        if (subtitle) {
-            subtitle.textContent = `Найдено горячих лидов: ${leads.length}. Отранжированы по времени просмотра.`;
-        }
+        if (subtitle) subtitle.textContent = `Файл: ${fileName || ''} · Найдено горячих лидов: ${leads.length}`;
+
+        // Remove old copy-all wrapper if present
+        const old = document.getElementById('copy-all-wrapper');
+        if (old) old.remove();
 
         buildManagerTabs(leads);
         renderCards(leads);
 
-        // Show the results section
         resultsSection.style.display = 'block';
         setTimeout(() => {
             resultsSection.classList.add('is-visible');
             window.dispatchEvent(new Event('resize'));
-            const yOffset = resultsSection.getBoundingClientRect().top + window.scrollY;
-            window.scrollTo({ top: yOffset - 100, behavior: 'smooth' });
+            window.scrollTo({ top: resultsSection.getBoundingClientRect().top + window.scrollY - 100, behavior: 'smooth' });
         }, 100);
     }
 
-    // Render lead cards for given leads array
+    // ─── Render lead cards ─────────────────────────────────────────
     function renderCards(leads) {
         resultsGrid.innerHTML = '';
-
         if (leads.length === 0) {
-            resultsGrid.innerHTML = '<p style="text-align:center; color: var(--text-secondary);">Лидов по данному менеджеру нет.</p>';
+            resultsGrid.innerHTML = '<p style="text-align:center;color:var(--text-secondary);">Лидов по данному менеджеру нет.</p>';
             return;
         }
 
         leads.forEach(lead => {
-            const name = lead.name || lead.имя || 'Неизвестный клиент';
-            const contact = lead.contact || lead.email || lead.phone || lead.телефон || 'Нет контакта';
-            const watchTime = lead.watchTime || lead.time || lead['время просмотра'] || 'Неизвестно';
+            const name = lead.name || 'Неизвестный клиент';
+            const contact = lead.contact || 'Нет контакта';
+            const watchTime = lead.watchTime || 'Неизвестно';
             const verdict = lead.verdict || '';
+            const need = lead.need || '';
+            const probability = lead.probability || '';
             const manager = lead.manager || '';
 
             const card = document.createElement('div');
             card.className = 'lead-card fade-in is-visible';
 
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.75rem;">
                     <div class="lead-name">${name}</div>
                     ${manager ? `<span class="manager-badge">${manager}</span>` : ''}
                 </div>
-                <div class="lead-detail">
-                    <span>Контакт:</span>
-                    <span class="lead-value">${contact}</span>
-                </div>
-                <div class="lead-detail">
-                    <span>Время просмотра:</span>
-                    <span class="lead-value">${watchTime}</span>
-                </div>
+                <div class="lead-detail"><span>Контакт:</span><span class="lead-value">${contact}</span></div>
+                <div class="lead-detail"><span>Время просмотра:</span><span class="lead-value">${watchTime}</span></div>
+                ${need ? `<div class="lead-detail"><span>Потребность:</span><span class="lead-value" style="font-style:italic;">${need}</span></div>` : ''}
+                ${probability ? `
+                <div style="margin-top:0.6rem;">
+                    <span class="probability-badge" style="background:${probColor(probability)}; border:1px solid ${probColor(probability).replace('0.25','0.5').replace('0.2','0.4')}; padding:0.25rem 0.75rem; border-radius:100px; font-size:0.78rem;">
+                        ${probIcon(probability)} Вероятность продажи: <strong>${probability}</strong>
+                    </span>
+                </div>` : ''}
                 ${verdict ? `<div class="lead-verdict">💬 ${verdict}</div>` : ''}
                 <div class="badge" style="margin-top:1rem;">🔥 Горячий лид</div>
-                <button class="copy-btn primary-btn" style="width: 100%; margin-top: 12px; padding: 10px; font-size: 14px; display: flex; justify-content: center; align-items: center; gap: 8px;">
+                <button class="copy-btn primary-btn" style="width:100%;margin-top:12px;padding:10px;font-size:14px;display:flex;justify-content:center;align-items:center;gap:8px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     Скопировать для WhatsApp
                 </button>
@@ -223,21 +349,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const copyBtn = card.querySelector('.copy-btn');
             copyBtn.addEventListener('click', () => {
-                const textToCopy = `Имя: ${name}\nКонтакт: ${contact}\nВремя просмотра: ${watchTime}${verdict ? '\nВердикт: ' + verdict : ''}${manager ? '\nМенеджер: ' + manager : ''}`;
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    const originalHTML = copyBtn.innerHTML;
+                const text = `Имя: ${name}\nКонтакт: ${contact}\nВремя просмотра: ${watchTime}${need ? '\nПотребность: ' + need : ''}${probability ? '\nВероятность продажи: ' + probability : ''}${verdict ? '\nВердикт: ' + verdict : ''}${manager ? '\nМенеджер: ' + manager : ''}`;
+                navigator.clipboard.writeText(text).then(() => {
+                    const orig = copyBtn.innerHTML;
                     copyBtn.innerHTML = 'Скопировано! ✅';
                     copyBtn.style.background = '#4CAF50';
                     copyBtn.style.color = '#fff';
-                    setTimeout(() => {
-                        copyBtn.innerHTML = originalHTML;
-                        copyBtn.style.background = '';
-                        copyBtn.style.color = '';
-                    }, 2000);
+                    setTimeout(() => { copyBtn.innerHTML = orig; copyBtn.style.background = ''; copyBtn.style.color = ''; }, 2000);
                 }).catch(() => alert('Не удалось скопировать текст.'));
             });
 
             resultsGrid.appendChild(card);
         });
     }
+
+    // ─── Init ──────────────────────────────────────────────────────
+    renderHistory();
 });

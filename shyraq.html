@@ -234,6 +234,95 @@
             border: 1px solid rgba(255,255,255,0.1);
             color: var(--text-secondary);
         }
+
+        /* ─── History Section ─── */
+        #history-section {
+            display: none;
+            padding: 2vw 0 1vw;
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .history-header h3 {
+            font-family: var(--font-heading);
+            font-size: 1.4rem;
+            margin: 0;
+        }
+        .history-clear-btn {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.9rem;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 100px;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .history-clear-btn:hover {
+            border-color: #f44336;
+            color: #f44336;
+        }
+        .history-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 0.75rem;
+            transition: border-color 0.2s;
+            flex-wrap: wrap;
+        }
+        .history-card:hover { border-color: rgba(255,255,255,0.15); }
+        .history-card-title {
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+        .history-card-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .history-card-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+        .hist-open-btn {
+            padding: 0.3rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 100px;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .hist-open-btn:hover {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+        .hist-delete-btn {
+            padding: 0.3rem 0.7rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 100px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .hist-delete-btn:hover {
+            border-color: #f44336;
+            color: #f44336;
+        }
     </style>
 </head>
 <body>
@@ -280,6 +369,17 @@
                         <div>AI проводит глубокий анализ...</div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section id="history-section" class="section" style="padding-top: 0;">
+            <div class="container">
+                <div class="history-header">
+                    <h3>📜 История анализов</h3>
+                    <button class="history-clear-btn" onclick="window.__clearAllSessions()">Очистить всё</button>
+                </div>
+                <div id="history-list"></div>
             </div>
         </section>
 
