@@ -151,38 +151,47 @@
             letter-spacing: 0.05em;
         }
 
-        /* Manager input block */
-        .managers-block {
-            max-width: 600px;
+        /* Settings blocks */
+        .settings-grid {
+            max-width: 650px;
             margin: 0 auto 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 768px) {
+            .settings-grid { grid-template-columns: 1fr; }
+        }
+        .managers-block {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 1rem;
             background: rgba(255,255,255,0.03);
             border: 1px solid var(--border-color);
             border-radius: 14px;
-            padding: 1rem 1.5rem;
+            padding: 0.8rem 1.2rem;
         }
         .managers-block label {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--text-secondary);
-            white-space: nowrap;
         }
-        .managers-block input[type=number] {
+        .managers-block input, .managers-block select {
             background: transparent;
             border: 1px solid var(--border-color);
             color: var(--text-primary);
             font-family: var(--font-body);
-            font-size: 1rem;
-            padding: 0.4rem 0.8rem;
+            font-size: 0.9rem;
+            padding: 0.4rem 0.6rem;
             border-radius: 8px;
-            width: 70px;
-            text-align: center;
         }
-        .managers-block input[type=number]:focus {
+        .managers-block input[type=number] { width: 60px; text-align: center; }
+        .managers-block input[type=text] { width: 100%; text-align: left; margin-top: 0.5rem; }
+        .managers-block input:focus, .managers-block select:focus {
             outline: none;
             border-color: rgba(255,255,255,0.3);
         }
+        .full-width-setting { grid-column: 1 / -1; display: block; }
 
         /* Manager tabs */
         .manager-tabs {
@@ -416,10 +425,24 @@
                     Загрузите выгрузку зрителей вебинара (CSV или PDF). Искусственный интеллект проанализирует вовлеченность и найдет самых "теплых" клиентов.
                 </p>
 
-                <!-- Managers count input -->
-                <div class="managers-block fade-in hero-reveal" style="transition-delay: 0.3s;">
-                    <label for="managers-count">👥 Количество менеджеров в отделе продаж:</label>
-                    <input type="number" id="managers-count" value="1" min="1" max="20">
+                <!-- AI Settings -->
+                <div class="settings-grid fade-in hero-reveal" style="transition-delay: 0.3s;">
+                    <div class="managers-block">
+                        <label for="managers-count">👥 Менеджеров:</label>
+                        <input type="number" id="managers-count" value="1" min="1" max="20">
+                    </div>
+                    <div class="managers-block">
+                        <label for="ai-strictness">🎛 Строгость отсева:</label>
+                        <select id="ai-strictness">
+                            <option value="high">Высокая (90%+)</option>
+                            <option value="medium" selected>Средняя (50%+)</option>
+                            <option value="low">Низкая (20%+)</option>
+                        </select>
+                    </div>
+                    <div class="managers-block full-width-setting">
+                        <label for="ai-context">🎓 Продукт вебинара (поможет ИИ точнее определить потребность):</label>
+                        <input type="text" id="ai-context" placeholder="Например: Курс по дизайну, обучение инвестициям...">
+                    </div>
                 </div>
 
                 <!-- Drag & Drop Zone -->

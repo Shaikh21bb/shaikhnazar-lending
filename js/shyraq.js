@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsGrid = document.getElementById('results-grid');
     const managerTabsEl = document.getElementById('manager-tabs');
     const managersCountInput = document.getElementById('managers-count');
+    const strictnessInput = document.getElementById('ai-strictness');
+    const contextInput = document.getElementById('ai-context');
     const historyList = document.getElementById('history-list');
     const historySection = document.getElementById('history-section');
     const dashboardSection = document.getElementById('dashboard-section');
@@ -174,6 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function analyzeData(payload) {
         try {
             payload.managersCount = parseInt(managersCountInput.value) || 1;
+            payload.strictness = strictnessInput ? strictnessInput.value : 'medium';
+            payload.productContext = contextInput ? contextInput.value : '';
 
             const response = await fetch('/api/analyze', {
                 method: 'POST',
