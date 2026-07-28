@@ -235,6 +235,71 @@
             color: var(--text-secondary);
         }
 
+        /* ─── Dashboard Section ─── */
+        #dashboard-section {
+            display: none;
+            margin-bottom: 3rem;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .metric-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .metric-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .metric-title {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: var(--font-heading);
+            color: var(--text-primary);
+        }
+        .insight-card {
+            background: linear-gradient(90deg, rgba(255, 193, 7, 0.05) 0%, rgba(255, 152, 0, 0.05) 100%);
+            border: 1px solid rgba(255, 193, 7, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+        .insight-icon {
+            font-size: 2.5rem;
+            background: rgba(255, 193, 7, 0.1);
+            padding: 1rem;
+            border-radius: 50%;
+        }
+        .insight-content h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+            color: #FFC107;
+            font-family: var(--font-heading);
+        }
+        .insight-content p {
+            margin: 0;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
         /* ─── History Section ─── */
         #history-section {
             display: none;
@@ -388,7 +453,40 @@
             <div class="container">
                 <div class="results-header fade-in reveal-trigger">
                     <h2 class="section-title">Горячие лиды</h2>
-                    <p class="section-subtitle" id="results-subtitle">Зрители, досмотревшие вебинар до конца, но не совершившие покупку. Отранжированы по времени просмотра.</p>
+                    <p class="section-subtitle" id="results-subtitle">Зрители, досмотревшие вебинар до конца, но не совершившие покупку.</p>
+                </div>
+
+                <!-- Dashboard Section -->
+                <div id="dashboard-section">
+                    <div class="dashboard-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon">👥</div>
+                            <div class="metric-title">Всего зрителей</div>
+                            <div class="metric-value" id="dash-total">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">🔥</div>
+                            <div class="metric-title">Горячих лидов</div>
+                            <div class="metric-value" id="dash-hot">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">📊</div>
+                            <div class="metric-title">Конверсия</div>
+                            <div class="metric-value" id="dash-conv">0%</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">🌡</div>
+                            <div class="metric-title">Температура</div>
+                            <div class="metric-value" id="dash-temp" style="font-size: 1.5rem;">—</div>
+                        </div>
+                    </div>
+                    <div class="insight-card">
+                        <div class="insight-icon">🤖</div>
+                        <div class="insight-content">
+                            <h4>ИИ-Инсайт по вебинару</h4>
+                            <p id="dash-insight">Анализ не проведен.</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Manager Filter Tabs -->

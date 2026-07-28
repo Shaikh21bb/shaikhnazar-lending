@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const managersCountInput = document.getElementById('managers-count');
     const historyList = document.getElementById('history-list');
     const historySection = document.getElementById('history-section');
+    const dashboardSection = document.getElementById('dashboard-section');
 
     const STORAGE_KEY = 'shyraq_sessions';
     let allLeads = [];
@@ -18,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         catch (e) { return []; }
     }
 
-    function saveSession(leads, fileName, managersCount) {
+    function saveSession(leads, fileName, managersCount, dashData) {
         const sessions = getSessions();
         const session = {
             id: Date.now(),
@@ -26,10 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
             fileName: fileName,
             managersCount: managersCount,
             leadsCount: leads.length,
-            leads: leads
+            leads: leads,
+            dashData: dashData // { total, hot, conv, temp, insight }
         };
-        sessions.unshift(session); // newest first
-        // Keep max 20 sessions
+        sessions.unshift(session);
         if (sessions.length > 20) sessions.pop();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
         renderHistory();
@@ -75,11 +76,18 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     }
 
-    // Expose to global scope for inline onclick handlers
     window.__openSession = (id) => {
         const session = getSessions().find(s => s.id === id);
         if (!session) return;
         allLeads = session.leads;
+        
+        // Render dashboard if data exists
+        if (session.dashData) {
+            renderDashboard(session.dashData);
+        } else {
+            dashboardSection.style.display = 'none';
+        }
+        
         renderResults(session.leads, session.fileName);
     };
     window.__deleteSession = (id) => {
@@ -114,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
-                complete: (results) => analyzeData({ leads: results.data }),
+                complete: (results) => analyzeData({ leads: results.data, totalCount: results.data.length }),
                 error: (err) => {
                     console.error(err);
                     alert("Ошибка при чтении CSV файла.");
@@ -133,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const content = await page.getTextContent();
                         fullText += content.items.map(item => item.str).join(' ') + '\n';
                     }
-                    analyzeData({ pdfText: fullText });
+                    analyzeData({ pdfText: fullText, totalCount: 'Из PDF' });
                 } catch (err) {
                     console.error(err);
                     alert("Ошибка при разборе PDF файла.");
@@ -143,6 +151,23 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.onerror = () => { alert("Ошибка при чтении файла."); dropZone.classList.remove('is-loading'); };
             reader.readAsArrayBuffer(file);
         }
+    }
+
+    // ─── Dashboard rendering ───────────────────────────────────────
+    function renderDashboard(dashData) {
+        document.getElementById('dash-total').textContent = dashData.total;
+        document.getElementById('dash-hot').textContent = dashData.hot;
+        document.getElementById('dash-conv').textContent = dashData.conv;
+        
+        const tempEl = document.getElementById('dash-temp');
+        tempEl.textContent = dashData.temp || '—';
+        if (dashData.temp === 'Горячая') tempEl.style.color = '#4CAF50';
+        else if (dashData.temp === 'Теплая') tempEl.style.color = '#FFC107';
+        else if (dashData.temp === 'Холодная') tempEl.style.color = '#F44336';
+        else tempEl.style.color = 'var(--text-primary)';
+
+        document.getElementById('dash-insight').textContent = dashData.insight || 'Инсайт недоступен.';
+        dashboardSection.style.display = 'block';
     }
 
     // ─── API call ──────────────────────────────────────────────────
@@ -163,12 +188,44 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const result = await response.json();
+            
+            // New format checking
+            let warmLeadsArray = [];
+            let temperature = "—";
+            let insight = "Нет данных.";
+            
             if (result.warmLeads && Array.isArray(result.warmLeads)) {
-                allLeads = result.warmLeads;
-                saveSession(allLeads, currentFileName, parseInt(managersCountInput.value) || 1);
+                warmLeadsArray = result.warmLeads;
+                temperature = result.temperature || "—";
+                insight = result.insights || "ИИ не смог сформировать инсайт.";
+            } else if (Array.isArray(result)) {
+                // Fallback for old format
+                warmLeadsArray = result;
+            }
+
+            if (warmLeadsArray.length >= 0) {
+                allLeads = warmLeadsArray;
+                
+                // Calculate metrics
+                let total = payload.totalCount;
+                let conv = "—";
+                if (typeof total === 'number' && total > 0) {
+                    conv = ((allLeads.length / total) * 100).toFixed(1) + '%';
+                }
+
+                const dashData = {
+                    total: total,
+                    hot: allLeads.length,
+                    conv: conv,
+                    temp: temperature,
+                    insight: insight
+                };
+
+                renderDashboard(dashData);
+                saveSession(allLeads, currentFileName, payload.managersCount, dashData);
                 renderResults(allLeads, currentFileName);
             } else {
-                alert("Не удалось найти горячих лидов в предоставленном файле.");
+                alert("Не удалось распознать ответ ИИ.");
             }
         } catch (error) {
             console.error("Analysis Error:", error);
@@ -196,7 +253,6 @@ document.addEventListener('DOMContentLoaded', () => {
         managerTabsEl.innerHTML = '';
         const managers = [...new Set(leads.map(l => l.manager).filter(Boolean))].sort();
         if (managers.length <= 1) {
-            // Single manager: just show copy-all button
             appendCopyAllBtn(managerTabsEl, 'Все лиды', leads);
             return;
         }
@@ -226,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
             managerTabsEl.appendChild(tab);
         });
 
-        // Copy-all button below tabs
         const copyAllWrapper = document.createElement('div');
         copyAllWrapper.id = 'copy-all-wrapper';
         copyAllWrapper.style.cssText = 'width:100%; display:flex; justify-content:center; margin-top:1rem;';
@@ -288,9 +343,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ─── Render results ────────────────────────────────────────────
     function renderResults(leads, fileName) {
         const subtitle = document.getElementById('results-subtitle');
-        if (subtitle) subtitle.textContent = `Файл: ${fileName || ''} · Найдено горячих лидов: ${leads.length}`;
+        if (subtitle) subtitle.textContent = `Файл: ${fileName || ''}`;
 
-        // Remove old copy-all wrapper if present
         const old = document.getElementById('copy-all-wrapper');
         if (old) old.remove();
 
