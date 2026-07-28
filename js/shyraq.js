@@ -395,11 +395,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>` : ''}
                 ${verdict ? `<div class="lead-verdict">💬 ${verdict}</div>` : ''}
                 <div class="badge" style="margin-top:1rem;">🔥 Горячий лид</div>
-                <button class="copy-btn primary-btn" style="width:100%;margin-top:12px;padding:10px;font-size:14px;display:flex;justify-content:center;align-items:center;gap:8px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                    Скопировать для WhatsApp
-                </button>
+                
+                <div style="display:flex; gap:0.5rem; margin-top:12px;">
+                    <!-- Direct WhatsApp Button -->
+                    <a href="#" class="wa-direct-btn" style="flex:1; padding:10px; font-size:14px; display:flex; justify-content:center; align-items:center; gap:8px; background-color:#25D366; color:white; border-radius:100px; text-decoration:none; font-weight:500; transition:opacity 0.2s;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                        Написать
+                    </a>
+                    
+                    <!-- Copy Details Button -->
+                    <button class="copy-btn primary-btn" style="flex:1; padding:10px; font-size:14px; display:flex; justify-content:center; align-items:center; gap:8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        Скопировать
+                    </button>
+                </div>
             `;
+
+            // Setup direct WhatsApp link
+            const waBtn = card.querySelector('.wa-direct-btn');
+            // Clean phone number (remove anything that is not a digit)
+            const cleanPhone = contact.replace(/\D/g, '');
+            if (cleanPhone.length >= 10) { // Valid enough phone length
+                const greeting = encodeURIComponent(`Здравствуйте, ${name}! Вы были на нашем вебинаре...`);
+                waBtn.href = `https://wa.me/${cleanPhone}?text=${greeting}`;
+                waBtn.target = "_blank";
+            } else {
+                // If it's an email or invalid phone
+                waBtn.style.opacity = "0.4";
+                waBtn.style.cursor = "not-allowed";
+                waBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    alert('Не удалось распознать корректный номер телефона.');
+                });
+            }
 
             const copyBtn = card.querySelector('.copy-btn');
             copyBtn.addEventListener('click', () => {
