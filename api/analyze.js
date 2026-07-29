@@ -101,7 +101,10 @@ export default async function handler(req, res) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{ parts: parts }],
-                    generationConfig: { temperature: 0.1 }
+                    generationConfig: { 
+                        temperature: 0.1,
+                        responseMimeType: "application/json"
+                    }
                 })
             });
 
@@ -137,6 +140,13 @@ export default async function handler(req, res) {
             aiResult = aiResult.replace(/^```json/, '').replace(/```$/, '').trim();
         } else if (aiResult.startsWith('```')) {
             aiResult = aiResult.replace(/^```/, '').replace(/```$/, '').trim();
+        }
+
+        // Force extract JSON object in case model hallucinates conversational text
+        const firstBrace = aiResult.indexOf('{');
+        const lastBrace = aiResult.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            aiResult = aiResult.substring(firstBrace, lastBrace + 1);
         }
 
         const resultData = JSON.parse(aiResult);
