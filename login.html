@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shyraq — Вход в систему</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/style.css">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: var(--bg-primary);
+        }
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 2.5rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 2;
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .login-header h1 {
+            font-family: var(--font-heading);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .login-header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 1rem;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.4);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 0.9rem;
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 8px;
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+            margin-top: 1rem;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+        .login-footer {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        .login-footer a {
+            color: var(--text-primary);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            transition: border-color 0.2s;
+        }
+        .login-footer a:hover {
+            border-color: var(--text-primary);
+        }
+        #auth-error {
+            color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.2);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        /* Background Glow */
+        .glow {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glow"></div>
+    
+    <div class="login-container fade-in reveal-trigger is-visible">
+        <div class="login-header">
+            <h1>Shyraq</h1>
+            <p id="form-subtitle">Вход в систему для бизнеса</p>
+        </div>
+        
+        <div id="auth-error"></div>
+
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required placeholder="name@company.com">
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="login-btn" id="submit-btn">Войти</button>
+        </form>
+
+        <div class="login-footer" id="toggle-wrap">
+            Нет аккаунта? <a href="#" id="toggle-mode">Создать аккаунт</a>
+        </div>
+    </div>
+
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/supabase.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('login-form');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const submitBtn = document.getElementById('submit-btn');
+            const toggleModeBtn = document.getElementById('toggle-mode');
+            const formSubtitle = document.getElementById('form-subtitle');
+            const authError = document.getElementById('auth-error');
+            
+            let isLoginMode = true;
+
+            // Check if already logged in
+            async function checkSession() {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session) {
+                    window.location.href = 'shyraq.html';
+                }
+            }
+            checkSession();
+
+            toggleModeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                isLoginMode = !isLoginMode;
+                if (isLoginMode) {
+                    submitBtn.textContent = 'Войти';
+                    formSubtitle.textContent = 'Вход в систему для бизнеса';
+                    toggleModeBtn.innerHTML = 'Создать аккаунт';
+                    toggleModeBtn.previousSibling.textContent = 'Нет аккаунта? ';
+                } else {
+                    submitBtn.textContent = 'Зарегистрироваться';
+                    formSubtitle.textContent = 'Создание нового аккаунта';
+                    toggleModeBtn.innerHTML = 'Войти';
+                    toggleModeBtn.previousSibling.textContent = 'Уже есть аккаунт? ';
+                }
+                authError.style.display = 'none';
+            });
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = emailInput.value;
+                const password = passwordInput.value;
+                
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Подождите...';
+                authError.style.display = 'none';
+
+                let result;
+                if (isLoginMode) {
+                    result = await supabaseClient.auth.signInWithPassword({ email, password });
+                } else {
+                    result = await supabaseClient.auth.signUp({ email, password });
+                }
+
+                if (result.error) {
+                    authError.textContent = result.error.message;
+                    if (result.error.message.includes('Email not confirmed')) {
+                        authError.textContent = 'Подтвердите почту перед входом (проверьте email).';
+                    }
+                    authError.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = isLoginMode ? 'Войти' : 'Зарегистрироваться';
+                } else {
+                    if (!isLoginMode && result.data.user && result.data.user.identities.length === 0) {
+                        // User already exists
+                        authError.textContent = 'Пользователь с таким email уже существует.';
+                        authError.style.display = 'block';
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Зарегистрироваться';
+                    } else if (!isLoginMode && result.data.session === null) {
+                        authError.textContent = 'Регистрация успешна! Проверьте почту для подтверждения (если включено в Supabase). Если не включено - переключитесь на вход.';
+                        authError.style.display = 'block';
+                        authError.style.background = 'rgba(76, 175, 80, 0.1)';
+                        authError.style.color = '#4CAF50';
+                        authError.style.borderColor = 'rgba(76, 175, 80, 0.2)';
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Зарегистрироваться';
+                    } else {
+                        // Success login
+                        window.location.href = 'shyraq.html';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -408,8 +408,9 @@
     <header>
         <div class="container">
             <a href="index.html" class="logo interactive">shaikh</a>
-            <div class="header-right">
-                <a href="index.html" class="nav-contact interactive">На главную</a>
+            <div class="header-right" style="display:flex; align-items:center; gap: 15px;">
+                <span id="user-email" style="font-size: 0.85rem; color: var(--text-secondary);"></span>
+                <button id="logout-btn" class="nav-contact interactive" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); cursor:pointer;">Выйти</button>
             </div>
         </div>
     </header>
@@ -532,7 +533,31 @@
     </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/supabase.js"></script>
+    
+    <!-- Auth Check -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                window.location.href = 'login.html';
+            } else {
+                document.getElementById('user-email').textContent = session.user.email;
+            }
+
+            document.getElementById('logout-btn').addEventListener('click', async () => {
+                await supabaseClient.auth.signOut();
+                window.location.href = 'login.html';
+            });
+        });
+    </script>
+
+    <!-- Custom Scripts -->
     <script src="./js/shyraq.js"></script>
     <script>
         // Initialize custom cursor (copied from main logic)
