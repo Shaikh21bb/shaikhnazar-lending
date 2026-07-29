@@ -11,9 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const translations = {
         ru: {
             'nav.contact': 'Связаться',
-            'hero.title': 'Бизнес в цифре. На автопилоте.',
-            'hero.subtitle': 'shaikh_lending — премиальные сайты и AI-системы.',
-            'hero.cta1': 'Обсудить',
+            'hero.title2': 'На автопилоте.',
+            'hero.subtitle': 'SHAIKH Industries — премиальные сайты и AI-системы. Эстетика, лишенная визуального шума. Инженерия, работающая безупречно.',
+            'hero.cta': 'Обсудить проект',
             'hero.cta2': 'Портфолио',
             'services.title': 'Услуги',
             'services.card1.title': 'Лендинг',
@@ -48,9 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         kz: {
             'nav.contact': 'Байланыс',
-            'hero.title': 'Цифрлы бизнес. Автопилотта.',
-            'hero.subtitle': 'shaikh_lending — премиум сайттар және AI жүйелері.',
-            'hero.cta1': 'Талқылау',
+            'hero.title2': 'Автопилотта.',
+            'hero.subtitle': 'SHAIKH Industries — премиум сайттар және AI жүйелері. Артық визуалды шусыз эстетика. Мінсіз жұмыс істейтін инженерия.',
+            'hero.cta': 'Жобаны талқылау',
             'hero.cta2': 'Портфолио',
             'services.title': 'Қызметтер',
             'services.card1.title': 'Лендинг',
@@ -191,17 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderPortfolio();
 
     /* =============================================
-       CUSTOM CURSOR
-    ============================================= */
-    const cursor = document.getElementById('cursor');
-    if (cursor) {
-        document.addEventListener('mousemove', (e) => {
-            cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
-        });
-    }
-
-    /* =============================================
-       MAGNETIC BUTTONS
+       MAGNETIC BUTTONS (Cleaned up cursor reference)
     ============================================= */
     document.querySelectorAll('.magnet-target').forEach(target => {
         target.addEventListener('mousemove', (e) => {
@@ -209,11 +199,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const x = e.clientX - rect.left - rect.width / 2;
             const y = e.clientY - rect.top - rect.height / 2;
             target.style.transform = `translate(${x * 0.25}px, ${y * 0.25}px)`;
-            if (cursor) cursor.classList.add('hovered');
         });
         target.addEventListener('mouseleave', () => {
             target.style.transform = '';
-            if (cursor) cursor.classList.remove('hovered');
         });
     });
 

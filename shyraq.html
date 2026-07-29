@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shyraq — AI Analysis</title>
-    <meta name="description" content="AI Анализ зрителей вебинара Shyraq.">
+    <title>SHAIKH Industries — AI Analysis</title>
+    <meta name="description" content="AI Анализ зрителей вебинара SHAIKH Industries.">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -401,9 +401,6 @@
 </head>
 <body>
 
-    <!-- Custom Cursor -->
-    <div id="cursor"></div>
-
     <!-- Header -->
     <header>
         <div class="container">
@@ -525,7 +522,7 @@
         <footer class="footer">
             <div class="container">
                 <div class="footer-bottom" style="margin-top: 0; padding-top: 0; border: none;">
-                    <div>shaikh_lending © 2026</div>
+                    <div>SHAIKH Industries © 2026</div>
                     <div>AI Powered Lead Scoring</div>
                 </div>
             </div>
@@ -562,18 +559,6 @@
     <script>
         // Initialize custom cursor (copied from main logic)
         document.addEventListener('DOMContentLoaded', () => {
-            const cursor = document.getElementById('cursor');
-            const interactives = document.querySelectorAll('.interactive, a, button, .upload-zone');
-            
-            document.addEventListener('mousemove', (e) => {
-                cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
-            });
-            
-            interactives.forEach(el => {
-                el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
-                el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
-            });
-
             // Very simple smooth scroll for this page (no parallax needed)
             const scrollContainer = document.getElementById('scroll-container');
             let currentScroll = 0;

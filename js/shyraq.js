@@ -369,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (manager) text += `   Менеджер: ${manager}\n`;
             text += '\n';
         });
-        text += '--- Сгенерировано AI Shyraq ---';
+        text += '--- Сгенерировано AI SHAIKH Industries ---';
 
         const btn = document.getElementById('copy-all-btn');
         navigator.clipboard.writeText(text).then(() => {
