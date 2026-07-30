@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return dbSessionsCache;
         } catch (e) {
             console.error("Error fetching sessions:", e);
+            if (e.message) alert("Ошибка загрузки истории: " + e.message);
             return [];
         }
     }
@@ -40,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .from('sessions')
                 .insert([{
                     id: Date.now(), // simple bigint ID
+                    user_id: window.currentUserId, // Привязываем к текущему юзеру
                     file_name: fileName,
                     managers_count: managersCount,
                     leads_count: leads.length,
@@ -51,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await renderHistory();
         } catch (e) {
             console.error("Error saving session:", e);
+            alert("Ошибка сохранения в базу: " + (e.message || JSON.stringify(e)));
         }
     }
 
@@ -65,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await renderHistory();
         } catch (e) {
             console.error("Error deleting session:", e);
+            alert("Ошибка удаления сессии: " + (e.message || ""));
         }
     }
 
@@ -80,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await renderHistory();
             } catch (e) {
                 console.error("Error clearing sessions:", e);
+                alert("Ошибка очистки сессий: " + (e.message || ""));
             }
         }
     }
