@@ -15,101 +15,60 @@ document.addEventListener('DOMContentLoaded', () => {
     let allLeads = [];
     let currentFileName = '';
 
-    // ─── Supabase DB helpers ──────────────────────────────────────
-    let dbSessionsCache = [];
-
-    async function getSessions() {
-        try {
-            const { data, error } = await supabaseClient
-                .from('sessions')
-                .select('*')
-                .order('created_at', { ascending: false });
-            
-            if (error) throw error;
-            dbSessionsCache = data || [];
-            return dbSessionsCache;
-        } catch (e) {
-            console.error("Error fetching sessions:", e);
-            if (e.message) alert("Ошибка загрузки истории: " + e.message);
-            return [];
-        }
+    // ─── LocalStorage helpers ──────────────────────────────────────
+    function getSessions() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+        catch (e) { return []; }
     }
 
-    async function saveSession(leads, fileName, managersCount, dashData) {
-        try {
-            const { error } = await supabaseClient
-                .from('sessions')
-                .insert([{
-                    id: Date.now(), // simple bigint ID
-                    user_id: window.currentUserId, // Привязываем к текущему юзеру
-                    file_name: fileName,
-                    managers_count: managersCount,
-                    leads_count: leads.length,
-                    dash_data: dashData,
-                    leads: leads
-                }]);
-            
-            if (error) throw error;
-            await renderHistory();
-        } catch (e) {
-            console.error("Error saving session:", e);
-            alert("Ошибка сохранения в базу: " + (e.message || JSON.stringify(e)));
-        }
+    function saveSession(leads, fileName, managersCount, dashData) {
+        const sessions = getSessions();
+        const session = {
+            id: Date.now(),
+            date: new Date().toLocaleString('ru-RU'),
+            fileName: fileName,
+            managersCount: managersCount,
+            leadsCount: leads.length,
+            leads: leads,
+            dashData: dashData // { total, hot, conv, temp, insight }
+        };
+        sessions.unshift(session);
+        if (sessions.length > 20) sessions.pop();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+        renderHistory();
     }
 
-    async function deleteSession(id) {
-        try {
-            const { error } = await supabaseClient
-                .from('sessions')
-                .delete()
-                .eq('id', id);
-            
-            if (error) throw error;
-            await renderHistory();
-        } catch (e) {
-            console.error("Error deleting session:", e);
-            alert("Ошибка удаления сессии: " + (e.message || ""));
-        }
+    function deleteSession(id) {
+        const sessions = getSessions().filter(s => s.id !== id);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+        renderHistory();
     }
 
-    async function clearAllSessions() {
-        if (confirm('Вы уверены, что хотите удалить всю историю из базы данных?')) {
-            try {
-                // To delete all rows safely, we delete rows where id > 0
-                const { error } = await supabaseClient
-                    .from('sessions')
-                    .delete()
-                    .gt('id', 0);
-                if (error) throw error;
-                await renderHistory();
-            } catch (e) {
-                console.error("Error clearing sessions:", e);
-                alert("Ошибка очистки сессий: " + (e.message || ""));
-            }
+    function clearAllSessions() {
+        if (confirm('Вы уверены, что хотите удалить всю историю?')) {
+            localStorage.removeItem(STORAGE_KEY);
+            renderHistory();
         }
     }
 
     // ─── Render history list ───────────────────────────────────────
-    async function renderHistory() {
+    function renderHistory() {
         if (!historyList || !historySection) return;
-        historyList.innerHTML = '<p style="text-align:center;color:var(--text-secondary);">Загрузка истории...</p>';
-        historySection.style.display = 'block';
-
-        const sessions = await getSessions();
+        
+        const sessions = getSessions();
 
         if (sessions.length === 0) {
             historySection.style.display = 'none';
             return;
         }
 
-        historyList.innerHTML = sessions.map(s => {
-            const dateStr = new Date(s.created_at).toLocaleString('ru-RU');
-            return `
+        historySection.style.display = 'block';
+        historyList.innerHTML = sessions.map(s => `
             <div class="history-card" id="hist-${s.id}">
                 <div class="history-card-info">
-                    <div class="history-card-title">📄 ${s.file_name}</div>
+                    <div class="history-card-title">📄 ${s.fileName}</div>
                     <div class="history-card-meta">
-                        🗓 ${dateStr} &nbsp;·&nbsp; 🔥 ${s.leads_count} лидов &nbsp;·&nbsp; 👥 ${s.managers_count} менеджер(ов)
+                        🗓 ${s.date} &nbsp;·&nbsp; 🔥 ${s.leadsCount} лидов &nbsp;·&nbsp; 👥 ${s.managersCount} менеджер(ов)
                     </div>
                 </div>
                 <div class="history-card-actions">
@@ -117,23 +76,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="hist-delete-btn" onclick="window.__deleteSession(${s.id})">✕</button>
                 </div>
             </div>
-            `;
-        }).join('');
+        `).join('');
     }
 
     window.__openSession = (id) => {
-        const session = dbSessionsCache.find(s => s.id === id);
+        const session = getSessions().find(s => s.id === id);
         if (!session) return;
         allLeads = session.leads;
         
         // Render dashboard if data exists
-        if (session.dash_data) {
-            renderDashboard(session.dash_data);
+        if (session.dashData) {
+            renderDashboard(session.dashData);
         } else {
             dashboardSection.style.display = 'none';
         }
         
-        renderResults(session.leads, session.file_name);
+        renderResults(session.leads, session.fileName);
     };
     window.__deleteSession = (id) => {
         deleteSession(id);

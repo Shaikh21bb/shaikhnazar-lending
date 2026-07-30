@@ -148,94 +148,72 @@
         </form>
 
         <div class="login-footer" id="toggle-wrap">
-            Нет аккаунта? <a href="#" id="toggle-mode">Создать аккаунт</a>
         </div>
     </div>
 
-    <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./js/supabase.js"></script>
+    <!-- Custom Scripts -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const form = document.getElementById('login-form');
+            const authForm = document.getElementById('auth-form');
             const emailInput = document.getElementById('email');
             const passwordInput = document.getElementById('password');
             const submitBtn = document.getElementById('submit-btn');
-            const toggleModeBtn = document.getElementById('toggle-mode');
-            const formSubtitle = document.getElementById('form-subtitle');
             const authError = document.getElementById('auth-error');
             
-            let isLoginMode = true;
-
-            // Check if already logged in
-            async function checkSession() {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                if (session) {
-                    window.location.href = 'shyraq.html';
-                }
+            // Check if already logged in via our simple token
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+                window.location.href = 'shyraq.html';
+                return;
             }
-            checkSession();
 
-            toggleModeBtn.addEventListener('click', (e) => {
+            authForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                isLoginMode = !isLoginMode;
-                if (isLoginMode) {
-                    submitBtn.textContent = 'Войти';
-                    formSubtitle.textContent = 'Вход в систему для бизнеса';
-                    toggleModeBtn.innerHTML = 'Создать аккаунт';
-                    toggleModeBtn.previousSibling.textContent = 'Нет аккаунта? ';
-                } else {
-                    submitBtn.textContent = 'Зарегистрироваться';
-                    formSubtitle.textContent = 'Создание нового аккаунта';
-                    toggleModeBtn.innerHTML = 'Войти';
-                    toggleModeBtn.previousSibling.textContent = 'Уже есть аккаунт? ';
-                }
-                authError.style.display = 'none';
-            });
-
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = emailInput.value;
+                const email = emailInput.value.trim();
                 const password = passwordInput.value;
                 
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Подождите...';
-                authError.style.display = 'none';
-
-                let result;
-                if (isLoginMode) {
-                    result = await supabaseClient.auth.signInWithPassword({ email, password });
-                } else {
-                    result = await supabaseClient.auth.signUp({ email, password });
+                if (!email || !password) {
+                    alert('Пожалуйста, заполните все поля.');
+                    return;
                 }
 
-                if (result.error) {
-                    authError.textContent = result.error.message;
-                    if (result.error.message.includes('Email not confirmed')) {
-                        authError.textContent = 'Подтвердите почту перед входом (проверьте email).';
-                    }
-                    authError.style.display = 'block';
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = isLoginMode ? 'Войти' : 'Зарегистрироваться';
-                } else {
-                    if (!isLoginMode && result.data.user && result.data.user.identities.length === 0) {
-                        // User already exists
-                        authError.textContent = 'Пользователь с таким email уже существует.';
-                        authError.style.display = 'block';
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Зарегистрироваться';
-                    } else if (!isLoginMode && result.data.session === null) {
-                        authError.textContent = 'Регистрация успешна! Проверьте почту для подтверждения (если включено в Supabase). Если не включено - переключитесь на вход.';
-                        authError.style.display = 'block';
-                        authError.style.background = 'rgba(76, 175, 80, 0.1)';
-                        authError.style.color = '#4CAF50';
-                        authError.style.borderColor = 'rgba(76, 175, 80, 0.2)';
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Зарегистрироваться';
-                    } else {
-                        // Success login
+                submitBtn.disabled = true;
+                const originalText = submitBtn.textContent;
+                submitBtn.textContent = 'Вход...';
+                if(authError) authError.style.display = 'none';
+
+                try {
+                    const response = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.success) {
+                        localStorage.setItem('auth_token', data.token);
+                        localStorage.setItem('auth_email', data.email || email);
                         window.location.href = 'shyraq.html';
+                    } else {
+                        if(authError) {
+                            authError.textContent = 'Ошибка: ' + (data.error || 'Неверный логин или пароль');
+                            authError.style.display = 'block';
+                        } else {
+                            alert('Ошибка: ' + (data.error || 'Неверный логин или пароль'));
+                        }
                     }
+                } catch (error) {
+                    console.error('Ошибка входа:', error);
+                    if(authError) {
+                            authError.textContent = 'Произошла ошибка при входе. Попробуйте еще раз.';
+                            authError.style.display = 'block';
+                    } else {
+                        alert('Произошла ошибка при входе. Попробуйте еще раз.');
+                    }
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
                 }
             });
         });
