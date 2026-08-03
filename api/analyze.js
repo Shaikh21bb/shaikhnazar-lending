@@ -92,7 +92,7 @@ export default async function handler(req, res) {
         }
 
         let geminiResponse;
-        const modelsToTry = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-pro-latest', 'gemini-2.0-flash'];
+        const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash', 'gemini-pro-latest'];
         let lastErrorText = "";
 
         for (const modelName of modelsToTry) {
