@@ -114,137 +114,7 @@
             padding: 2rem;
             border-radius: 15px;
             transition: transform 0.3s, border-color 0.3s;
-        }
-        
-        .lead-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(255, 255, 255, 0.15);
-        }
-
-        .lead-name {
-            font-size: 1.5rem;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-            font-family: var(--font-heading);
-        }
-
-        .lead-detail {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .lead-value {
-            color: var(--text-primary);
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 100px;
-            font-size: 0.75rem;
-            margin-top: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        /* Settings blocks */
-        .settings-grid {
-            max-width: 650px;
-            margin: 0 auto 1.5rem;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-        @media (max-width: 768px) {
-            .settings-grid { grid-template-columns: 1fr; }
-        }
-        .managers-block {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
-            padding: 0.8rem 1.2rem;
-        }
-        .managers-block label {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-        .managers-block input, .managers-block select {
-            background: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            font-family: var(--font-body);
-            font-size: 0.9rem;
-            padding: 0.4rem 0.6rem;
-            border-radius: 8px;
-        }
-        .managers-block input[type=number] { width: 60px; text-align: center; }
-        .managers-block input[type=text] { width: 100%; text-align: left; margin-top: 0.5rem; }
-        .managers-block input:focus, .managers-block select:focus {
-            outline: none;
-            border-color: rgba(255,255,255,0.3);
-        }
-        .full-width-setting { grid-column: 1 / -1; display: block; }
-
-        /* Manager tabs */
-        .manager-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            margin-bottom: 2.5rem;
-            justify-content: center;
-        }
-        .manager-tab {
-            padding: 0.4rem 1.2rem;
-            border: 1px solid var(--border-color);
-            border-radius: 100px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: transparent;
-            color: var(--text-secondary);
-        }
-        .manager-tab.active, .manager-tab:hover {
-            background: var(--text-primary);
-            color: var(--bg-color);
-            border-color: var(--text-primary);
-        }
-
-        /* Verdict block */
-        .lead-verdict {
-            margin-top: 0.8rem;
-            padding: 0.6rem 0.8rem;
-            background: rgba(255,255,255,0.04);
-            border-left: 2px solid rgba(255,255,255,0.15);
-            border-radius: 6px;
-            font-size: 0.82rem;
-            color: var(--text-secondary);
-            font-style: italic;
-            line-height: 1.5;
-        }
-
-        /* Manager badge */
-        .manager-badge {
-            display: inline-block;
-            padding: 0.2rem 0.7rem;
-            border-radius: 100px;
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            margin-top: 0.6rem;
-            background: rgba(255,255,255,0.07);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: var(--text-secondary);
-        }
-
-        /* ─── Dashboard Section ─── */
+        /* ─── Nano-Tech Dashboard Section ─── */
         
         /* Dashboard Layout CSS */
         body {
@@ -253,6 +123,12 @@
             margin: 0;
             padding: 0;
             display: flex;
+            background-color: #000;
+            /* Tech Grid Background */
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
         }
         .dashboard-layout {
             display: flex;
@@ -261,12 +137,20 @@
         }
         .sidebar {
             width: 260px;
-            background: #050505;
-            border-right: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255,255,255,0.1);
             display: flex;
             flex-direction: column;
             padding: 2rem 1.5rem;
             flex-shrink: 0;
+            position: relative;
+        }
+        .sidebar::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0; width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3), transparent);
         }
         .sidebar-logo {
             margin-bottom: 3rem;
@@ -278,14 +162,16 @@
             font-size: 1.5rem;
             text-decoration: none;
             color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
         }
         .version-badge {
-            font-size: 0.6rem;
-            background: var(--text-primary);
-            color: #000;
-            padding: 0.1rem 0.4rem;
-            border-radius: 100px;
-            font-weight: 700;
+            font-size: 0.55rem;
+            border: 1px solid var(--text-primary);
+            color: var(--text-primary);
+            padding: 0.1rem 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
         .sidebar-nav {
             display: flex;
@@ -298,33 +184,50 @@
             align-items: center;
             gap: 0.8rem;
             padding: 0.8rem 1rem;
-            border-radius: 8px;
             text-decoration: none;
             color: var(--text-secondary);
-            font-size: 0.95rem;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
             transition: all 0.2s;
+            border-left: 2px solid transparent;
+        }
+        .nav-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .nav-icon svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.5;
         }
         .nav-item:hover:not(.disabled) {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.02);
             color: var(--text-primary);
+            border-left: 2px solid rgba(255,255,255,0.3);
         }
         .nav-item.active {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
             color: var(--text-primary);
+            border-left: 2px solid var(--text-primary);
         }
         .nav-item.disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
             justify-content: space-between;
         }
         .soon-badge {
-            font-size: 0.65rem;
-            background: rgba(255,255,255,0.1);
-            padding: 0.2rem 0.5rem;
-            border-radius: 100px;
+            font-size: 0.55rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 0.2rem 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
         .sidebar-footer {
-            border-top: 1px solid var(--border-color);
+            border-top: 1px dashed rgba(255,255,255,0.2);
             padding-top: 1.5rem;
             display: flex;
             flex-direction: column;
@@ -338,39 +241,47 @@
         .user-avatar {
             width: 32px;
             height: 32px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.2);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.9rem;
+        }
+        .user-avatar svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--text-secondary);
+            fill: none;
+            stroke-width: 1.5;
         }
         .user-email {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: var(--text-secondary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-family: monospace;
         }
         .logout-btn {
             background: transparent;
-            border: 1px solid var(--border-color);
+            border: 1px solid rgba(255,255,255,0.2);
             color: var(--text-secondary);
             padding: 0.6rem;
-            border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s;
             text-align: center;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
         .logout-btn:hover {
             border-color: var(--text-primary);
-            color: var(--text-primary);
+            color: var(--bg-color);
+            background: var(--text-primary);
         }
         .dashboard-content {
             flex-grow: 1;
             overflow-y: auto;
-            background: var(--bg-color);
+            background: transparent;
         }
         
         .dashboard-view {
@@ -563,6 +474,71 @@
             border-color: #f44336;
             color: #f44336;
         }
+        /* End Dashboard Section */
+        
+        /* OVERRIDE STYLES FOR NANO-TECH */
+        .upload-zone {
+            border-radius: 0;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.01);
+            position: relative;
+        }
+        .upload-zone::before {
+            content: ''; position: absolute; top: -5px; left: -5px; width: 10px; height: 10px; border-top: 2px solid #fff; border-left: 2px solid #fff;
+        }
+        .upload-zone::after {
+            content: ''; position: absolute; bottom: -5px; right: -5px; width: 10px; height: 10px; border-bottom: 2px solid #fff; border-right: 2px solid #fff;
+        }
+        .upload-icon svg {
+            width: 40px; height: 40px; fill: none; stroke: var(--text-secondary); stroke-width: 1; margin-bottom: 1rem;
+        }
+        .managers-block {
+            border-radius: 0;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .managers-block input, .managers-block select {
+            border-radius: 0;
+            border: 1px dashed rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.03);
+            text-transform: uppercase;
+        }
+        .metric-card {
+            border-radius: 0;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-left: 3px solid rgba(255,255,255,0.5);
+        }
+        .metric-icon svg { width: 20px; height: 20px; stroke: var(--text-primary); fill: none; stroke-width: 1.5; }
+        .insight-card {
+            border-radius: 0;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-left: 3px solid #FFC107;
+        }
+        .insight-icon svg { width: 30px; height: 30px; stroke: #FFC107; fill: none; stroke-width: 1.5; }
+        .lead-card {
+            border-radius: 0;
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+        }
+        .lead-card::after {
+            content: ''; position: absolute; top: 0; right: 0; width: 20px; height: 20px; background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%);
+        }
+        .history-card {
+            border-radius: 0;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .hist-open-btn, .hist-delete-btn, .history-clear-btn {
+            border-radius: 0; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;
+        }
+        .manager-tab, .badge, .manager-badge {
+            border-radius: 0; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .section-title { font-weight: 300; text-transform: uppercase; letter-spacing: 0.2em; }
+        .hero-title-line { text-transform: uppercase; font-weight: 300; letter-spacing: 0.1em; }
     </style>
 </head>
 <body>
@@ -572,27 +548,30 @@
         <aside class="sidebar">
             <div class="sidebar-logo">
                 <a href="index.html" class="logo">shaikh</a>
-                <span class="version-badge">B2B</span>
+                <span class="version-badge">SYS.01</span>
             </div>
             
             <nav class="sidebar-nav">
                 <a href="#analyzer" class="nav-item active">
-                    <span class="nav-icon">🤖</span> AI Анализ
+                    <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+                    ANALYSIS
                 </a>
                 <a href="#crm" class="nav-item disabled">
-                    <span class="nav-icon">📊</span> CRM Доска <span class="soon-badge">Скоро</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span>
+                    CRM GRID <span class="soon-badge">SOON</span>
                 </a>
                 <a href="#scripts" class="nav-item disabled">
-                    <span class="nav-icon">✍️</span> Генератор скриптов <span class="soon-badge">Скоро</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
+                    SCRIPT GEN <span class="soon-badge">SOON</span>
                 </a>
             </nav>
 
             <div class="sidebar-footer">
                 <div class="user-info">
-                    <div class="user-avatar">👤</div>
-                    <span id="user-email" class="user-email">Загрузка...</span>
+                    <div class="user-avatar"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                    <span id="user-email" class="user-email">LOADING...</span>
                 </div>
-                <button id="logout-btn" class="logout-btn">Выйти</button>
+                <button id="logout-btn" class="logout-btn">DISCONNECT</button>
             </div>
         </aside>
 
@@ -614,28 +593,28 @@
                 <!-- AI Settings -->
                 <div class="settings-grid fade-in hero-reveal" style="transition-delay: 0.3s;">
                     <div class="managers-block">
-                        <label for="managers-count">👥 Менеджеров:</label>
+                        <label for="managers-count">AGENTS:</label>
                         <input type="number" id="managers-count" value="1" min="1" max="20">
                     </div>
                     <div class="managers-block">
-                        <label for="ai-strictness">🎛 Строгость отсева:</label>
+                        <label for="ai-strictness">STRICTNESS:</label>
                         <select id="ai-strictness">
-                            <option value="high">Высокая (90%+)</option>
-                            <option value="medium" selected>Средняя (50%+)</option>
-                            <option value="low">Низкая (20%+)</option>
+                            <option value="high">HIGH (90%+)</option>
+                            <option value="medium" selected>MEDIUM (50%+)</option>
+                            <option value="low">LOW (20%+)</option>
                         </select>
                     </div>
                     <div class="managers-block full-width-setting">
-                        <label for="ai-context">🎓 Продукт вебинара (поможет ИИ точнее определить потребность):</label>
-                        <input type="text" id="ai-context" placeholder="Например: Курс по дизайну, обучение инвестициям...">
+                        <label for="ai-context">CONTEXT MODULE (PRODUCT):</label>
+                        <input type="text" id="ai-context" placeholder="INPUT CONTEXT...">
                     </div>
                 </div>
 
                 <!-- Drag & Drop Zone -->
                 <div class="upload-zone interactive fade-in hero-reveal" id="drop-zone" style="transition-delay: 0.4s;">
-                    <div class="upload-icon">📁</div>
-                    <div class="upload-text">Перетащите CSV или PDF файл сюда</div>
-                    <div class="upload-subtext">или нажмите, чтобы выбрать файл</div>
+                    <div class="upload-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+                    <div class="upload-text">DRAG & DROP CSV/PDF DATA</div>
+                    <div class="upload-subtext">OR CLICK TO BROWSE</div>
                     <input type="file" id="file-input" accept=".csv, .pdf">
                     
                     <div class="loading-overlay">
@@ -650,8 +629,8 @@
         <section id="history-section" class="section" style="padding-top: 0;">
             <div class="container">
                 <div class="history-header">
-                    <h3>📜 История анализов</h3>
-                    <button class="history-clear-btn" onclick="window.__clearAllSessions()">Очистить всё</button>
+                    <h3>SYSTEM LOGS</h3>
+                    <button class="history-clear-btn" onclick="window.__clearAllSessions()">PURGE</button>
                 </div>
                 <div id="history-list"></div>
             </div>
@@ -661,39 +640,39 @@
         <section id="results-section" class="section">
             <div class="container">
                 <div class="results-header fade-in reveal-trigger">
-                    <h2 class="section-title">Горячие лиды</h2>
-                    <p class="section-subtitle" id="results-subtitle">Зрители, досмотревшие вебинар до конца, но не совершившие покупку.</p>
+                    <h2 class="section-title">ANALYSIS RESULTS</h2>
+                    <p class="section-subtitle" id="results-subtitle">HOT LEADS IDENTIFIED IN DATASET</p>
                 </div>
 
                 <!-- Dashboard Section -->
                 <div id="dashboard-section">
                     <div class="dashboard-grid">
                         <div class="metric-card">
-                            <div class="metric-icon">👥</div>
-                            <div class="metric-title">Всего зрителей</div>
+                            <div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                            <div class="metric-title">TOTAL RECORDS</div>
                             <div class="metric-value" id="dash-total">0</div>
                         </div>
                         <div class="metric-card">
-                            <div class="metric-icon">🔥</div>
-                            <div class="metric-title">Горячих лидов</div>
+                            <div class="metric-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+                            <div class="metric-title">HOT LEADS</div>
                             <div class="metric-value" id="dash-hot">0</div>
                         </div>
                         <div class="metric-card">
-                            <div class="metric-icon">📊</div>
-                            <div class="metric-title">Конверсия</div>
+                            <div class="metric-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+                            <div class="metric-title">CONVERSION</div>
                             <div class="metric-value" id="dash-conv">0%</div>
                         </div>
                         <div class="metric-card">
-                            <div class="metric-icon">🌡</div>
-                            <div class="metric-title">Температура</div>
+                            <div class="metric-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+                            <div class="metric-title">TEMPERATURE</div>
                             <div class="metric-value" id="dash-temp" style="font-size: 1.5rem;">—</div>
                         </div>
                     </div>
                     <div class="insight-card">
-                        <div class="insight-icon">🤖</div>
+                        <div class="insight-icon"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
                         <div class="insight-content">
-                            <h4>ИИ-Инсайт по вебинару</h4>
-                            <p id="dash-insight">Анализ не проведен.</p>
+                            <h4>AI NEURAL INSIGHT</h4>
+                            <p id="dash-insight">Awaiting processing...</p>
                         </div>
                     </div>
                 </div>

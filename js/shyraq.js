@@ -66,14 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
         historyList.innerHTML = sessions.map(s => `
             <div class="history-card" id="hist-${s.id}">
                 <div class="history-card-info">
-                    <div class="history-card-title">📄 ${s.fileName}</div>
+                    <div class="history-card-title">${s.fileName}</div>
                     <div class="history-card-meta">
-                        🗓 ${s.date} &nbsp;·&nbsp; 🔥 ${s.leadsCount} лидов &nbsp;·&nbsp; 👥 ${s.managersCount} менеджер(ов)
+                        [${s.date}] | ${s.leadsCount} LEADS | ${s.managersCount} AGENTS
                     </div>
                 </div>
                 <div class="history-card-actions">
                     <button class="hist-open-btn" onclick="window.__openSession(${s.id})">Открыть</button>
-                    <button class="hist-delete-btn" onclick="window.__deleteSession(${s.id})">✕</button>
+                    <button class="hist-delete-btn" onclick="window.__deleteSession(${s.id})">X</button>
                 </div>
             </div>
         `).join('');
@@ -398,8 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${probIcon(probability)} Вероятность продажи: <strong>${probability}</strong>
                     </span>
                 </div>` : ''}
-                ${verdict ? `<div class="lead-verdict">💬 ${verdict}</div>` : ''}
-                <div class="badge" style="margin-top:1rem;">🔥 Горячий лид</div>
+                ${verdict ? `<div class="lead-verdict">SYS.LOG: ${verdict}</div>` : ''}
+                <div class="badge" style="margin-top:1rem;">TARGET ACQUIRED</div>
                 
                 <div style="display:flex; gap:0.5rem; margin-top:12px;">
                     <!-- Direct WhatsApp Button -->
