@@ -245,6 +245,172 @@
         }
 
         /* ─── Dashboard Section ─── */
+        
+        /* Dashboard Layout CSS */
+        body {
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+        .dashboard-layout {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+        .sidebar {
+            width: 260px;
+            background: #050505;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 2rem 1.5rem;
+            flex-shrink: 0;
+        }
+        .sidebar-logo {
+            margin-bottom: 3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .sidebar-logo .logo {
+            font-size: 1.5rem;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+        .version-badge {
+            font-size: 0.6rem;
+            background: var(--text-primary);
+            color: #000;
+            padding: 0.1rem 0.4rem;
+            border-radius: 100px;
+            font-weight: 700;
+        }
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex-grow: 1;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+        .nav-item:hover:not(.disabled) {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-primary);
+        }
+        .nav-item.active {
+            background: rgba(255,255,255,0.1);
+            color: var(--text-primary);
+        }
+        .nav-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            justify-content: space-between;
+        }
+        .soon-badge {
+            font-size: 0.65rem;
+            background: rgba(255,255,255,0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 100px;
+        }
+        .sidebar-footer {
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+        .user-email {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.6rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+        .logout-btn:hover {
+            border-color: var(--text-primary);
+            color: var(--text-primary);
+        }
+        .dashboard-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            background: var(--bg-color);
+        }
+        
+        .dashboard-view {
+            display: none;
+        }
+        .dashboard-view.active-view {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            body { height: auto; overflow: auto; }
+            .dashboard-layout {
+                flex-direction: column;
+                height: auto;
+            }
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                padding: 1.5rem;
+            }
+            .sidebar-nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            .nav-item {
+                flex: 1;
+                justify-content: center;
+                font-size: 0.85rem;
+                padding: 0.6rem;
+            }
+            .dashboard-content {
+                overflow: visible;
+            }
+            .sidebar-logo {
+                margin-bottom: 1.5rem;
+            }
+            .soon-badge { display: none; }
+        }
+
         #dashboard-section {
             display: none;
             margin-bottom: 3rem;
@@ -401,19 +567,41 @@
 </head>
 <body>
 
-    <!-- Header -->
-    <header>
-        <div class="container">
-            <a href="index.html" class="logo interactive">shaikh</a>
-            <div class="header-right" style="display:flex; align-items:center; gap: 15px;">
-                <span id="user-email" style="font-size: 0.85rem; color: var(--text-secondary);"></span>
-                <button id="logout-btn" class="nav-contact interactive" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); cursor:pointer;">Выйти</button>
+    <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <a href="index.html" class="logo">shaikh</a>
+                <span class="version-badge">B2B</span>
             </div>
-        </div>
-    </header>
+            
+            <nav class="sidebar-nav">
+                <a href="#analyzer" class="nav-item active">
+                    <span class="nav-icon">🤖</span> AI Анализ
+                </a>
+                <a href="#crm" class="nav-item disabled">
+                    <span class="nav-icon">📊</span> CRM Доска <span class="soon-badge">Скоро</span>
+                </a>
+                <a href="#scripts" class="nav-item disabled">
+                    <span class="nav-icon">✍️</span> Генератор скриптов <span class="soon-badge">Скоро</span>
+                </a>
+            </nav>
 
-    <main id="scroll-container">
-        <!-- Hero & Upload Zone -->
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">👤</div>
+                    <span id="user-email" class="user-email">Загрузка...</span>
+                </div>
+                <button id="logout-btn" class="logout-btn">Выйти</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="dashboard-content">
+
+        <!-- AI Analyzer View -->
+        <div id="view-analyzer" class="dashboard-view active-view">
+            <!-- Hero & Upload Zone -->
         <section class="hero shyraq-hero">
             <div class="container">
                 <h1 class="hero-title-wrap">
@@ -519,15 +707,17 @@
             </div>
         </section>
         
-        <footer class="footer">
-            <div class="container">
-                <div class="footer-bottom" style="margin-top: 0; padding-top: 0; border: none;">
-                    <div>SHAIKH Industries © 2026</div>
-                    <div>AI Powered Lead Scoring</div>
+            <footer class="footer">
+                <div class="container">
+                    <div class="footer-bottom" style="margin-top: 0; padding-top: 0; border: none;">
+                        <div>SHAIKH Industries © 2026</div>
+                        <div>AI Powered Lead Scoring</div>
+                    </div>
                 </div>
-            </div>
-        </footer>
-    </main>
+            </footer>
+        </div> <!-- End of view-analyzer -->
+        </main> <!-- End of dashboard-content -->
+    </div> <!-- End of dashboard-layout -->
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -561,44 +751,8 @@
     <!-- Custom Scripts -->
     <script src="./js/shyraq.js"></script>
     <script>
-        // Initialize custom cursor (copied from main logic)
+        // Disable old smooth scroll for dashboard layout, as we use native scrolling inside dashboard-content
         document.addEventListener('DOMContentLoaded', () => {
-            // Very simple smooth scroll for this page (no parallax needed)
-            const scrollContainer = document.getElementById('scroll-container');
-            let currentScroll = 0;
-            let targetScroll = 0;
-            const ease = 0.08;
-            const isMobile = window.matchMedia("(max-width: 768px)").matches;
-            
-            function updateScrollHeight() {
-                if (!isMobile) {
-                    document.body.style.height = `${scrollContainer.getBoundingClientRect().height}px`;
-                } else {
-                    scrollContainer.style.position = 'static';
-                    document.body.style.height = 'auto';
-                }
-            }
-            
-            setTimeout(updateScrollHeight, 100);
-            window.addEventListener('resize', updateScrollHeight);
-
-            if (window.ResizeObserver) {
-                const ro = new ResizeObserver(() => updateScrollHeight());
-                ro.observe(scrollContainer);
-            }
-
-            function renderFrame() {
-                if (!isMobile) {
-                    targetScroll = window.scrollY;
-                    currentScroll += (targetScroll - currentScroll) * ease;
-                    const scrollAmount = Math.round(currentScroll * 100) / 100;
-                    scrollContainer.style.transform = `translate3d(0, -${scrollAmount}px, 0)`;
-                }
-                requestAnimationFrame(renderFrame);
-            }
-            requestAnimationFrame(renderFrame);
-
-            // Simple reveal logic
             setTimeout(() => {
                 document.querySelectorAll('.hero-reveal').forEach((el, i) => {
                     setTimeout(() => el.classList.add('is-visible'), i * 150);

@@ -167,7 +167,7 @@
             // Check if already logged in via our simple token
             const token = localStorage.getItem('auth_token');
             if (token) {
-                window.location.href = 'shyraq.html';
+                window.location.href = 'dashboard.html';
                 return;
             }
 
@@ -200,7 +200,7 @@
                         // Успешный вход
                         localStorage.setItem('auth_token', data[0].id);
                         localStorage.setItem('auth_email', data[0].login);
-                        window.location.href = 'shyraq.html';
+                        window.location.href = 'dashboard.html';
                     } else {
                         if(authError) {
                             authError.textContent = 'Ошибка: Неверный логин или пароль';
