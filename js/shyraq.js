@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="history-card-info">
                     <div class="history-card-title">${s.fileName}</div>
                     <div class="history-card-meta">
-                        [${s.date}] | ${s.leadsCount} LEADS | ${s.managersCount} AGENTS
+                        ${s.date} &nbsp;|&nbsp; Лидов: ${s.leadsCount} &nbsp;|&nbsp; Менеджеров: ${s.managersCount}
                     </div>
                 </div>
                 <div class="history-card-actions">
@@ -398,8 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${probIcon(probability)} Вероятность продажи: <strong>${probability}</strong>
                     </span>
                 </div>` : ''}
-                ${verdict ? `<div class="lead-verdict">SYS.LOG: ${verdict}</div>` : ''}
-                <div class="badge" style="margin-top:1rem;">TARGET ACQUIRED</div>
+                ${verdict ? `<div class="lead-verdict"><strong>ИИ Вердикт:</strong> ${verdict}</div>` : ''}
+                <div class="badge" style="margin-top:1rem; background: rgba(255, 193, 7, 0.1); color: #FFC107; border: 1px solid rgba(255, 193, 7, 0.3);">🔥 ГОРЯЧИЙ ЛИД</div>
                 
                 <div style="display:flex; gap:0.5rem; margin-top:12px;">
                     <!-- Direct WhatsApp Button -->
