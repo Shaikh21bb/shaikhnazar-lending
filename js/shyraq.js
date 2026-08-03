@@ -282,10 +282,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ─── Probability badge colour ──────────────────────────────────
     function probColor(prob) {
-        if (!prob) return 'rgba(255,255,255,0.1)';
-        if (prob === 'Высокая') return 'rgba(76, 175, 80, 0.25)';
-        if (prob === 'Средняя') return 'rgba(255, 193, 7, 0.25)';
-        return 'rgba(244, 67, 54, 0.2)';
+        if (!prob) return 'rgba(0,0,0,0.05)';
+        if (prob === 'Высокая') return '#DCFCE7'; // Green bg
+        if (prob === 'Средняя') return '#FEF3C7'; // Yellow bg
+        return '#FEE2E2'; // Red bg
+    }
+    function probText(prob) {
+        if (!prob) return '#6B7280';
+        if (prob === 'Высокая') return '#16A34A';
+        if (prob === 'Средняя') return '#D97706';
+        return '#DC2626';
     }
     function probIcon(prob) {
         if (prob === 'Высокая') return '🟢';
@@ -434,16 +440,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${need ? `<div class="lead-detail"><span>Потребность:</span><span class="lead-value" style="font-style:italic;">${need}</span></div>` : ''}
                 ${probability ? `
                 <div style="margin-top:0.6rem;">
-                    <span class="probability-badge" style="background:${probColor(probability)}; border:1px solid ${probColor(probability).replace('0.25','0.5').replace('0.2','0.4')}; padding:0.25rem 0.75rem; border-radius:100px; font-size:0.78rem;">
+                    <span class="probability-badge" style="background:${probColor(probability)}; color:${probText(probability)}; padding:0.25rem 0.75rem; border-radius:100px; font-size:0.78rem;">
                         ${probIcon(probability)} Вероятность продажи: <strong>${probability}</strong>
                     </span>
                 </div>` : ''}
                 ${verdict ? `<div class="lead-verdict"><strong>ИИ Вердикт:</strong> ${verdict}</div>` : ''}
-                <div class="badge" style="margin-top:1rem; background: rgba(255, 193, 7, 0.1); color: #FFC107; border: 1px solid rgba(255, 193, 7, 0.3);">🔥 ГОРЯЧИЙ ЛИД</div>
+                <div class="badge" style="margin-top:1rem; background: #FEF3C7; color: #D97706; padding: 0.3rem 0.8rem;">🔥 ГОРЯЧИЙ ЛИД</div>
                 
                 <div style="display:flex; gap:0.5rem; margin-top:12px;">
                     <!-- Direct WhatsApp Button -->
-                    <a href="#" class="wa-direct-btn" style="flex:1; padding:10px; font-size:14px; display:flex; justify-content:center; align-items:center; gap:8px; background-color:#25D366; color:white; border-radius:100px; text-decoration:none; font-weight:500; transition:opacity 0.2s;">
+                    <a href="#" class="wa-direct-btn" style="flex:1; padding:10px; font-size:14px; display:flex; justify-content:center; align-items:center; gap:8px; border-radius:8px; text-decoration:none; font-weight:600; transition:all 0.2s;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
                         Написать
                     </a>
