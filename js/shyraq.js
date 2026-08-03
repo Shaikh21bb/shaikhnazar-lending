@@ -136,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
                     const pdf = await pdfjsLib.getDocument(new Uint8Array(e.target.result)).promise;
                     let fullText = '';
                     for (let i = 1; i <= pdf.numPages; i++) {
