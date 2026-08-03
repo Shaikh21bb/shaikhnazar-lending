@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHAIKH - Admin Panel</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --surface-color: #0a0a0a;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --border-color: #222222;
+            --accent-color: #ffffff;
+            --danger-color: #ff3333;
+            --font-body: 'Inter', sans-serif;
+            --font-heading: 'Outfit', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 4rem 2rem;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .admin-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .admin-title {
+            font-family: var(--font-heading);
+            font-size: 2.5rem;
+            font-weight: 500;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.5rem;
+        }
+
+        .admin-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 300;
+        }
+
+        .admin-container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        /* Create Manager Form */
+        .create-box {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+
+        .input-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .input-group label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .input-group input {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.8rem 1rem;
+            border-radius: 6px;
+            font-family: var(--font-body);
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.4);
+        }
+
+        .create-btn {
+            background: var(--text-primary);
+            color: var(--bg-color);
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 6px;
+            font-family: var(--font-heading);
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            height: 45px;
+        }
+
+        .create-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* Manager List */
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .list-title {
+            font-family: var(--font-heading);
+            font-size: 1.5rem;
+            font-weight: 400;
+        }
+
+        .manager-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .manager-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: border-color 0.2s;
+        }
+
+        .manager-card:hover {
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .manager-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .manager-login {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .manager-pass {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-family: monospace;
+        }
+
+        .delete-btn {
+            background: transparent;
+            color: var(--danger-color);
+            border: 1px solid rgba(255, 51, 51, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+        }
+
+        .delete-btn:hover {
+            background: rgba(255, 51, 51, 0.1);
+            border-color: rgba(255, 51, 51, 0.5);
+        }
+
+        /* Overlay for Master Password */
+        #master-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-color);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .master-form {
+            background: var(--surface-color);
+            padding: 3rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .master-form h2 {
+            font-family: var(--font-heading);
+            margin-bottom: 2rem;
+            font-weight: 400;
+        }
+
+        .master-form input {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 1rem;
+            border-radius: 6px;
+            width: 100%;
+            font-size: 1.2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            letter-spacing: 0.2em;
+        }
+
+        .master-form input:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.4);
+        }
+        
+        .loading {
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Master Password Overlay -->
+    <div id="master-overlay">
+        <div class="master-form">
+            <h2>Доступ владельца</h2>
+            <input type="password" id="master-pass" placeholder="••••••••" autocomplete="off">
+            <p id="master-err" style="color:var(--danger-color); font-size:0.9rem; display:none; margin-top:1rem;">Неверный пароль</p>
+        </div>
+    </div>
+
+    <!-- Admin Content -->
+    <header class="admin-header">
+        <h1 class="admin-title">Управление доступом</h1>
+        <p class="admin-subtitle">Создавайте логины и пароли для менеджеров</p>
+    </header>
+
+    <main class="admin-container">
+        
+        <!-- Create Form -->
+        <form class="create-box" id="create-manager-form">
+            <div class="input-group">
+                <label for="new-login">Логин менеджера</label>
+                <input type="text" id="new-login" placeholder="manager1" required autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label for="new-pass">Пароль</label>
+                <input type="text" id="new-pass" placeholder="123456" required autocomplete="off">
+            </div>
+            <button type="submit" class="create-btn" id="create-btn">Создать</button>
+        </form>
+
+        <!-- List -->
+        <div class="list-header">
+            <h2 class="list-title">Активные доступы</h2>
+            <span style="color:var(--text-secondary); font-size:0.9rem;" id="total-count">Загрузка...</span>
+        </div>
+
+        <div class="manager-list" id="manager-list">
+            <div class="loading">Загрузка менеджеров...</div>
+        </div>
+
+    </main>
+
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/supabase.js"></script>
+    <script src="./js/admin.js"></script>
+</body>
+</html>
