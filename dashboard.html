@@ -489,19 +489,53 @@
         .upload-icon svg {
             width: 48px; height: 48px; fill: none; stroke: var(--text-secondary); stroke-width: 1.5; margin-bottom: 1rem;
         }
-        .managers-block {
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.08);
+        .settings-grid {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            max-width: 800px;
+            margin: 0 auto 2.5rem;
             background: rgba(255,255,255,0.02);
-            padding: 1rem 1.2rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            flex-wrap: wrap;
+        }
+        .managers-block {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            border: none;
+            background: transparent;
+            padding: 0;
+            white-space: nowrap;
+        }
+        .managers-block label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
             font-weight: 500;
         }
         .managers-block input, .managers-block select {
             border-radius: 6px;
             border: 1px solid rgba(255,255,255,0.15);
-            background: rgba(0,0,0,0.3);
+            background: rgba(255,255,255,0.05);
             font-family: inherit;
             color: var(--text-primary);
+            padding: 0.5rem 0.8rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .managers-block input:focus, .managers-block select:focus {
+            border-color: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.08);
+        }
+        .full-width-setting {
+            flex-grow: 1;
+            min-width: 300px;
+        }
+        .full-width-setting input {
+            width: 100%;
         }
         .metric-card {
             border-radius: 14px;
@@ -555,6 +589,24 @@
         }
         .hero::before {
             display: none !important;
+        }
+        .copy-numbers-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .copy-numbers-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.2);
         }
     </style>
 </head>
@@ -656,9 +708,15 @@
         <!-- Results Section -->
         <section id="results-section" class="section">
             <div class="container">
-                <div class="results-header fade-in reveal-trigger">
-                    <h2 class="section-title">Результаты анализа</h2>
-                    <p class="section-subtitle" id="results-subtitle">Горячие лиды, найденные в выгрузке</p>
+                <div class="results-header fade-in reveal-trigger" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 class="section-title">Результаты анализа</h2>
+                        <p class="section-subtitle" id="results-subtitle" style="margin-bottom: 0;">Горячие лиды, найденные в выгрузке</p>
+                    </div>
+                    <button class="copy-numbers-btn" onclick="window.__copyAllNumbers()">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        Скопировать номера
+                    </button>
                 </div>
 
                 <!-- Dashboard Section -->

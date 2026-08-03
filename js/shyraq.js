@@ -172,6 +172,47 @@ document.addEventListener('DOMContentLoaded', () => {
         dashboardSection.style.display = 'block';
     }
 
+    // ─── Copy Phone Numbers ────────────────────────────────────────
+    window.__copyAllNumbers = () => {
+        if (!allLeads || allLeads.length === 0) {
+            alert('Сначала загрузите и проанализируйте данные.');
+            return;
+        }
+
+        let numbers = [];
+        allLeads.forEach(lead => {
+            if (lead.contact) {
+                let digits = lead.contact.replace(/\D/g, '');
+                
+                // Format for RU/KZ numbers
+                if (digits.length === 11 && digits.startsWith('8')) {
+                    digits = '7' + digits.substring(1);
+                } else if (digits.length === 10) {
+                    digits = '7' + digits;
+                }
+                
+                if (digits.length >= 10) {
+                     numbers.push('+' + digits);
+                }
+            }
+        });
+
+        if (numbers.length === 0) {
+            alert('Не найдено ни одного номера телефона в результатах.');
+            return;
+        }
+
+        numbers = [...new Set(numbers)];
+        
+        const textToCopy = numbers.join('\n');
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            alert(`Успешно скопировано номеров: ${numbers.length}`);
+        }).catch(err => {
+            console.error('Copy failed', err);
+            alert('Ошибка копирования. Скопируйте вручную.');
+        });
+    };
+
     // ─── API call ──────────────────────────────────────────────────
     async function analyzeData(payload) {
         try {
