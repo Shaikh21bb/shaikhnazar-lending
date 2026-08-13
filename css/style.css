@@ -535,7 +535,8 @@ header .container {
 
 .mobile-menu,
 .mobile-dock,
-.menu-btn {
+.menu-btn,
+.header-island {
     display: none;
 }
 
@@ -602,14 +603,51 @@ header .container {
         padding: 0 1.25rem;
     }
     .header-right {
-        gap: 1.1rem;
+        gap: 0.5rem;
     }
     header .nav-contact,
     header .btn {
         display: none;
     }
+    .lang-switcher {
+        gap: 0.5rem;
+    }
     .lang-btn {
-        font-size: 0.78rem;
+        width: 40px; height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        background: rgba(255, 255, 255, 0.09);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+    }
+    .lang-btn.active {
+        background: var(--text-primary);
+        color: var(--bg-color);
+        border-color: transparent;
+        box-shadow: none;
+    }
+
+    /* Round glass islands in header */
+    .header-island {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px; height: 40px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.09);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+    }
+    .header-island:active {
+        transform: scale(0.92);
+        background: rgba(255, 255, 255, 0.16);
     }
 
     /* ---------- Hamburger ---------- */
@@ -618,9 +656,9 @@ header .container {
         flex-direction: column;
         justify-content: center;
         gap: 6px;
-        width: 44px; height: 44px;
+        width: 40px; height: 40px;
         padding: 10px;
-        border-radius: 14px;
+        border-radius: 999px;
         background: rgba(255, 255, 255, 0.09);
         border: 1px solid rgba(255, 255, 255, 0.12);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
