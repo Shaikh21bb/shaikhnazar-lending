@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./css/crm.css">
     
     <style>
         /* =========================================
@@ -115,16 +116,58 @@
             border-radius: 15px;
             transition: transform 0.3s, border-color 0.3s;
         }
-        /* ─── Light SaaS Dashboard Section ─── */
+        /* ─── Theming Support ─── */
+        :root {
+            --theme-bg: #F4F7FE;
+            --theme-sidebar: #FFFFFF;
+            --theme-sidebar-border: transparent;
+            --theme-text-main: #111827;
+            --theme-text-muted: #6B7280;
+            --theme-border: #E5E7EB;
+            --theme-card: #FFFFFF;
+            --theme-input-bg: #F9FAFB;
+            --theme-hover: #F9FAFB;
+            --theme-active-bg: #EEF2FF;
+            --theme-active-text: #4318FF;
+            --theme-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            --theme-shadow-sidebar: 2px 0 10px rgba(0,0,0,0.03);
+            --theme-blue-btn: #EEF2FF;
+            --theme-blue-btn-hover: #E0E7FF;
+        }
+
+        [data-theme="dark"] {
+            --theme-bg: #070707;
+            --theme-sidebar: rgba(0,0,0,0.8);
+            --theme-sidebar-border: 1px solid rgba(255,255,255,0.1);
+            --theme-text-main: #F5F5F5;
+            --theme-text-muted: rgba(255,255,255,0.6);
+            --theme-border: rgba(255,255,255,0.1);
+            --theme-card: rgba(255,255,255,0.02);
+            --theme-input-bg: rgba(255,255,255,0.05);
+            --theme-hover: rgba(255,255,255,0.04);
+            --theme-active-bg: rgba(255,255,255,0.08);
+            --theme-active-text: #F5F5F5;
+            --theme-shadow: none;
+            --theme-shadow-sidebar: none;
+            --theme-blue-btn: rgba(255,255,255,0.05);
+            --theme-blue-btn-hover: rgba(255,255,255,0.1);
+        }
         
-        /* Dashboard Layout CSS */
+        body[data-theme="dark"] {
+            background-image: radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(255,255,255,0.02), transparent 40%);
+        }
+
+        /* ─── Dashboard Layout CSS ─── */
         body {
             height: 100vh;
             overflow: hidden;
             margin: 0;
             padding: 0;
             display: flex;
-            background-color: #F4F7FE;
+            background-color: var(--theme-bg);
+            color: var(--theme-text-main);
+            transition: background-color 0.3s, color 0.3s;
         }
         .dashboard-layout {
             display: flex;
@@ -133,14 +176,16 @@
         }
         .sidebar {
             width: 260px;
-            background: #FFFFFF;
+            background: var(--theme-sidebar);
+            border-right: var(--theme-sidebar-border);
             display: flex;
             flex-direction: column;
             padding: 2rem 1.5rem;
             flex-shrink: 0;
             position: relative;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.03);
+            box-shadow: var(--theme-shadow-sidebar);
             z-index: 10;
+            transition: background 0.3s;
         }
         .sidebar-logo {
             margin-bottom: 3rem;
@@ -152,13 +197,13 @@
             font-size: 1.4rem;
             font-weight: 700;
             text-decoration: none;
-            color: #1F2937;
+            color: var(--theme-text-main);
             letter-spacing: 0.05em;
         }
         .version-badge {
             font-size: 0.55rem;
-            border: 1px solid #E5E7EB;
-            color: #6B7280;
+            border: 1px solid var(--theme-border);
+            color: var(--theme-text-muted);
             padding: 0.1rem 0.3rem;
             border-radius: 4px;
             text-transform: uppercase;
@@ -177,7 +222,7 @@
             gap: 0.8rem;
             padding: 0.8rem 1rem;
             text-decoration: none;
-            color: #6B7280;
+            color: var(--theme-text-muted);
             font-size: 0.95rem;
             font-weight: 500;
             border-radius: 12px;
@@ -196,12 +241,12 @@
             stroke-width: 2;
         }
         .nav-item:hover:not(.disabled) {
-            background: #F9FAFB;
-            color: #111827;
+            background: var(--theme-hover);
+            color: var(--theme-text-main);
         }
         .nav-item.active {
-            background: #EEF2FF;
-            color: #4318FF;
+            background: var(--theme-active-bg);
+            color: var(--theme-active-text);
             font-weight: 600;
         }
         .nav-item.disabled {
@@ -211,8 +256,8 @@
         }
         .soon-badge {
             font-size: 0.55rem;
-            background: #F3F4F6;
-            color: #6B7280;
+            background: var(--theme-hover);
+            color: var(--theme-text-muted);
             padding: 0.2rem 0.5rem;
             border-radius: 100px;
             text-transform: uppercase;
@@ -220,7 +265,7 @@
             font-weight: 600;
         }
         .sidebar-footer {
-            border-top: 1px solid #F3F4F6;
+            border-top: 1px solid var(--theme-border);
             padding-top: 1.5rem;
             display: flex;
             flex-direction: column;
@@ -235,8 +280,8 @@
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            background: #F4F7FE;
-            color: #4318FF;
+            background: var(--theme-active-bg);
+            color: var(--theme-active-text);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -250,15 +295,15 @@
         }
         .user-email {
             font-size: 0.8rem;
-            color: #4B5563;
+            color: var(--theme-text-muted);
             font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .logout-btn {
-            background: #FFF0F2;
-            border: none;
+            background: var(--theme-input-bg);
+            border: 1px solid var(--theme-border);
             color: #E11D48;
             padding: 0.7rem;
             border-radius: 12px;
@@ -269,8 +314,26 @@
             font-weight: 600;
         }
         .logout-btn:hover {
-            background: #FFE4E6;
+            background: var(--theme-hover);
             color: #BE123C;
+        }
+        .theme-toggle-btn {
+            background: transparent;
+            border: 1px solid var(--theme-border);
+            color: var(--theme-text-muted);
+            padding: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        .theme-toggle-btn:hover {
+            background: var(--theme-hover);
+            color: var(--theme-text-main);
         }
         .dashboard-content {
             flex-grow: 1;
@@ -472,20 +535,20 @@
         
         /* OVERRIDE STYLES FOR PREMIUM */
         .upload-zone {
-            border: 2px dashed #D1D5DB;
-            background: #FFFFFF;
+            border: 2px dashed var(--theme-border);
+            background: var(--theme-card);
             border-radius: 16px;
             padding: 3rem 2rem;
             text-align: center;
             transition: all 0.3s ease;
         }
         .upload-zone:hover {
-            border-color: #9CA3AF;
-            background: #F9FAFB;
+            border-color: var(--theme-text-muted);
+            background: var(--theme-hover);
             transform: translateY(-2px);
         }
         .upload-icon svg {
-            width: 48px; height: 48px; fill: none; stroke: #9CA3AF; stroke-width: 1.5; margin-bottom: 1rem;
+            width: 48px; height: 48px; fill: none; stroke: var(--theme-text-muted); stroke-width: 1.5; margin-bottom: 1rem;
         }
         .settings-grid {
             display: flex;
@@ -494,12 +557,13 @@
             gap: 1.5rem;
             max-width: 800px;
             margin: 0 auto 2.5rem;
-            background: #FFFFFF;
+            background: var(--theme-card);
             border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            box-shadow: var(--theme-shadow);
             border-radius: 16px;
             padding: 1rem 1.5rem;
             flex-wrap: wrap;
+            transition: background 0.3s;
         }
         .managers-block {
             display: flex;
@@ -511,23 +575,23 @@
             white-space: nowrap;
         }
         .managers-block label {
-            color: #4B5563;
+            color: var(--theme-text-muted);
             font-size: 0.9rem;
             font-weight: 500;
         }
         .managers-block input, .managers-block select {
             border-radius: 8px;
-            border: 1px solid #E5E7EB;
-            background: #F9FAFB;
+            border: 1px solid var(--theme-border);
+            background: var(--theme-input-bg);
             font-family: inherit;
-            color: #111827;
+            color: var(--theme-text-main);
             padding: 0.5rem 0.8rem;
             outline: none;
             transition: all 0.2s;
         }
         .managers-block input:focus, .managers-block select:focus {
-            border-color: #4318FF;
-            background: #FFFFFF;
+            border-color: var(--theme-active-text);
+            background: var(--theme-card);
         }
         .full-width-setting {
             flex-grow: 1;
@@ -538,52 +602,54 @@
         }
         .metric-card {
             border-radius: 16px;
-            background: #FFFFFF;
+            background: var(--theme-card);
             border: none;
             padding: 1.5rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: var(--theme-shadow);
+            transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
         }
         .metric-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+            box-shadow: var(--theme-shadow-sidebar);
+            background: var(--theme-hover);
         }
-        .metric-icon svg { width: 26px; height: 26px; stroke: #4318FF; fill: none; stroke-width: 2; opacity: 1;}
+        .metric-icon svg { width: 26px; height: 26px; stroke: var(--theme-active-text); fill: none; stroke-width: 2; opacity: 1;}
         .metric-title {
-            color: #6B7280;
+            color: var(--theme-text-muted);
             font-size: 0.85rem;
             font-weight: 500;
         }
         .metric-value {
-            color: #111827;
+            color: var(--theme-text-main);
             font-weight: 700;
             margin-top: 0.3rem;
         }
         .insight-card {
             border-radius: 16px;
-            background: #FFFBEB;
-            border: 1px solid #FDE68A;
+            background: rgba(255, 193, 7, 0.05);
+            border: 1px solid rgba(255, 193, 7, 0.2);
             padding: 1.5rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+            box-shadow: var(--theme-shadow);
         }
         .insight-icon svg { width: 32px; height: 32px; stroke: #D97706; fill: none; stroke-width: 1.5; }
         .insight-content h4 { color: #92400E; }
         .insight-content p { color: #B45309; }
         .lead-card {
             border-radius: 16px;
-            border: none;
-            background: #FFFFFF;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border: 1px solid var(--theme-border);
+            background: var(--theme-card);
+            box-shadow: var(--theme-shadow);
+            transition: background 0.3s;
         }
         .history-card {
             border-radius: 16px;
-            border: none;
-            background: #FFFFFF;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border: 1px solid var(--theme-border);
+            background: var(--theme-card);
+            box-shadow: var(--theme-shadow);
         }
-        .history-header h3 { color: #111827; }
-        .history-card-title { color: #111827; }
-        .history-card-meta { color: #6B7280; }
+        .history-header h3 { color: var(--theme-text-main); }
+        .history-card-title { color: var(--theme-text-main); }
+        .history-card-meta { color: var(--theme-text-muted); }
         .hist-open-btn, .hist-delete-btn, .history-clear-btn {
             border-radius: 8px; font-weight: 600;
         }
@@ -595,18 +661,18 @@
             font-size: 2.2rem;
             margin-bottom: 0.5rem;
             font-weight: 700;
-            color: #111827;
+            color: var(--theme-text-main);
         }
         .section-title {
-            color: #111827;
+            color: var(--theme-text-main);
             font-weight: 700;
         }
         .section-subtitle {
-            color: #6B7280;
+            color: var(--theme-text-muted);
         }
         .hero-desc {
             font-size: 1rem;
-            color: #6B7280;
+            color: var(--theme-text-muted);
             max-width: 600px;
             margin: 0 auto 2.5rem;
         }
@@ -620,9 +686,9 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            background: #EEF2FF;
+            background: var(--theme-blue-btn);
             border: none;
-            color: #4318FF;
+            color: var(--theme-active-text);
             padding: 0.6rem 1rem;
             border-radius: 8px;
             cursor: pointer;
@@ -631,39 +697,40 @@
             font-weight: 600;
         }
         .copy-numbers-btn:hover {
-            background: #E0E7FF;
+            background: var(--theme-blue-btn-hover);
         }
         .upload-text {
-            color: #111827;
+            color: var(--theme-text-main);
             font-weight: 600;
         }
         .upload-subtext {
-            color: #6B7280;
+            color: var(--theme-text-muted);
         }
         .history-clear-btn {
-            background: #FFF0F2;
+            background: var(--theme-input-bg);
             color: #E11D48;
-            border: none;
+            border: 1px solid var(--theme-border);
             padding: 0.5rem 1rem;
         }
+        .history-clear-btn:hover { background: var(--theme-hover); }
         .footer-bottom {
-            color: #9CA3AF;
+            color: var(--theme-text-muted);
         }
-        .lead-name { color: #111827 !important; }
-        .lead-contact { color: #6B7280 !important; }
-        .lead-need { color: #4B5563 !important; }
-        .lead-verdict { color: #374151 !important; }
+        .lead-name { color: var(--theme-text-main) !important; }
+        .lead-contact { color: var(--theme-text-muted) !important; }
+        .lead-need { color: var(--theme-text-muted) !important; }
+        .lead-verdict { color: var(--theme-text-main) !important; }
         
         .primary-btn {
-            background: #EEF2FF;
-            color: #4318FF;
+            background: var(--theme-blue-btn);
+            color: var(--theme-active-text);
             border: none;
             border-radius: 8px;
             font-weight: 600;
             transition: all 0.2s;
         }
         .primary-btn:hover {
-            background: #E0E7FF;
+            background: var(--theme-blue-btn-hover);
         }
         .wa-direct-btn {
             background: #DCFCE7 !important;
@@ -689,9 +756,9 @@
                     <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
                     ИИ-Анализ
                 </a>
-                <a href="#crm" class="nav-item disabled">
+                <a href="#crm" class="nav-item">
                     <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span>
-                    CRM Доска <span class="soon-badge">Скоро</span>
+                    CRM Доска
                 </a>
                 <a href="#scripts" class="nav-item disabled">
                     <span class="nav-icon"><svg viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
@@ -705,6 +772,11 @@
                     <span id="user-email" class="user-email">Загрузка...</span>
                 </div>
                 <button id="logout-btn" class="logout-btn">Выйти</button>
+                <button id="theme-toggle-btn" class="theme-toggle-btn">
+                    <svg class="sun-icon" style="display:none;" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    <span id="theme-label" style="margin-left:8px; font-size:13px; font-weight:500;">Тёмная тема</span>
+                </button>
             </div>
         </aside>
 
@@ -777,6 +849,10 @@
                         <h2 class="section-title">Результаты анализа</h2>
                         <p class="section-subtitle" id="results-subtitle" style="margin-bottom: 0;">Горячие лиды, найденные в выгрузке</p>
                     </div>
+                    <button class="copy-numbers-btn" onclick="window.__sendToCrm()">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                        Добавить в CRM
+                    </button>
                     <button class="copy-numbers-btn" onclick="window.__copyAllNumbers()">
                         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         Скопировать только номера для рассылки
@@ -834,8 +910,52 @@
                 </div>
             </footer>
         </div> <!-- End of view-analyzer -->
+
+        <!-- CRM View -->
+        <div id="view-crm" class="dashboard-view">
+            <section class="section" style="padding-top: 4rem;">
+                <div class="container">
+                    <div class="results-header">
+                        <div>
+                            <h2 class="section-title">CRM Доска</h2>
+                            <p class="section-subtitle" style="margin-bottom: 0;">Ведите сделки: перетаскивайте карточки между колонками, нажимайте на карточку для деталей</p>
+                        </div>
+                    </div>
+                    <div id="crm-board" class="crm-board">
+                        <div class="loading">Загрузка CRM...</div>
+                    </div>
+                </div>
+            </section>
+        </div>
         </main> <!-- End of dashboard-content -->
     </div> <!-- End of dashboard-layout -->
+
+    <!-- CRM Lead Modal -->
+    <div id="crm-modal" class="crm-modal">
+        <div class="crm-modal-card">
+            <button id="crm-modal-close" class="crm-modal-close">✕</button>
+            <h3 id="crm-modal-name"></h3>
+            <div class="crm-modal-contact" id="crm-modal-contact"></div>
+            <div class="crm-modal-need" id="crm-modal-need"></div>
+            <label for="crm-status">Статус</label>
+            <select id="crm-status">
+                <option value="new">Новые</option>
+                <option value="contacted">На связи</option>
+                <option value="negotiation">Договор</option>
+                <option value="deal">Сделка</option>
+                <option value="lost">Закрыт</option>
+            </select>
+            <label for="crm-follow-up">Следующий контакт</label>
+            <input type="datetime-local" id="crm-follow-up">
+            <label for="crm-notes">Заметки</label>
+            <textarea id="crm-notes" placeholder="Что обсуждали, что обещали..."></textarea>
+            <div class="crm-modal-actions">
+                <a id="crm-wa" class="crm-btn crm-btn-green" target="_blank">WhatsApp</a>
+                <button id="crm-delete" class="crm-btn crm-btn-danger">Удалить</button>
+                <button id="crm-save" class="crm-btn crm-btn-primary">Сохранить</button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -843,7 +963,44 @@
     
     <!-- Custom Scripts -->
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // THEME LOGIC
+            const savedTheme = localStorage.getItem('shyraq_theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+            }
+            updateThemeBtn();
+
+            document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+                const current = document.body.getAttribute('data-theme');
+                if (current === 'dark') {
+                    document.body.removeAttribute('data-theme');
+                    localStorage.setItem('shyraq_theme', 'light');
+                } else {
+                    document.body.setAttribute('data-theme', 'dark');
+                    localStorage.setItem('shyraq_theme', 'dark');
+                }
+                updateThemeBtn();
+            });
+
+            function updateThemeBtn() {
+                const isDark = document.body.getAttribute('data-theme') === 'dark';
+                const sun = document.querySelector('.sun-icon');
+                const moon = document.querySelector('.moon-icon');
+                const label = document.getElementById('theme-label');
+                
+                if (isDark) {
+                    sun.style.display = 'block';
+                    moon.style.display = 'none';
+                    label.textContent = 'Светлая тема';
+                } else {
+                    sun.style.display = 'none';
+                    moon.style.display = 'block';
+                    label.textContent = 'Тёмная тема';
+                }
+            }
+            
+            // USER LOGIC
             const token = localStorage.getItem('auth_token');
             const email = localStorage.getItem('auth_email');
             
@@ -868,6 +1025,7 @@
 
     <!-- Custom Scripts -->
     <script src="./js/shyraq.js"></script>
+    <script src="./js/crm.js"></script>
     <script>
         // Disable old smooth scroll for dashboard layout, as we use native scrolling inside dashboard-content
         document.addEventListener('DOMContentLoaded', () => {

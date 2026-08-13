@@ -250,6 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (warmLeadsArray.length >= 0) {
                 allLeads = warmLeadsArray;
+                window.__lastLeads = allLeads;
                 
                 // Calculate metrics
                 let total = payload.totalCount;
@@ -282,16 +283,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ─── Probability badge colour ──────────────────────────────────
     function probColor(prob) {
-        if (!prob) return 'rgba(0,0,0,0.05)';
-        if (prob === 'Высокая') return '#DCFCE7'; // Green bg
-        if (prob === 'Средняя') return '#FEF3C7'; // Yellow bg
-        return '#FEE2E2'; // Red bg
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        if (!prob) return isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+        if (prob === 'Высокая') return isDark ? 'rgba(76, 175, 80, 0.25)' : '#DCFCE7';
+        if (prob === 'Средняя') return isDark ? 'rgba(255, 193, 7, 0.25)' : '#FEF3C7';
+        return isDark ? 'rgba(244, 67, 54, 0.2)' : '#FEE2E2';
     }
     function probText(prob) {
-        if (!prob) return '#6B7280';
-        if (prob === 'Высокая') return '#16A34A';
-        if (prob === 'Средняя') return '#D97706';
-        return '#DC2626';
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        if (!prob) return isDark ? 'rgba(255,255,255,0.6)' : '#6B7280';
+        if (prob === 'Высокая') return isDark ? '#4CAF50' : '#16A34A';
+        if (prob === 'Средняя') return isDark ? '#FFC107' : '#D97706';
+        return isDark ? '#F44336' : '#DC2626';
     }
     function probIcon(prob) {
         if (prob === 'Высокая') return '🟢';
@@ -445,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </span>
                 </div>` : ''}
                 ${verdict ? `<div class="lead-verdict"><strong>ИИ Вердикт:</strong> ${verdict}</div>` : ''}
-                <div class="badge" style="margin-top:1rem; background: #FEF3C7; color: #D97706; padding: 0.3rem 0.8rem;">🔥 ГОРЯЧИЙ ЛИД</div>
+                <div class="badge" style="margin-top:1rem; background: ${document.body.getAttribute('data-theme') === 'dark' ? 'rgba(255, 193, 7, 0.1)' : '#FEF3C7'}; color: ${document.body.getAttribute('data-theme') === 'dark' ? '#FFC107' : '#D97706'}; border: 1px solid ${document.body.getAttribute('data-theme') === 'dark' ? 'rgba(255, 193, 7, 0.3)' : 'transparent'}; padding: 0.3rem 0.8rem;">🔥 ГОРЯЧИЙ ЛИД</div>
                 
                 <div style="display:flex; gap:0.5rem; margin-top:12px;">
                     <!-- Direct WhatsApp Button -->
