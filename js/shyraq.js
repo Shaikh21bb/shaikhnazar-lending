@@ -250,7 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (warmLeadsArray.length >= 0) {
                 allLeads = warmLeadsArray;
-                window.__lastLeads = allLeads;
                 
                 // Calculate metrics
                 let total = payload.totalCount;

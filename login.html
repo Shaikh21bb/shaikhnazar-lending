@@ -2,152 +2,41 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>SHAIKH Industries — Вход в систему</title>
-    <!-- Google Fonts -->
+    <meta name="description" content="Вход в систему SHAIKH Industries">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./css/style.css">
-    <style>
-        body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-color: var(--bg-color);
-        }
-        .login-container {
-            width: 100%;
-            max-width: 420px;
-            padding: 2.5rem;
-            background: rgba(255,255,255,0.02);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            position: relative;
-            z-index: 2;
-        }
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .login-header h1 {
-            font-family: var(--font-heading);
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-        .login-header p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-        .form-group {
-            margin-bottom: 1.25rem;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-        .form-group input {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            background: transparent;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-family: var(--font-body);
-            font-size: 1rem;
-            transition: all 0.2s;
-            box-sizing: border-box;
-        }
-        .form-group input:focus {
-            outline: none;
-            border-color: rgba(255,255,255,0.4);
-        }
-        .login-btn {
-            width: 100%;
-            padding: 0.9rem;
-            background: var(--text-primary);
-            color: var(--bg-color);
-            border: none;
-            border-radius: 8px;
-            font-family: var(--font-heading);
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: transform 0.2s, opacity 0.2s;
-            margin-top: 1rem;
-        }
-        .login-btn:hover {
-            transform: translateY(-2px);
-            opacity: 0.9;
-        }
-        .login-footer {
-            margin-top: 1.5rem;
-            text-align: center;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-        .login-footer a {
-            color: var(--text-primary);
-            text-decoration: none;
-            border-bottom: 1px solid rgba(255,255,255,0.3);
-            transition: border-color 0.2s;
-        }
-        .login-footer a:hover {
-            border-color: var(--text-primary);
-        }
-        #auth-error {
-            color: #f44336;
-            background: rgba(244, 67, 54, 0.1);
-            border: 1px solid rgba(244, 67, 54, 0.2);
-            padding: 0.75rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            margin-bottom: 1rem;
-            display: none;
-        }
-        /* Background Glow */
-        .glow {
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1;
-            pointer-events: none;
-        }
-    </style>
+    <link rel="stylesheet" href="./css/app.css">
 </head>
 <body>
 
-    <div class="glow"></div>
-    
-    <div class="login-container fade-in reveal-trigger is-visible">
-        <div class="login-header">
-            <h1>SHAIKH Industries</h1>
-            <p id="form-subtitle">Вход в систему для бизнеса</p>
-        </div>
-        
-        <div id="auth-error"></div>
+    <div class="glass-orb orb-1"></div>
+    <div class="glass-orb orb-2"></div>
+    <div class="glass-orb orb-3"></div>
 
-        <form id="auth-form">
-            <div class="form-group">
+    <div class="auth-wrap">
+        <div class="auth-card glass">
+            <div class="auth-logo">
+                <span class="auth-logo-pill">shaikh</span>
+            </div>
+            <h1>Вход в систему</h1>
+            <p class="auth-sub">Вход в систему для бизнеса</p>
+
+            <div id="auth-error"></div>
+
+            <form id="auth-form" class="auth-form">
                 <label for="email">Логин (Email)</label>
-                <input type="text" id="email" required placeholder="name@company.com">
-            </div>
-            <div class="form-group">
+                <input type="text" id="email" required placeholder="name@company.com" autocomplete="username">
                 <label for="password">Пароль</label>
-                <input type="password" id="password" required placeholder="••••••••">
-            </div>
-            <button type="submit" class="login-btn" id="submit-btn">Войти</button>
-        </form>
+                <input type="password" id="password" required placeholder="••••••••" autocomplete="current-password">
+                <button type="submit" class="island island-primary auth-submit" id="submit-btn">Войти</button>
+            </form>
 
-        <div class="login-footer" id="toggle-wrap">
+            <div class="auth-footer" id="toggle-wrap">
+                <a href="index.html">← Вернуться на сайт</a>
+            </div>
         </div>
     </div>
 
@@ -155,7 +44,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./js/supabase.js"></script>
 
-    <!-- Custom Scripts -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const authForm = document.getElementById('auth-form');
@@ -163,8 +51,7 @@
             const passwordInput = document.getElementById('password');
             const submitBtn = document.getElementById('submit-btn');
             const authError = document.getElementById('auth-error');
-            
-            // Check if already logged in via our simple token
+
             const token = localStorage.getItem('auth_token');
             if (token) {
                 window.location.href = 'dashboard.html';
@@ -175,7 +62,7 @@
                 e.preventDefault();
                 const login = emailInput.value.trim();
                 const password = passwordInput.value.trim();
-                
+
                 if (!login || !password) {
                     alert('Пожалуйста, заполните все поля.');
                     return;
@@ -184,10 +71,9 @@
                 submitBtn.disabled = true;
                 const originalText = submitBtn.textContent;
                 submitBtn.textContent = 'Вход...';
-                if(authError) authError.style.display = 'none';
+                if (authError) authError.style.display = 'none';
 
                 try {
-                    // Обращаемся к Supabase напрямую для проверки логина
                     const { data, error } = await supabaseClient
                         .from('managers_auth')
                         .select('*')
@@ -195,14 +81,13 @@
                         .eq('password', password);
 
                     if (error) throw error;
-                    
+
                     if (data && data.length > 0) {
-                        // Успешный вход
                         localStorage.setItem('auth_token', data[0].id);
                         localStorage.setItem('auth_email', data[0].login);
                         window.location.href = 'dashboard.html';
                     } else {
-                        if(authError) {
+                        if (authError) {
                             authError.textContent = 'Ошибка: Неверный логин или пароль';
                             authError.style.display = 'block';
                         } else {
@@ -211,7 +96,7 @@
                     }
                 } catch (error) {
                     console.error('Ошибка входа:', error);
-                    if(authError) {
+                    if (authError) {
                         authError.textContent = 'Произошла ошибка при связи с базой данных.';
                         authError.style.display = 'block';
                     } else {

@@ -2,885 +2,146 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>SHAIKH Industries — AI Analysis</title>
     <meta name="description" content="AI Анализ зрителей вебинара SHAIKH Industries.">
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./css/style.css">
-    <link rel="stylesheet" href="./css/crm.css">
-    
-    <style>
-        /* =========================================
-           SHYRAQ SPECIFIC STYLES
-        ========================================= */
-        .shyraq-hero {
-            padding-top: 20vh;
-            text-align: center;
-        }
-
-        .upload-zone {
-            margin: 4vw auto;
-            max-width: 600px;
-            padding: 4rem 2rem;
-            border: 2px dashed var(--border-color);
-            border-radius: 20px;
-            background-color: rgba(255, 255, 255, 0.02);
-            transition: all 0.3s var(--ease-out);
-            position: relative;
-            cursor: pointer !important; /* Allow pointer cursor for upload */
-        }
-
-        .upload-zone.dragover {
-            border-color: var(--text-primary);
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-
-        .upload-zone:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .upload-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            color: var(--text-secondary);
-        }
-
-        .upload-text {
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .upload-subtext {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-
-        #file-input {
-            display: none;
-        }
-
-        /* Loading State */
-        .loading-overlay {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(5, 5, 5, 0.8);
-            backdrop-filter: blur(5px);
-            border-radius: 18px;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .upload-zone.is-loading .loading-overlay {
-            display: flex;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid var(--border-color);
-            border-top-color: var(--text-primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Results Section */
-        #results-section {
-            display: none;
-            padding: 4vw 0 10vw;
-        }
-
-        .results-header {
-            margin-bottom: 3rem;
-            text-align: center;
-        }
-
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-
-        .lead-card {
-            background-color: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            padding: 2rem;
-            border-radius: 15px;
-            transition: transform 0.3s, border-color 0.3s;
-        }
-        /* ─── Theming Support ─── */
-        :root {
-            --theme-bg: #F4F7FE;
-            --theme-sidebar: #FFFFFF;
-            --theme-sidebar-border: transparent;
-            --theme-text-main: #111827;
-            --theme-text-muted: #6B7280;
-            --theme-border: #E5E7EB;
-            --theme-card: #FFFFFF;
-            --theme-input-bg: #F9FAFB;
-            --theme-hover: #F9FAFB;
-            --theme-active-bg: #EEF2FF;
-            --theme-active-text: #4318FF;
-            --theme-shadow: 0 4px 15px rgba(0,0,0,0.03);
-            --theme-shadow-sidebar: 2px 0 10px rgba(0,0,0,0.03);
-            --theme-blue-btn: #EEF2FF;
-            --theme-blue-btn-hover: #E0E7FF;
-        }
-
-        [data-theme="dark"] {
-            --theme-bg: #070707;
-            --theme-sidebar: rgba(0,0,0,0.8);
-            --theme-sidebar-border: 1px solid rgba(255,255,255,0.1);
-            --theme-text-main: #F5F5F5;
-            --theme-text-muted: rgba(255,255,255,0.6);
-            --theme-border: rgba(255,255,255,0.1);
-            --theme-card: rgba(255,255,255,0.02);
-            --theme-input-bg: rgba(255,255,255,0.05);
-            --theme-hover: rgba(255,255,255,0.04);
-            --theme-active-bg: rgba(255,255,255,0.08);
-            --theme-active-text: #F5F5F5;
-            --theme-shadow: none;
-            --theme-shadow-sidebar: none;
-            --theme-blue-btn: rgba(255,255,255,0.05);
-            --theme-blue-btn-hover: rgba(255,255,255,0.1);
-        }
-        
-        body[data-theme="dark"] {
-            background-image: radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 40%),
-                              radial-gradient(circle at bottom left, rgba(255,255,255,0.02), transparent 40%);
-        }
-
-        /* ─── Dashboard Layout CSS ─── */
-        body {
-            height: 100vh;
-            overflow: hidden;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            background-color: var(--theme-bg);
-            color: var(--theme-text-main);
-            transition: background-color 0.3s, color 0.3s;
-        }
-        .dashboard-layout {
-            display: flex;
-            width: 100%;
-            height: 100vh;
-        }
-        .sidebar {
-            width: 260px;
-            background: var(--theme-sidebar);
-            border-right: var(--theme-sidebar-border);
-            display: flex;
-            flex-direction: column;
-            padding: 2rem 1.5rem;
-            flex-shrink: 0;
-            position: relative;
-            box-shadow: var(--theme-shadow-sidebar);
-            z-index: 10;
-            transition: background 0.3s;
-        }
-        .sidebar-logo {
-            margin-bottom: 3rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .sidebar-logo .logo {
-            font-size: 1.4rem;
-            font-weight: 700;
-            text-decoration: none;
-            color: var(--theme-text-main);
-            letter-spacing: 0.05em;
-        }
-        .version-badge {
-            font-size: 0.55rem;
-            border: 1px solid var(--theme-border);
-            color: var(--theme-text-muted);
-            padding: 0.1rem 0.3rem;
-            border-radius: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            font-weight: 600;
-        }
-        .sidebar-nav {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            flex-grow: 1;
-        }
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            padding: 0.8rem 1rem;
-            text-decoration: none;
-            color: var(--theme-text-muted);
-            font-size: 0.95rem;
-            font-weight: 500;
-            border-radius: 12px;
-            transition: all 0.2s ease;
-        }
-        .nav-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .nav-icon svg {
-            width: 20px;
-            height: 20px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2;
-        }
-        .nav-item:hover:not(.disabled) {
-            background: var(--theme-hover);
-            color: var(--theme-text-main);
-        }
-        .nav-item.active {
-            background: var(--theme-active-bg);
-            color: var(--theme-active-text);
-            font-weight: 600;
-        }
-        .nav-item.disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            justify-content: space-between;
-        }
-        .soon-badge {
-            font-size: 0.55rem;
-            background: var(--theme-hover);
-            color: var(--theme-text-muted);
-            padding: 0.2rem 0.5rem;
-            border-radius: 100px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-weight: 600;
-        }
-        .sidebar-footer {
-            border-top: 1px solid var(--theme-border);
-            padding-top: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-        .user-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: var(--theme-active-bg);
-            color: var(--theme-active-text);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .user-avatar svg {
-            width: 16px;
-            height: 16px;
-            stroke: currentColor;
-            fill: none;
-            stroke-width: 2;
-        }
-        .user-email {
-            font-size: 0.8rem;
-            color: var(--theme-text-muted);
-            font-weight: 500;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .logout-btn {
-            background: var(--theme-input-bg);
-            border: 1px solid var(--theme-border);
-            color: #E11D48;
-            padding: 0.7rem;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-        .logout-btn:hover {
-            background: var(--theme-hover);
-            color: #BE123C;
-        }
-        .theme-toggle-btn {
-            background: transparent;
-            border: 1px solid var(--theme-border);
-            color: var(--theme-text-muted);
-            padding: 0.5rem;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            width: 100%;
-            margin-top: 0.5rem;
-        }
-        .theme-toggle-btn:hover {
-            background: var(--theme-hover);
-            color: var(--theme-text-main);
-        }
-        .dashboard-content {
-            flex-grow: 1;
-            overflow-y: auto;
-            background: transparent;
-        }
-        
-        .dashboard-view {
-            display: none;
-        }
-        .dashboard-view.active-view {
-            display: block;
-        }
-
-        @media (max-width: 768px) {
-            body { height: auto; overflow: auto; }
-            .dashboard-layout {
-                flex-direction: column;
-                height: auto;
-            }
-            .sidebar {
-                width: 100%;
-                border-right: none;
-                border-bottom: 1px solid var(--border-color);
-                padding: 1.5rem;
-            }
-            .sidebar-nav {
-                flex-direction: row;
-                flex-wrap: wrap;
-            }
-            .nav-item {
-                flex: 1;
-                justify-content: center;
-                font-size: 0.85rem;
-                padding: 0.6rem;
-            }
-            .dashboard-content {
-                overflow: visible;
-            }
-            .sidebar-logo {
-                margin-bottom: 1.5rem;
-            }
-            .soon-badge { display: none; }
-        }
-
-        #dashboard-section {
-            display: none;
-            margin-bottom: 3rem;
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        .metric-card {
-            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 16px;
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        .metric-icon {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        .metric-title {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .metric-value {
-            font-size: 2rem;
-            font-weight: 700;
-            font-family: var(--font-heading);
-            color: var(--text-primary);
-        }
-        .insight-card {
-            background: linear-gradient(90deg, rgba(255, 193, 7, 0.05) 0%, rgba(255, 152, 0, 0.05) 100%);
-            border: 1px solid rgba(255, 193, 7, 0.2);
-            border-radius: 16px;
-            padding: 1.5rem;
-            display: flex;
-            gap: 1.5rem;
-            align-items: flex-start;
-        }
-        .insight-icon {
-            font-size: 2.5rem;
-            background: rgba(255, 193, 7, 0.1);
-            padding: 1rem;
-            border-radius: 50%;
-        }
-        .insight-content h4 {
-            margin: 0 0 0.5rem 0;
-            font-size: 1.1rem;
-            color: #FFC107;
-            font-family: var(--font-heading);
-        }
-        .insight-content p {
-            margin: 0;
-            font-size: 0.95rem;
-            line-height: 1.6;
-            color: var(--text-secondary);
-        }
-
-        /* ─── History Section ─── */
-        #history-section {
-            display: none;
-            padding: 2vw 0 1vw;
-        }
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        .history-header h3 {
-            font-family: var(--font-heading);
-            font-size: 1.4rem;
-            margin: 0;
-        }
-        .history-clear-btn {
-            font-size: 0.8rem;
-            padding: 0.3rem 0.9rem;
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 100px;
-            background: transparent;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .history-clear-btn:hover {
-            border-color: #f44336;
-            color: #f44336;
-        }
-        .history-card {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1rem 1.5rem;
-            margin-bottom: 0.75rem;
-            transition: border-color 0.2s;
-            flex-wrap: wrap;
-        }
-        .history-card:hover { border-color: rgba(255,255,255,0.15); }
-        .history-card-title {
-            font-size: 0.95rem;
-            font-weight: 500;
-            margin-bottom: 0.25rem;
-        }
-        .history-card-meta {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
-        .history-card-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-shrink: 0;
-        }
-        .hist-open-btn {
-            padding: 0.3rem 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 100px;
-            background: transparent;
-            color: var(--text-primary);
-            font-size: 0.82rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .hist-open-btn:hover {
-            background: var(--text-primary);
-            color: var(--bg-color);
-        }
-        .hist-delete-btn {
-            padding: 0.3rem 0.7rem;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 100px;
-            background: transparent;
-            color: var(--text-secondary);
-            font-size: 0.82rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .hist-delete-btn:hover {
-            border-color: #f44336;
-            color: #f44336;
-        }
-        /* End Dashboard Section */
-        
-        /* OVERRIDE STYLES FOR PREMIUM */
-        .upload-zone {
-            border: 2px dashed var(--theme-border);
-            background: var(--theme-card);
-            border-radius: 16px;
-            padding: 3rem 2rem;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-        .upload-zone:hover {
-            border-color: var(--theme-text-muted);
-            background: var(--theme-hover);
-            transform: translateY(-2px);
-        }
-        .upload-icon svg {
-            width: 48px; height: 48px; fill: none; stroke: var(--theme-text-muted); stroke-width: 1.5; margin-bottom: 1rem;
-        }
-        .settings-grid {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 1.5rem;
-            max-width: 800px;
-            margin: 0 auto 2.5rem;
-            background: var(--theme-card);
-            border: none;
-            box-shadow: var(--theme-shadow);
-            border-radius: 16px;
-            padding: 1rem 1.5rem;
-            flex-wrap: wrap;
-            transition: background 0.3s;
-        }
-        .managers-block {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            border: none;
-            background: transparent;
-            padding: 0;
-            white-space: nowrap;
-        }
-        .managers-block label {
-            color: var(--theme-text-muted);
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-        .managers-block input, .managers-block select {
-            border-radius: 8px;
-            border: 1px solid var(--theme-border);
-            background: var(--theme-input-bg);
-            font-family: inherit;
-            color: var(--theme-text-main);
-            padding: 0.5rem 0.8rem;
-            outline: none;
-            transition: all 0.2s;
-        }
-        .managers-block input:focus, .managers-block select:focus {
-            border-color: var(--theme-active-text);
-            background: var(--theme-card);
-        }
-        .full-width-setting {
-            flex-grow: 1;
-            min-width: 300px;
-        }
-        .full-width-setting input {
-            width: 100%;
-        }
-        .metric-card {
-            border-radius: 16px;
-            background: var(--theme-card);
-            border: none;
-            padding: 1.5rem;
-            box-shadow: var(--theme-shadow);
-            transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
-        }
-        .metric-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--theme-shadow-sidebar);
-            background: var(--theme-hover);
-        }
-        .metric-icon svg { width: 26px; height: 26px; stroke: var(--theme-active-text); fill: none; stroke-width: 2; opacity: 1;}
-        .metric-title {
-            color: var(--theme-text-muted);
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        .metric-value {
-            color: var(--theme-text-main);
-            font-weight: 700;
-            margin-top: 0.3rem;
-        }
-        .insight-card {
-            border-radius: 16px;
-            background: rgba(255, 193, 7, 0.05);
-            border: 1px solid rgba(255, 193, 7, 0.2);
-            padding: 1.5rem;
-            box-shadow: var(--theme-shadow);
-        }
-        .insight-icon svg { width: 32px; height: 32px; stroke: #D97706; fill: none; stroke-width: 1.5; }
-        .insight-content h4 { color: #92400E; }
-        .insight-content p { color: #B45309; }
-        .lead-card {
-            border-radius: 16px;
-            border: 1px solid var(--theme-border);
-            background: var(--theme-card);
-            box-shadow: var(--theme-shadow);
-            transition: background 0.3s;
-        }
-        .history-card {
-            border-radius: 16px;
-            border: 1px solid var(--theme-border);
-            background: var(--theme-card);
-            box-shadow: var(--theme-shadow);
-        }
-        .history-header h3 { color: var(--theme-text-main); }
-        .history-card-title { color: var(--theme-text-main); }
-        .history-card-meta { color: var(--theme-text-muted); }
-        .hist-open-btn, .hist-delete-btn, .history-clear-btn {
-            border-radius: 8px; font-weight: 600;
-        }
-        .manager-tab, .badge, .manager-badge {
-            border-radius: 100px; font-weight: 600;
-        }
-        
-        .hero-title-wrap {
-            font-size: 2.2rem;
-            margin-bottom: 0.5rem;
-            font-weight: 700;
-            color: var(--theme-text-main);
-        }
-        .section-title {
-            color: var(--theme-text-main);
-            font-weight: 700;
-        }
-        .section-subtitle {
-            color: var(--theme-text-muted);
-        }
-        .hero-desc {
-            font-size: 1rem;
-            color: var(--theme-text-muted);
-            max-width: 600px;
-            margin: 0 auto 2.5rem;
-        }
-        .shyraq-hero {
-            padding-top: 4rem;
-        }
-        .hero::before {
-            display: none !important;
-        }
-        .copy-numbers-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: var(--theme-blue-btn);
-            border: none;
-            color: var(--theme-active-text);
-            padding: 0.6rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-        .copy-numbers-btn:hover {
-            background: var(--theme-blue-btn-hover);
-        }
-        .upload-text {
-            color: var(--theme-text-main);
-            font-weight: 600;
-        }
-        .upload-subtext {
-            color: var(--theme-text-muted);
-        }
-        .history-clear-btn {
-            background: var(--theme-input-bg);
-            color: #E11D48;
-            border: 1px solid var(--theme-border);
-            padding: 0.5rem 1rem;
-        }
-        .history-clear-btn:hover { background: var(--theme-hover); }
-        .footer-bottom {
-            color: var(--theme-text-muted);
-        }
-        .lead-name { color: var(--theme-text-main) !important; }
-        .lead-contact { color: var(--theme-text-muted) !important; }
-        .lead-need { color: var(--theme-text-muted) !important; }
-        .lead-verdict { color: var(--theme-text-main) !important; }
-        
-        .primary-btn {
-            background: var(--theme-blue-btn);
-            color: var(--theme-active-text);
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        .primary-btn:hover {
-            background: var(--theme-blue-btn-hover);
-        }
-        .wa-direct-btn {
-            background: #DCFCE7 !important;
-            color: #16A34A !important;
-        }
-        .wa-direct-btn:hover {
-            background: #BBF7D0 !important;
-        }
-    </style>
+    <link rel="stylesheet" href="./css/app.css">
 </head>
-<body>
+<body data-theme="dark">
 
-    <div class="dashboard-layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-logo">
-                <a href="index.html" class="logo">shaikh</a>
-                <span class="version-badge">SYS.01</span>
-            </div>
-            
-            <nav class="sidebar-nav">
+    <div class="glass-orb orb-1"></div>
+    <div class="glass-orb orb-2"></div>
+    <div class="glass-orb orb-3"></div>
+
+    <!-- Glass Top Bar -->
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a href="index.html" class="topbar-logo">shaikh<span class="version-badge">SYS.01</span></a>
+            <nav class="topbar-nav">
                 <a href="#analyzer" class="nav-item active">
-                    <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
                     ИИ-Анализ
                 </a>
-                <a href="#crm" class="nav-item">
-                    <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span>
-                    CRM Доска
+                <a href="#agents" class="nav-item">
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 2a5 5 0 0 1 5 5v3a5 5 0 0 1-10 0V7a5 5 0 0 1 5-5z"/><path d="M4 11v1a8 8 0 0 0 16 0v-1"/><line x1="12" y1="20" x2="12" y2="22"/></svg></span>
+                    Агенты
                 </a>
                 <a href="#scripts" class="nav-item disabled">
-                    <span class="nav-icon"><svg viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
-                    Генератор скриптов <span class="soon-badge">Скоро</span>
+                    Скрипты <span class="soon-badge">Скоро</span>
+                </a>
+                <a href="#scripts" class="nav-item disabled">
+                    Скрипты <span class="soon-badge">Скоро</span>
                 </a>
             </nav>
-
-            <div class="sidebar-footer">
-                <div class="user-info">
+            <div class="topbar-right">
+                <div class="user-chip">
                     <div class="user-avatar"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
                     <span id="user-email" class="user-email">Загрузка...</span>
                 </div>
-                <button id="logout-btn" class="logout-btn">Выйти</button>
-                <button id="theme-toggle-btn" class="theme-toggle-btn">
-                    <svg class="sun-icon" style="display:none;" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                    <svg class="moon-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                    <span id="theme-label" style="margin-left:8px; font-size:13px; font-weight:500;">Тёмная тема</span>
-                </button>
+                <button class="island island-sm logout-trigger">Выйти</button>
             </div>
-        </aside>
+        </div>
+    </header>
 
-        <!-- Main Content Area -->
-        <main class="dashboard-content">
+    <!-- Mobile Dock -->
+    <nav class="mobile-dock">
+        <a href="#analyzer" class="nav-item active">ИИ-Анализ</a>
+        <a href="#agents" class="nav-item">Агенты</a>
+        <a href="index.html" class="dock-link">Сайт</a>
+        <button class="dock-link logout-trigger">Выйти</button>
+    </nav>
+
+    <main class="app-content">
 
         <!-- AI Analyzer View -->
         <div id="view-analyzer" class="dashboard-view active-view">
-            <!-- Hero & Upload Zone -->
-        <section class="hero shyraq-hero">
-            <div class="container">
-                <h1 class="hero-title-wrap">
-                    <span class="hero-title-line"><span class="reveal-up hero-reveal">AI Анализ лидов</span></span>
-                </h1>
-                <p class="hero-desc fade-in hero-reveal" style="margin: 0 auto;">
-                    Загрузите выгрузку зрителей вебинара (CSV или PDF). Искусственный интеллект проанализирует вовлеченность и найдет самых "теплых" клиентов.
-                </p>
+            <section class="page-hero">
+                <h1 class="grad-text">AI Анализ лидов</h1>
+                <p>Загрузите выгрузку зрителей вебинара (CSV или PDF). Искусственный интеллект проанализирует вовлеченность и найдет самых «теплых» клиентов.</p>
+            </section>
 
-                <!-- AI Settings -->
-                <div class="settings-grid fade-in hero-reveal" style="transition-delay: 0.3s;">
-                    <div class="managers-block">
-                        <label for="managers-count">Менеджеров:</label>
-                        <input type="number" id="managers-count" value="1" min="1" max="20">
-                    </div>
-                    <div class="managers-block">
-                        <label for="ai-strictness">Строгость отсева:</label>
-                        <select id="ai-strictness">
-                            <option value="high">Высокая (90%+)</option>
-                            <option value="medium" selected>Средняя (50%+)</option>
-                            <option value="low">Низкая (20%+)</option>
-                        </select>
-                    </div>
-                    <div class="managers-block full-width-setting">
-                        <label for="ai-context">Продукт вебинара (контекст):</label>
-                        <input type="text" id="ai-context" placeholder="Введите название курса, продукта и т.д...">
-                    </div>
+            <!-- AI Settings -->
+            <div class="settings-grid glass">
+                <div class="managers-block">
+                    <label for="managers-count">Менеджеров</label>
+                    <input type="number" id="managers-count" value="1" min="1" max="20">
                 </div>
-
-                <!-- Drag & Drop Zone -->
-                <div class="upload-zone interactive fade-in hero-reveal" id="drop-zone" style="transition-delay: 0.4s;">
-                    <div class="upload-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
-                    <div class="upload-text">Перетащите CSV или PDF файл сюда</div>
-                    <div class="upload-subtext">или нажмите для выбора файла</div>
-                    <input type="file" id="file-input" accept=".csv, .pdf">
-                    
-                    <div class="loading-overlay">
-                        <div class="spinner"></div>
-                        <div>AI проводит глубокий анализ...</div>
-                    </div>
+                <div class="managers-block">
+                    <label for="ai-strictness">Строгость отсева</label>
+                    <select id="ai-strictness">
+                        <option value="high">Высокая (90%+)</option>
+                        <option value="medium" selected>Средняя (50%+)</option>
+                        <option value="low">Низкая (20%+)</option>
+                    </select>
+                </div>
+                <div class="managers-block full-width-setting">
+                    <label for="ai-context">Продукт вебинара</label>
+                    <input type="text" id="ai-context" placeholder="Название курса, продукта...">
                 </div>
             </div>
-        </section>
 
-        <!-- History Section -->
-        <section id="history-section" class="section" style="padding-top: 0;">
-            <div class="container">
+            <!-- Drag & Drop Zone -->
+            <div class="upload-zone" id="drop-zone">
+                <div class="upload-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+                <div class="upload-text">Перетащите CSV или PDF файл сюда</div>
+                <div class="upload-subtext">или нажмите для выбора файла</div>
+                <input type="file" id="file-input" accept=".csv, .pdf">
+
+                <div class="loading-overlay">
+                    <div class="spinner"></div>
+                    <div>AI проводит глубокий анализ...</div>
+                </div>
+            </div>
+
+            <!-- History -->
+            <section id="history-section">
                 <div class="history-header">
                     <h3>История анализов</h3>
-                    <button class="history-clear-btn" onclick="window.__clearAllSessions()">Очистить всё</button>
+                    <button class="hist-open-btn" onclick="window.__clearAllSessions()">Очистить всё</button>
                 </div>
                 <div id="history-list"></div>
-            </div>
-        </section>
+            </section>
 
-        <!-- Results Section -->
-        <section id="results-section" class="section">
-            <div class="container">
-                <div class="results-header fade-in reveal-trigger" style="display: flex; justify-content: space-between; align-items: center;">
+            <!-- Results -->
+            <section id="results-section">
+                <div class="results-header">
                     <div>
                         <h2 class="section-title">Результаты анализа</h2>
-                        <p class="section-subtitle" id="results-subtitle" style="margin-bottom: 0;">Горячие лиды, найденные в выгрузке</p>
+                        <p class="section-subtitle" id="results-subtitle">Горячие лиды, найденные в выгрузке</p>
                     </div>
-                    <button class="copy-numbers-btn" onclick="window.__sendToCrm()">
-                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-                        Добавить в CRM
-                    </button>
-                    <button class="copy-numbers-btn" onclick="window.__copyAllNumbers()">
-                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        Скопировать только номера для рассылки
-                    </button>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                        <button class="island island-sm copy-numbers-btn" onclick="window.__copyAllNumbers()">
+                            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            Скопировать номера
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Dashboard Section -->
+                <!-- Dashboard -->
                 <div id="dashboard-section">
                     <div class="dashboard-grid">
-                        <div class="metric-card">
-                            <div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                        <div class="metric-card glass">
+                            <div class="metric-icon m-blue"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
                             <div class="metric-title">Всего зрителей</div>
                             <div class="metric-value" id="dash-total">0</div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+                        <div class="metric-card glass">
+                            <div class="metric-icon m-green"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
                             <div class="metric-title">Горячих лидов</div>
                             <div class="metric-value" id="dash-hot">0</div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+                        <div class="metric-card glass">
+                            <div class="metric-icon m-violet"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
                             <div class="metric-title">Конверсия</div>
                             <div class="metric-value" id="dash-conv">0%</div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+                        <div class="metric-card glass">
+                            <div class="metric-icon m-amber"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
                             <div class="metric-title">Температура</div>
-                            <div class="metric-value" id="dash-temp" style="font-size: 1.5rem;">—</div>
+                            <div class="metric-value" id="dash-temp" style="font-size: 1.4rem;">—</div>
                         </div>
                     </div>
                     <div class="insight-card">
@@ -894,116 +155,69 @@
 
                 <!-- Manager Filter Tabs -->
                 <div class="manager-tabs" id="manager-tabs"></div>
-                
-                <div class="results-grid" id="results-grid">
-                    <!-- Cards will be injected here via JS -->
-                </div>
-            </div>
-        </section>
-        
-            <footer class="footer">
-                <div class="container">
-                    <div class="footer-bottom" style="margin-top: 0; padding-top: 0; border: none;">
-                        <div>SHAIKH Industries © 2026</div>
-                        <div>AI Powered Lead Scoring</div>
-                    </div>
-                </div>
-            </footer>
-        </div> <!-- End of view-analyzer -->
 
-        <!-- CRM View -->
-        <div id="view-crm" class="dashboard-view">
-            <section class="section" style="padding-top: 4rem;">
-                <div class="container">
-                    <div class="results-header">
-                        <div>
-                            <h2 class="section-title">CRM Доска</h2>
-                            <p class="section-subtitle" style="margin-bottom: 0;">Ведите сделки: перетаскивайте карточки между колонками, нажимайте на карточку для деталей</p>
-                        </div>
-                    </div>
-                    <div id="crm-board" class="crm-board">
-                        <div class="loading">Загрузка CRM...</div>
-                    </div>
-                </div>
+                <div class="results-grid" id="results-grid"></div>
             </section>
         </div>
-        </main> <!-- End of dashboard-content -->
-    </div> <!-- End of dashboard-layout -->
 
-    <!-- CRM Lead Modal -->
-    <div id="crm-modal" class="crm-modal">
-        <div class="crm-modal-card">
-            <button id="crm-modal-close" class="crm-modal-close">✕</button>
-            <h3 id="crm-modal-name"></h3>
-            <div class="crm-modal-contact" id="crm-modal-contact"></div>
-            <div class="crm-modal-need" id="crm-modal-need"></div>
-            <label for="crm-status">Статус</label>
-            <select id="crm-status">
-                <option value="new">Новые</option>
-                <option value="contacted">На связи</option>
-                <option value="negotiation">Договор</option>
-                <option value="deal">Сделка</option>
-                <option value="lost">Закрыт</option>
-            </select>
-            <label for="crm-follow-up">Следующий контакт</label>
-            <input type="datetime-local" id="crm-follow-up">
-            <label for="crm-notes">Заметки</label>
-            <textarea id="crm-notes" placeholder="Что обсуждали, что обещали..."></textarea>
-            <div class="crm-modal-actions">
-                <a id="crm-wa" class="crm-btn crm-btn-green" target="_blank">WhatsApp</a>
-                <button id="crm-delete" class="crm-btn crm-btn-danger">Удалить</button>
-                <button id="crm-save" class="crm-btn crm-btn-primary">Сохранить</button>
-            </div>
+        <!-- Agents View -->
+        <div id="view-agents" class="dashboard-view">
+            <section style="padding-top: 1rem;">
+                <div class="results-header">
+                    <div>
+                        <h2 class="section-title grad-text">Мои агенты</h2>
+                        <p class="section-subtitle" style="margin-bottom: 0;">AI-боты для Telegram и WhatsApp. Добавляйте агентов и управляйте ими.</p>
+                    </div>
+                    <button class="island island-sm" id="agent-add-btn">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Добавить агента
+                    </button>
+                </div>
+                <div id="agents-grid" class="agents-grid"></div>
+            </section>
+        </div>
+
+        <footer class="footer">
+            SHAIKH Industries © 2026 · AI Powered Lead Scoring
+        </footer>
+    </main>
+
+    <!-- Add Agent Modal -->
+    <div id="agent-modal" class="agent-modal">
+        <div class="agent-modal-card glass">
+            <button id="agent-modal-close" class="agent-modal-close">✕</button>
+            <h3>Новый агент</h3>
+            <form id="agent-form">
+                <label for="agent-platform">Платформа</label>
+                <div class="agent-platforms" style="margin-bottom: 1rem;">
+                    <button type="button" class="platform-btn active" data-platform="telegram">Telegram</button>
+                    <button type="button" class="platform-btn" data-platform="whatsapp">WhatsApp</button>
+                </div>
+                <input type="hidden" id="agent-platform" value="telegram">
+                <label for="agent-name">Имя агента</label>
+                <input type="text" id="agent-name" placeholder="Например: AI-менеджер продаж" required>
+                <label for="agent-token">Токен / данные подключения</label>
+                <input type="text" id="agent-token" placeholder="123456:ABC-DEF..." required>
+                <p class="agent-hint" id="agent-hint">Токен бота от @BotFather в Telegram</p>
+                <div class="agent-modal-actions">
+                    <button type="submit" class="agent-btn agent-btn-primary">Добавить</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-    
-    <!-- Custom Scripts -->
+
+    <script src="./js/shyraq.js"></script>
+    <script src="./js/agents.js"></script>
+
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            // THEME LOGIC
-            const savedTheme = localStorage.getItem('shyraq_theme') || 'light';
-            if (savedTheme === 'dark') {
-                document.body.setAttribute('data-theme', 'dark');
-            }
-            updateThemeBtn();
-
-            document.getElementById('theme-toggle-btn').addEventListener('click', () => {
-                const current = document.body.getAttribute('data-theme');
-                if (current === 'dark') {
-                    document.body.removeAttribute('data-theme');
-                    localStorage.setItem('shyraq_theme', 'light');
-                } else {
-                    document.body.setAttribute('data-theme', 'dark');
-                    localStorage.setItem('shyraq_theme', 'dark');
-                }
-                updateThemeBtn();
-            });
-
-            function updateThemeBtn() {
-                const isDark = document.body.getAttribute('data-theme') === 'dark';
-                const sun = document.querySelector('.sun-icon');
-                const moon = document.querySelector('.moon-icon');
-                const label = document.getElementById('theme-label');
-                
-                if (isDark) {
-                    sun.style.display = 'block';
-                    moon.style.display = 'none';
-                    label.textContent = 'Светлая тема';
-                } else {
-                    sun.style.display = 'none';
-                    moon.style.display = 'block';
-                    label.textContent = 'Тёмная тема';
-                }
-            }
-            
-            // USER LOGIC
+        document.addEventListener('DOMContentLoaded', () => {
             const token = localStorage.getItem('auth_token');
             const email = localStorage.getItem('auth_email');
-            
+
             if (!token) {
                 window.location.href = 'login.html';
             } else {
@@ -1011,24 +225,14 @@
                 if (userEmailEl) userEmailEl.textContent = email || 'User';
             }
 
-            const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', () => {
+            document.querySelectorAll('.logout-trigger').forEach(btn => {
+                btn.addEventListener('click', () => {
                     localStorage.removeItem('auth_token');
                     localStorage.removeItem('auth_email');
                     window.location.href = 'login.html';
                 });
-            }
-        });
-    </script>
+            });
 
-
-    <!-- Custom Scripts -->
-    <script src="./js/shyraq.js"></script>
-    <script src="./js/crm.js"></script>
-    <script>
-        // Disable old smooth scroll for dashboard layout, as we use native scrolling inside dashboard-content
-        document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 document.querySelectorAll('.hero-reveal').forEach((el, i) => {
                     setTimeout(() => el.classList.add('is-visible'), i * 150);
