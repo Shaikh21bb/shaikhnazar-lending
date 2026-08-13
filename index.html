@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>SHAIKH Industries — Minimal Premium</title>
     <meta name="description" content="Премиальные сайты и AI-системы. Ваш бизнес на автопилоте.">
     <!-- Google Fonts -->
@@ -12,6 +12,11 @@
     <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
+
+    <!-- Aurora Orbs (glass background for mobile) -->
+    <div class="glass-orb orb-1"></div>
+    <div class="glass-orb orb-2"></div>
+    <div class="glass-orb orb-3"></div>
 
     <!-- Header (Fixed Outside Scroll Container) -->
     <header>
@@ -24,6 +29,9 @@
                 </div>
                 <a href="login.html" class="nav-contact interactive" style="font-weight: 500;">Войти в систему</a>
                 <a href="#contact" class="btn btn-outline interactive" style="padding: 0.4rem 1.2rem; margin-left: 1rem;" data-i18n="nav.contact">Связаться</a>
+                <button class="menu-btn" id="menu-btn" aria-label="Меню" aria-expanded="false">
+                    <span></span><span></span><span></span>
+                </button>
             </div>
         </div>
     </header>
@@ -166,6 +174,29 @@
 
     </main>
 
+    <!-- Mobile Glass Menu -->
+    <div class="mobile-menu" id="mobile-menu">
+        <div class="mobile-menu-inner">
+            <nav class="mobile-nav">
+                <a href="#services" class="interactive" data-i18n="nav.services">Услуги</a>
+                <a href="#portfolio" class="interactive" data-i18n="nav.portfolio">Работы</a>
+                <a href="login.html" class="interactive" data-i18n="nav.login">Войти в систему</a>
+                <a href="#contact" class="interactive" data-i18n="nav.contact">Связаться</a>
+            </nav>
+            <div class="mobile-menu-social">
+                <a href="https://t.me/Shaqtg" target="_blank" class="btn btn-outline interactive" data-i18n="cta.btn_tg">Telegram</a>
+                <a href="https://www.instagram.com/shaikhhnazar?igsh=MTlvdHhwOGZueWdubQ==" target="_blank" class="btn btn-outline interactive" data-i18n="cta.btn_ig">Instagram</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Floating Glass Dock -->
+    <div class="mobile-dock">
+        <a href="login.html" class="interactive" data-i18n="dock.login">Войти</a>
+        <a href="https://t.me/Shaqtg" target="_blank" class="interactive">TG</a>
+        <a href="#contact" class="primary interactive" data-i18n="hero.cta">Обсудить проект</a>
+    </div>
+
     <script>
 /* =========================================
    PORTFOLIO DATA
@@ -191,6 +222,10 @@ const PORTFOLIO_PROJECTS = [
 const translations = {
     ru: {
         'nav.contact': 'Связаться',
+        'nav.services': 'Услуги',
+        'nav.portfolio': 'Работы',
+        'nav.login': 'Войти в систему',
+        'dock.login': 'Войти',
         'hero.title1': 'Бизнес в цифре.',
         'hero.title2': 'На автопилоте.',
         'hero.subtitle': 'Премиальная разработка и внедрение искусственного интеллекта. Эстетика, лишенная визуального шума. Инженерия, работающая безупречно.',
@@ -224,6 +259,10 @@ const translations = {
     },
     kz: {
         'nav.contact': 'Байланыс',
+        'nav.services': 'Қызметтер',
+        'nav.portfolio': 'Жұмыстар',
+        'nav.login': 'Жүйеге кіру',
+        'dock.login': 'Кіру',
         'hero.title1': 'Цифрлы бизнес.',
         'hero.title2': 'Автопилотта.',
         'hero.subtitle': 'Жасанды интеллектіні енгізу және премиум әзірлеу. Артық визуалды шусыз эстетика. Мінсіз жұмыс істейтін инженерия.',
@@ -434,6 +473,26 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.lang-btn').forEach(btn => {
         btn.addEventListener('click', () => applyTranslation(btn.dataset.lang));
     });
+
+    /* =========================================
+       MOBILE GLASS MENU TOGGLE
+    ========================================= */
+    const menuBtn = document.getElementById('menu-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (menuBtn && mobileMenu) {
+        menuBtn.addEventListener('click', () => {
+            const open = document.body.classList.toggle('menu-open');
+            menuBtn.classList.toggle('active', open);
+            menuBtn.setAttribute('aria-expanded', open);
+        });
+        mobileMenu.querySelectorAll('a').forEach(a => {
+            a.addEventListener('click', () => {
+                document.body.classList.remove('menu-open');
+                menuBtn.classList.remove('active');
+                menuBtn.setAttribute('aria-expanded', 'false');
+            });
+        });
+    }
 });
     </script>
 </body>
