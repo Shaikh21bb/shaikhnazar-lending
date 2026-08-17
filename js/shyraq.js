@@ -461,6 +461,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         Скопировать
                     </button>
+
+                    <!-- Assign Task Button -->
+                    <button class="task-lead-btn" style="flex:1; padding:10px; font-size:14px; display:flex; justify-content:center; align-items:center; gap:8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        Задача
+                    </button>
+
+                    <!-- Generate Script Button -->
+                    <button class="script-lead-btn" style="flex:1; padding:10px; font-size:14px; display:flex; justify-content:center; align-items:center; gap:8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Скрипт
+                    </button>
                 </div>
             `;
 
@@ -492,6 +504,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     copyBtn.style.color = '#fff';
                     setTimeout(() => { copyBtn.innerHTML = orig; copyBtn.style.background = ''; copyBtn.style.color = ''; }, 2000);
                 }).catch(() => alert('Не удалось скопировать текст.'));
+            });
+
+            const taskBtn = card.querySelector('.task-lead-btn');
+            taskBtn.addEventListener('click', () => {
+                if (typeof window.__openLeadTask === 'function') {
+                    window.__openLeadTask({ name: name, contact: contact, manager: manager });
+                } else {
+                    alert('Перейдите во вкладку «Задачи» и создайте задачу вручную.');
+                }
+            });
+
+            const scriptBtn = card.querySelector('.script-lead-btn');
+            scriptBtn.addEventListener('click', () => {
+                if (typeof window.__generateScript === 'function') {
+                    window.__generateScript();
+                } else {
+                    alert('Перейдите во вкладку «Скрипты» и создайте скрипт вручную.');
+                }
             });
 
             resultsGrid.appendChild(card);

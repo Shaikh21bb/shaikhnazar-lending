@@ -27,6 +27,17 @@ export default async function handler(req, res) {
 
         const agent = agents[0];
         const update = await readBody(req);
+
+        // Нажатие кнопки в задаче
+        if (update.callback_query) {
+            try {
+                await handleCallback(agent, update.callback_query);
+            } catch (err) {
+                console.error('Callback error:', err.message);
+            }
+            return res.status(200).json({ ok: true });
+        }
+
         const message = update.message || update.edited_message;
 
         // Важно: дожидаемся обработки ДО ответа — иначе Vercel заморозит функцию
@@ -42,6 +53,43 @@ export default async function handler(req, res) {
         console.error('Telegram webhook error:', error);
         return res.status(500).json({ error: 'Internal error' });
     }
+}
+
+const STATUS_LABEL = { pending: '⏳ Запланировано', confirmed: '✅ Подтверждено', done: '🎉 Выполнено' };
+
+async function handleCallback(agent, callback) {
+    const data = callback.data || '';
+    const m = data.match(/^task:(confirm|done):([0-9a-f-]+)$/i);
+    if (!m) return;
+
+    const action = m[1].toLowerCase();
+    const taskId = m[2];
+    const status = action === 'confirm' ? 'confirmed' : 'done';
+
+    const { res: tRes, body: tasks } = await db(`tasks?select=id,title&id=eq.${encodeURIComponent(taskId)}`);
+    const task = tasks && tasks[0];
+
+    if (tRes.ok && task) {
+        await db(`tasks?id=eq.${encodeURIComponent(taskId)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: status })
+        });
+    }
+
+    const label = action === 'confirm' ? '✅ Задача подтверждена!' : '🎉 Отлично! Задача выполнена.';
+    const text = task
+        ? `${label}\n📌 ${escapeHtml(task.title)}`
+        : label;
+
+    await telegram('answerCallbackQuery', agent.token, {
+        callback_query_id: callback.id,
+        text: label
+    });
+    await telegram('sendMessage', agent.token, {
+        chat_id: callback.message.chat.id,
+        text: text,
+        parse_mode: 'HTML'
+    });
 }
 
 async function replyToMessage(agent, message) {
