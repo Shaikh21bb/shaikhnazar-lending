@@ -32,9 +32,6 @@
                 <a href="#scripts" class="nav-item disabled">
                     Скрипты <span class="soon-badge">Скоро</span>
                 </a>
-                <a href="#scripts" class="nav-item disabled">
-                    Скрипты <span class="soon-badge">Скоро</span>
-                </a>
             </nav>
             <div class="topbar-right">
                 <div class="user-chip">
@@ -175,6 +172,21 @@
                 </div>
                 <div id="agents-grid" class="agents-grid"></div>
             </section>
+
+            <!-- Training Projects -->
+            <section style="padding-top: 2.5rem;">
+                <div class="results-header">
+                    <div>
+                        <h2 class="section-title">Обучение</h2>
+                        <p class="section-subtitle" style="margin-bottom: 0;">Проекты — база знаний, на которой обучаются агенты. Добавьте информацию о будущих проектах, и агенты будут отвечать клиентам на её основе.</p>
+                    </div>
+                    <button class="island island-sm" id="project-add-btn">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Добавить проект
+                    </button>
+                </div>
+                <div id="projects-grid" class="agents-grid"></div>
+            </section>
         </div>
 
         <footer class="footer">
@@ -206,9 +218,42 @@
         </div>
     </div>
 
+    <!-- Project (Training) Modal -->
+    <div id="project-modal" class="agent-modal">
+        <div class="agent-modal-card">
+            <button id="project-modal-close" class="agent-modal-close">✕</button>
+            <h3 id="project-modal-title">Новый проект</h3>
+            <form id="project-form">
+                <label for="project-name">Название проекта</label>
+                <input type="text" id="project-name" placeholder="Например: Курс по трейдингу" required>
+                <label for="project-desc">Краткое описание</label>
+                <input type="text" id="project-desc" placeholder="Что это за проект, кому подходит">
+                <label for="project-knowledge">Обучение (база знаний)</label>
+                <textarea id="project-knowledge" rows="12" placeholder="Всё, что агент должен знать: продукт, цена, условия, скрипты продаж, ответы на частые вопросы..."></textarea>
+                <p class="agent-hint">Чем подробнее и структурированнее база — тем точнее отвечает агент.</p>
+                <input type="hidden" id="project-id">
+                <div class="agent-modal-actions">
+                    <button type="submit" class="agent-btn agent-btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dialogs Modal -->
+    <div id="dialogs-modal" class="agent-modal">
+        <div class="agent-modal-card dialogs-card">
+            <button id="dialogs-modal-close" class="agent-modal-close">✕</button>
+            <h3 id="dialogs-title">Диалоги</h3>
+            <div id="dialogs-body"></div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/supabase.js"></script>
 
     <script src="./js/shyraq.js"></script>
     <script src="./js/agents.js"></script>
