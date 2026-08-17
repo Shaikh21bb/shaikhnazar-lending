@@ -1,4 +1,5 @@
 import { db, telegram, gemini, escapeHtml } from './_lib.js';
+import { runReminders } from './tasks/remind.js';
 
 async function readBody(req) {
     let raw = '';
@@ -47,6 +48,12 @@ export default async function handler(req, res) {
             } catch (err) {
                 console.error('Reply error:', err.message);
             }
+        }
+        // Фоновая проверка напоминаний по задачам (throttle внутри)
+        try {
+            await runReminders(false);
+        } catch (err) {
+            console.error('Reminders scan error:', err.message);
         }
         return res.status(200).json({ ok: true });
     } catch (error) {
