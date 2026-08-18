@@ -1912,3 +1912,110 @@ input, select, textarea {
 
     .mobile-dock .dock-link:active { transform: scale(0.96); }
 }
+/* ─── Stats view ─────────────────────────────────────────── */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.stat-card {
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.78rem;
+    color: var(--muted, #9aa3b2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.stat-value {
+    font-size: 2.1rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.stat-sub {
+    font-size: 0.72rem;
+    color: var(--muted, #9aa3b2);
+}
+
+.stats-panel {
+    padding: 1.2rem;
+    overflow: hidden;
+}
+
+.stat-task-row {
+    display: flex;
+    gap: 1.2rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+    font-size: 0.9rem;
+}
+
+.stat-task-row span { color: var(--muted, #9aa3b2); }
+.stat-task-row b { font-size: 1.1rem; }
+
+.stat-bar {
+    height: 8px;
+    border-radius: 99px;
+    background: rgba(148, 163, 184, 0.15);
+    overflow: hidden;
+}
+
+.stat-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+    transition: width 0.4s ease;
+}
+
+.stat-bar-label {
+    margin: 0.4rem 0 1rem;
+    font-size: 0.75rem;
+    color: var(--muted, #9aa3b2);
+}
+
+.stat-alerts { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.stat-alert {
+    padding: 0.55rem 0.8rem;
+    border-radius: 0.6rem;
+    background: rgba(148, 163, 184, 0.08);
+    font-size: 0.85rem;
+}
+
+.stat-alert-bad {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+}
+
+.stat-alert-good {
+    background: rgba(34, 197, 94, 0.1);
+    color: #4ade80;
+}
+
+.stat-dialog-row,
+.stat-script-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.stat-dialog-row:last-child,
+.stat-script-row:last-child { border-bottom: none; }
+
+.stat-dialog-name { font-weight: 500; }
+.stat-dialog-count { font-size: 0.82rem; color: var(--muted, #9aa3b2); }
+
+.stat-script-offer { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stat-script-meta { font-size: 0.75rem; color: var(--muted, #9aa3b2); }

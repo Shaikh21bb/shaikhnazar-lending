@@ -1,0 +1,145 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const grid = document.getElementById('stats-grid');
+    const tasksBox = document.getElementById('stats-tasks');
+    const dialogsBox = document.getElementById('stats-dialogs');
+    const recentBox = document.getElementById('stats-recent-scripts');
+    const refreshBtn = document.getElementById('stats-refresh');
+    if (!grid && !tasksBox) return;
+
+    function esc(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[c]);
+    }
+
+    function fmtDate(iso) {
+        if (!iso) return '—';
+        return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function langLabel(l) {
+        return l === 'kk' ? 'Қазақша' : 'Русский';
+    }
+
+    function buildCard(label, value, sub) {
+        return `<div class="stat-card glass">
+            <div class="stat-label">${esc(label)}</div>
+            <div class="stat-value">${esc(String(value))}</div>
+            ${sub ? `<div class="stat-sub">${esc(sub)}</div>` : ''}
+        </div>`;
+    }
+
+    const isSameDay = (a, b) =>
+        a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+    async function load() {
+        const now = new Date();
+
+        const [agentsR, projectsR, managersR, scriptsR, scriptsRecentR, tasksR, chatsR, msgsR] = await Promise.all([
+            supabaseClient.from('agents').select('id'),
+            supabaseClient.from('projects').select('id'),
+            supabaseClient.from('managers').select('id'),
+            supabaseClient.from('scripts').select('id'),
+            supabaseClient.from('scripts').select('id,offer,created_at,language').order('created_at', { ascending: false }).limit(6),
+            supabaseClient.from('tasks').select('*'),
+            supabaseClient.from('agent_chats').select('chat_id,agent_id'),
+            supabaseClient.from('agent_chats').select('id', { count: 'exact', head: true })
+        ]);
+
+        const agents = agentsR.data || [];
+        const projects = projectsR.data || [];
+        const managers = managersR.data || [];
+        const scripts = scriptsR.data || [];
+        const scriptsRecent = scriptsRecentR.data || [];
+        const tasks = tasksR.data || [];
+        const chats = chatsR.data || [];
+        const msgCount = msgsR.count || 0;
+
+        // ─── Cards ──────────────────────────────────────────
+        grid.innerHTML = [
+            buildCard('Агентов', agents.length, 'Telegram-боты'),
+            buildCard('Проектов', projects.length, 'обучение агентов'),
+            buildCard('Менеджеров', managers.length, 'получают задачи'),
+            buildCard('Скриптов', scripts.length, 'в библиотеке'),
+            buildCard('Диалогов', new Set(chats.map(c => c.chat_id)).size, 'уникальных клиентов'),
+            buildCard('Сообщений', msgCount, 'в переписках агентов')
+        ].join('');
+
+        // ─── Tasks overview ────────────────────────────────
+        const pending = tasks.filter(t => t.status === 'pending');
+        const confirmed = tasks.filter(t => t.status === 'confirmed');
+        const done = tasks.filter(t => t.status === 'done');
+        const active = tasks.filter(t => t.status !== 'done');
+        const overdue = active.filter(t => t.due_at && new Date(t.due_at) < now);
+        const dueToday = active.filter(t => t.due_at && isSameDay(new Date(t.due_at), now));
+
+        const doneRate = tasks.length ? Math.round((done.length / tasks.length) * 100) : 0;
+
+        let taskHtml = `
+            <h3 style="margin: 0 0 1rem;">Задачи</h3>
+            <div class="stat-task-row">
+                <span>Всего</span><b>${tasks.length}</b>
+                <span>В работе</span><b>${pending.length + confirmed.length}</b>
+                <span>Выполнено</span><b>${done.length}</b>
+            </div>
+            <div class="stat-bar"><div class="stat-bar-fill" style="width:${doneRate}%"></div></div>
+            <div class="stat-bar-label">Выполнено ${doneRate}%</div>
+        `;
+        taskHtml += `<div class="stat-alerts">`;
+        if (overdue.length) {
+            taskHtml += `<div class="stat-alert stat-alert-bad">⚠️ Просрочено: <b>${overdue.length}</b> — задачи с прошлым дедлайном</div>`;
+        } else {
+            taskHtml += `<div class="stat-alert stat-alert-good">✓ Просроченных нет</div>`;
+        }
+        taskHtml += dueToday.length
+            ? `<div class="stat-alert">🕒 Дедлайн сегодня: <b>${dueToday.length}</b></div>`
+            : '';
+        taskHtml += pending.length
+            ? `<div class="stat-alert">⏳ Не подтверждено менеджером: <b>${pending.length}</b></div>`
+            : '';
+        taskHtml += `</div>`;
+        tasksBox.innerHTML = taskHtml;
+
+        // ─── Dialogs by agent ──────────────────────────────
+        if (dialogsBox) {
+            const byAgent = {};
+            chats.forEach(c => {
+                const key = c.agent_id || 'unknown';
+                if (!byAgent[key]) byAgent[key] = new Set();
+                byAgent[key].add(c.chat_id);
+            });
+
+            const { data: agentsAll } = await supabaseClient.from('agents').select('id,name');
+            const nameOf = {};
+            (agentsAll || []).forEach(a => nameOf[a.id] = a.name);
+
+            const keys = Object.keys(byAgent);
+            dialogsBox.innerHTML = keys.length
+                ? `<h3 style="margin: 0 0 1rem;">Диалоги по агентам</h3>`
+                  + keys.map(k => `
+                    <div class="stat-dialog-row">
+                        <span class="stat-dialog-name">${esc(nameOf[k] || 'Агент')}</span>
+                        <span class="stat-dialog-count">${byAgent[k].size} клиентов</span>
+                    </div>`).join('')
+                : `<h3 style="margin: 0 0 1rem;">Диалоги</h3><div class="agents-empty">Переписки появятся, когда клиенты напишут вашим агентам.</div>`;
+        }
+
+        // ─── Recent scripts ────────────────────────────────
+        if (recentBox) {
+            recentBox.innerHTML = scriptsRecent.length
+                ? scriptsRecent.map(s => `
+                    <div class="stat-script-row">
+                        <div style="flex:1; min-width:0;">
+                            <div class="stat-script-offer">${esc(s.offer || 'Без названия')}</div>
+                            <div class="stat-script-meta">${langLabel(s.language)} · ${fmtDate(s.created_at)}</div>
+                        </div>
+                        <span class="task-status st-confirmed">${langLabel(s.language)}</span>
+                    </div>`).join('')
+                : '<div class="agents-empty">Скрипты появятся после первой генерации.</div>';
+        }
+    }
+
+    load();
+    if (refreshBtn) refreshBtn.addEventListener('click', () => { load(); refreshBtn.textContent = 'Обновляю...'; setTimeout(() => { refreshBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><polyline points="3 21 3 16 8 16"/></svg> Обновить'; }, 1000); });
+});
