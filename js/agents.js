@@ -380,6 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="text" class="new-chat-input" id="new-chat-id" placeholder="Chat ID клиента в Telegram (напр. 123456789)" list="known-chats">
                 <datalist id="known-chats">${list.map(s => `<option value="${escapeHtml(s.chatId)}">`).join('')}</datalist>
                 <button class="agent-btn" id="new-chat-go" style="flex:0 0 auto; padding:0.55rem 1rem;">Открыть</button>
+                <button class="agent-btn" id="dialogs-export" style="flex:0 0 auto; padding:0.55rem 1rem;" title="Скачать все диалоги в .txt">Экспорт</button>
             </div>
             <div class="dialogs-layout">
                 <div class="dialogs-list" id="dialogs-list">
@@ -409,6 +410,9 @@ document.addEventListener('DOMContentLoaded', () => {
             renderDialogs();
         });
 
+        const exportBtn = document.getElementById('dialogs-export');
+        if (exportBtn) exportBtn.addEventListener('click', () => exportDialogs());
+
         const replyInput = document.getElementById('chat-reply-input');
         const replyBtn = document.getElementById('chat-reply-send');
         const sendReply = async () => {
@@ -433,6 +437,50 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         if (replyBtn) replyBtn.addEventListener('click', sendReply);
         if (replyInput) replyInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); } });
+    }
+
+    function exportDialogs() {
+        if (!currentDialogsAgent || dialogsMessages.length === 0) {
+            alert('Пока нет сообщений для экспорта.');
+            return;
+        }
+
+        const sessions = {};
+        dialogsMessages.forEach(m => {
+            if (!sessions[m.chat_id]) sessions[m.chat_id] = [];
+            sessions[m.chat_id].push(m);
+        });
+
+        const lines = [];
+        lines.push(`SHAIKH Industries · Диалоги агента «${currentDialogsAgent.name || ''}»`);
+        lines.push(`Экспорт: ${new Date().toLocaleString('ru-RU')}`);
+        lines.push(`Клиентов: ${Object.keys(sessions).length} · Сообщений: ${dialogsMessages.length}`);
+        lines.push('');
+
+        Object.keys(sessions).sort((a, b) => {
+            const aLast = sessions[a][sessions[a].length - 1].created_at;
+            const bLast = sessions[b][sessions[b].length - 1].created_at;
+            return aLast < bLast ? 1 : -1;
+        }).forEach(chatId => {
+            lines.push(`========================================`);
+            lines.push(`КЛИЕНТ ${chatId} — ${sessions[chatId].length} сообщений`);
+            lines.push(`----------------------------------------`);
+            sessions[chatId].forEach(m => {
+                const time = new Date(m.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                const who = m.role === 'user' ? 'Клиент' : 'Агент';
+                lines.push(`[${time}] ${who}: ${m.text}`);
+            });
+            lines.push('');
+        });
+
+        const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `dialogs_${(currentDialogsAgent.name || 'agent').replace(/[^\wа-яё-]/gi, '_')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
     }
 
     function renderThreadHtml() {
