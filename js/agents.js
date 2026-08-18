@@ -200,6 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <div class="agent-card-actions" style="flex-wrap:wrap;">
                 ${isTelegram ? `<button class="island island-sm js-agent-dialogs">Диалоги</button>` : ''}
+                ${isTelegram ? `<button class="island island-sm js-agent-broadcast">Рассылка</button>` : ''}
                 <button class="island island-sm js-agent-toggle">${isActive ? 'Пауза' : 'Запустить'}</button>
                 ${isTelegram && !isConnected
                     ? `<button class="island island-sm js-agent-connect">Подключить бота</button>`
@@ -250,8 +251,87 @@ document.addEventListener('DOMContentLoaded', () => {
         const dialogsBtn = card.querySelector('.js-agent-dialogs');
         if (dialogsBtn) dialogsBtn.addEventListener('click', () => openDialogs(agent));
 
+        const broadcastBtn = card.querySelector('.js-agent-broadcast');
+        if (broadcastBtn) broadcastBtn.addEventListener('click', () => openBroadcast(agent));
+
         return card;
     }
+
+    /* ─── Broadcast ───────────────────────────────────────────── */
+    async function openBroadcast(agent) {
+        const modal = document.getElementById('broadcast-modal');
+        const agentIdInput = document.getElementById('broadcast-agent-id');
+        const textInput = document.getElementById('broadcast-text');
+        const hint = document.getElementById('broadcast-hint');
+        const result = document.getElementById('broadcast-result');
+        if (!modal || !agentIdInput) return;
+
+        agentIdInput.value = agent.id;
+        document.getElementById('broadcast-title').textContent = `Рассылка · ${agent.name || ''}`;
+        textInput.value = '';
+        result.style.display = 'none';
+        result.innerHTML = '';
+
+        const { data } = await supabaseClient
+            .from(CHATS_TABLE)
+            .select('chat_id')
+            .eq('agent_id', agent.id);
+        const recipients = new Set((data || []).map(r => r.chat_id)).size;
+        hint.textContent = recipients
+            ? `Сообщение придёт ${recipients} клиенту(-ам), которые писали этому агенту.`
+            : 'Пока нет клиентов, которые писали этому агенту. Клиенты появятся после первых сообщений в бота.';
+
+        modal.classList.add('open');
+        setTimeout(() => textInput.focus(), 100);
+    }
+
+    const broadcastModal = document.getElementById('broadcast-modal');
+    const broadcastForm = document.getElementById('broadcast-form');
+
+    if (document.getElementById('broadcast-modal-close')) {
+        document.getElementById('broadcast-modal-close').addEventListener('click', () => broadcastModal.classList.remove('open'));
+    }
+    if (broadcastModal) broadcastModal.addEventListener('click', e => { if (e.target === broadcastModal) broadcastModal.classList.remove('open'); });
+
+    if (broadcastForm) broadcastForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const sendBtn = document.getElementById('broadcast-send');
+        const result = document.getElementById('broadcast-result');
+        const text = document.getElementById('broadcast-text').value.trim();
+        const id = document.getElementById('broadcast-agent-id').value;
+        if (!text) return;
+
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Отправляем...';
+        result.style.display = 'block';
+        result.innerHTML = '<div class="chat-empty" style="padding:0.8rem;"><span class="spinner"></span> Идёт отправка...</div>';
+
+        try {
+            const res = await fetch('/api/telegram/broadcast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, text: text })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Ошибка');
+
+            result.style.display = 'block';
+            result.innerHTML = `<div class="stat-alert ${data.failed ? 'stat-alert-bad' : 'stat-alert-good'}" style="margin-top:0.8rem;">
+                ${data.failed ? '⚠️' : '✅'} Отправлено: <b>${data.sent}</b> из <b>${data.total}</b>${data.failed ? `, ошибок: <b>${data.failed}</b>` : ''}
+            </div>`;
+            sendBtn.textContent = '✔ Отправлено';
+            setTimeout(() => {
+                broadcastModal.classList.remove('open');
+                sendBtn.textContent = 'Отправить рассылку';
+                sendBtn.disabled = false;
+            }, 1800);
+        } catch (err) {
+            result.style.display = 'block';
+            result.innerHTML = `<div class="stat-alert stat-alert-bad" style="margin-top:0.8rem;">Ошибка: ${escapeHtml(err.message)}</div>`;
+            sendBtn.textContent = 'Отправить рассылку';
+            sendBtn.disabled = false;
+        }
+    });
 
     /* ─── Dialogs ─────────────────────────────────────────────── */
     function openDialogs(agent) {

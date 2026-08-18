@@ -425,6 +425,24 @@
         </div>
     </div>
 
+    <!-- Broadcast Modal -->
+    <div id="broadcast-modal" class="agent-modal">
+        <div class="agent-modal-card">
+            <button id="broadcast-modal-close" class="agent-modal-close">✕</button>
+            <h3 id="broadcast-title">Рассылка клиентам</h3>
+            <form id="broadcast-form">
+                <input type="hidden" id="broadcast-agent-id">
+                <p class="agent-hint" id="broadcast-hint">Сообщение придёт всем, кто писал этому агенту в Telegram.</p>
+                <label for="broadcast-text">Текст сообщения</label>
+                <textarea id="broadcast-text" rows="4" placeholder="Например: Успейте на закрытую акцию — скидка 50% только для участников вебинара!"></textarea>
+                <div id="broadcast-result" style="display:none;"></div>
+                <div class="agent-modal-actions">
+                    <button type="submit" class="agent-btn agent-btn-primary" id="broadcast-send">Отправить рассылку</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
