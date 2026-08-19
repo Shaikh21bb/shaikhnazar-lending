@@ -18,10 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
 
-    function langLabel(l) {
-        return l === 'kk' ? 'Қазақша' : 'Русский';
-    }
-
     function buildCard(label, value, sub) {
         return `<div class="stat-card glass">
             <div class="stat-label">${esc(label)}</div>
@@ -41,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
             supabaseClient.from('projects').select('id'),
             supabaseClient.from('managers').select('id'),
             supabaseClient.from('scripts').select('id'),
-            supabaseClient.from('scripts').select('id,offer,created_at,language').order('created_at', { ascending: false }).limit(6),
+            supabaseClient.from('scripts').select('id,lead_name,created_at').order('created_at', { ascending: false }).limit(6),
             supabaseClient.from('tasks').select('*'),
             supabaseClient.from('agent_chats').select('chat_id,agent_id'),
             supabaseClient.from('agent_chats').select('id', { count: 'exact', head: true })
@@ -131,10 +127,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? scriptsRecent.map(s => `
                     <div class="stat-script-row">
                         <div style="flex:1; min-width:0;">
-                            <div class="stat-script-offer">${esc(s.offer || 'Без названия')}</div>
-                            <div class="stat-script-meta">${langLabel(s.language)} · ${fmtDate(s.created_at)}</div>
+                            <div class="stat-script-offer">${esc(s.lead_name || 'Без названия')}</div>
+                            <div class="stat-script-meta">${fmtDate(s.created_at)}</div>
                         </div>
-                        <span class="task-status st-confirmed">${langLabel(s.language)}</span>
                     </div>`).join('')
                 : '<div class="agents-empty">Скрипты появятся после первой генерации.</div>';
         }

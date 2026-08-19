@@ -72,17 +72,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultEl = document.getElementById('script-result');
     const textEl = document.getElementById('script-text');
     const copyBtn = document.getElementById('script-copy');
+    const saveBtn = document.getElementById('script-save');
     const closeBtn = document.getElementById('script-close');
     const generateBtn = document.getElementById('script-generate');
     const actionsEl = document.getElementById('script-actions');
+    let scriptMeta = {};
 
     function openScriptModal() {
         resultScript = '';
+        scriptMeta = {};
         scriptForm.reset();
         resultEl.style.display = 'none';
         actionsEl.style.display = 'flex';
         generateBtn.disabled = false;
         generateBtn.textContent = 'Сгенерировать';
+        if (saveBtn) { saveBtn.textContent = 'Сохранить в библиотеку'; saveBtn.disabled = false; }
         const ctx = document.getElementById('ai-context');
         if (ctx && ctx.value) contextInput.value = ctx.value;
         scriptModal.classList.add('open');
@@ -100,7 +104,32 @@ document.addEventListener('DOMContentLoaded', () => {
     if (scriptModal) scriptModal.addEventListener('click', e => { if (e.target === scriptModal) scriptModal.classList.remove('open'); });
     if (closeBtn) closeBtn.addEventListener('click', () => scriptModal.classList.remove('open'));
 
-    if (copyBtn) copyBtn.addEventListener('click', () => copyText(resultScript, copyBtn));
+    if (copyBtn) copyBtn.addEventListener('click', () => copyText(textEl.value || resultScript, copyBtn));
+
+    if (saveBtn) saveBtn.addEventListener('click', async () => {
+        const text = (textEl.value || '').trim();
+        if (!text) { alert('Скрипт пуст — сначала сгенерируйте.'); return; }
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Сохраняю...';
+        const { error } = await supabaseClient.from(SCRIPTS_TABLE).insert({
+            lead_name: scriptMeta.offer || null,
+            lead_need: scriptMeta.audience || null,
+            script: text
+        });
+        if (error) {
+            alert('Ошибка сохранения: ' + error.message);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Сохранить в библиотеку';
+            return;
+        }
+        saveBtn.textContent = 'Сохранено ✅';
+        setTimeout(() => {
+            scriptModal.classList.remove('open');
+            saveBtn.textContent = 'Сохранить в библиотеку';
+            saveBtn.disabled = false;
+        }, 1200);
+        loadScripts();
+    });
 
     if (scriptForm) scriptForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -127,10 +156,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) throw new Error(data.error || 'Ошибка генерации');
 
             resultScript = data.script;
-            textEl.textContent = data.script;
+            scriptMeta = { offer: offer, audience: audienceInput.value.trim() };
+            textEl.value = data.script;
             resultEl.style.display = 'block';
             actionsEl.style.display = 'none';
-            loadScripts();
         } catch (err) {
             alert('Ошибка: ' + err.message);
         } finally {

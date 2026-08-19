@@ -2019,3 +2019,23 @@ input, select, textarea {
 
 .stat-script-offer { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stat-script-meta { font-size: 0.75rem; color: var(--muted, #9aa3b2); }
+
+/* ─── Editable script area ───────────────────────────────── */
+.script-edit-area {
+    width: 100%;
+    padding: 0.8rem;
+    border-radius: 0.6rem;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: inherit;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.script-edit-area:focus {
+    outline: none;
+    border-color: rgba(148, 163, 184, 0.5);
+}

@@ -411,9 +411,10 @@
 
                 <div id="script-result" style="display:none;">
                     <label>Скрипт</label>
-                    <div class="script-text" id="script-text"></div>
-                    <div style="display:flex; gap:0.5rem; margin-top:0.8rem;">
-                        <button type="button" class="agent-btn agent-btn-primary" id="script-copy">Копировать</button>
+                    <textarea class="script-edit-area" id="script-text" rows="18" placeholder="Скрипт появится здесь. Отредактируйте текст и нажмите «Сохранить в библиотеку»."></textarea>
+                    <div style="display:flex; gap:0.5rem; margin-top:0.8rem; flex-wrap:wrap;">
+                        <button type="button" class="agent-btn agent-btn-primary" id="script-save">Сохранить в библиотеку</button>
+                        <button type="button" class="agent-btn" id="script-copy">Копировать</button>
                         <button type="button" class="agent-btn" id="script-close">Готово</button>
                     </div>
                 </div>

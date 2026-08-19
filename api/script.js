@@ -1,4 +1,4 @@
-import { db, gemini, escapeHtml } from './_lib.js';
+import { gemini, escapeHtml } from './_lib.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -64,22 +64,7 @@ ${contextText}
             return res.status(500).json({ error: 'Gemini API error: ' + err.message });
         }
 
-        const { res: insRes, body } = await db('scripts', {
-            method: 'POST',
-            headers: { Prefer: 'return=representation' },
-            body: JSON.stringify({
-                lead_name: String(offer).slice(0, 200) || null,
-                lead_need: audience ? String(audience).slice(0, 500) : null,
-                script: script
-            })
-        });
-
-        if (!insRes.ok) {
-            console.error('Script save error:', insRes.status, JSON.stringify(body).slice(0, 200));
-        }
-
-        const saved = (Array.isArray(body) && body[0]) || null;
-        return res.status(200).json({ ok: true, id: saved ? saved.id : null, script: script });
+        return res.status(200).json({ ok: true, script: script });
     } catch (error) {
         console.error('Script API error:', error);
         return res.status(500).json({ error: 'Internal error: ' + error.message });
