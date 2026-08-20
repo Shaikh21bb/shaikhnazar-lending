@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         listEl.querySelectorAll('.js-client-reply').forEach(btn => {
             btn.addEventListener('click', () => {
                 const agent = { id: btn.dataset.agent, name: agentName[btn.dataset.agent] || 'Агент' };
-                switchTo('agents');
+                if (!(window.__scope && window.__scope.isManager)) switchTo('agents');
                 window.__openAgentDialog(agent, btn.dataset.chat);
             });
         });
