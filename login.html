@@ -32,13 +32,18 @@
             <h1 data-i18n="title">Вход в систему</h1>
             <p class="auth-sub" data-i18n="subtitle">Вход в систему для бизнеса</p>
 
-            <div id="auth-error"></div>
+            <div id="auth-error" role="alert" aria-live="polite"></div>
 
             <form id="auth-form" class="auth-form">
                 <label for="email" data-i18n="login">Логин (Email)</label>
                 <input type="text" id="email" required placeholder="name@company.com" autocomplete="username">
                 <label for="password" data-i18n="pass">Пароль</label>
-                <input type="password" id="password" required placeholder="••••••••" autocomplete="current-password">
+                <div class="password-wrap">
+                    <input type="password" id="password" class="pw-input" required placeholder="••••••••" autocomplete="current-password">
+                    <button type="button" class="toggle-password" id="toggle-password" aria-label="Показать пароль" title="Показать пароль">
+                        <svg viewBox="0 0 24 24" width="17" height="17" stroke="currentColor" fill="none" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
                 <button type="submit" class="island island-primary auth-submit" id="submit-btn" data-i18n="enter">Войти</button>
             </form>
 
@@ -106,8 +111,18 @@
             const authForm = document.getElementById('auth-form');
             const emailInput = document.getElementById('email');
             const passwordInput = document.getElementById('password');
+            const togglePassword = document.getElementById('toggle-password');
             const submitBtn = document.getElementById('submit-btn');
             const authError = document.getElementById('auth-error');
+
+            if (togglePassword) {
+                togglePassword.addEventListener('click', () => {
+                    const show = passwordInput.type === 'password';
+                    passwordInput.type = show ? 'text' : 'password';
+                    togglePassword.classList.toggle('visible', show);
+                    togglePassword.setAttribute('aria-label', show ? 'Скрыть пароль' : 'Показать пароль');
+                });
+            }
 
             const token = localStorage.getItem('auth_token');
             if (token) {
@@ -122,7 +137,12 @@
                 const password = passwordInput.value.trim();
 
                 if (!login || !password) {
-                    alert(t.fill);
+                    if (authError) {
+                        authError.textContent = t.fill;
+                        authError.style.display = 'block';
+                    } else {
+                        alert(t.fill);
+                    }
                     return;
                 }
 

@@ -83,7 +83,13 @@ input, select, textarea {
     border-radius: var(--radius);
 }
 
-.grad-text { color: var(--text); }
+.grad-text {
+    background: linear-gradient(120deg, #FFFFFF 0%, #C9C2FF 52%, #8F83FF 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
 
 /* =========================================
    BUTTONS
@@ -250,6 +256,31 @@ input, select, textarea {
     transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
     box-sizing: border-box;
 }
+
+.auth-form input.pw-input { padding-right: 2.7rem; }
+
+.password-wrap { position: relative; }
+
+.toggle-password {
+    position: absolute;
+    right: 0.55rem;
+    top: 50%;
+    transform: translateY(-58%);
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    color: var(--faint);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: color 0.15s;
+}
+
+.toggle-password:hover { color: var(--text); }
+
+.toggle-password.visible { color: var(--accent-soft); }
 
 .auth-form input::placeholder {
     color: var(--faint);
@@ -566,11 +597,24 @@ input, select, textarea {
 .upload-zone:hover {
     border-color: var(--faint);
     background: var(--surface-2);
+    box-shadow: 0 0 0 4px rgba(124, 111, 255, 0.06);
+}
+
+.upload-zone:hover .upload-icon {
+    background: var(--accent-bg);
+    color: var(--accent-soft);
+    border-color: rgba(124, 111, 255, 0.25);
 }
 
 .upload-zone.dragover {
     border-color: var(--accent);
     background: var(--accent-bg);
+    box-shadow: 0 0 0 4px rgba(124, 111, 255, 0.14), 0 12px 40px -20px rgba(124, 111, 255, 0.55);
+}
+
+.upload-zone.dragover .upload-icon {
+    color: var(--accent-soft);
+    border-color: rgba(124, 111, 255, 0.4);
 }
 
 .upload-icon {
@@ -2366,4 +2410,14 @@ html { scrollbar-width: thin; scrollbar-color: #2A2A33 transparent; }
     outline: 2px solid rgba(124, 111, 255, 0.65);
     outline-offset: 2px;
     border-radius: 8px;
+}
+
+/* ═══ Reduced motion ════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
