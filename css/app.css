@@ -2139,3 +2139,15 @@ input, select, textarea {
     font-weight: 600;
     font-family: var(--font-mono, ui-monospace, monospace);
 }
+
+/* ─── Hot client badge ────────────────────────────────────── */
+.client-hot {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 99px;
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    font-size: 0.72rem;
+    font-weight: 600;
+    vertical-align: middle;
+}

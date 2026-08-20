@@ -27,6 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return m ? m[0].trim() : '';
     }
 
+    const INTENT_RE = /цена|стоимость|сколько|дорого|скидк|акци|купить|оформ|записа|присоедини|оплат|тариф|хочу|интересу|қанша|тұрады|баға|сатып|төлеу|скидка|келісті/i;
+
+    function isInterested(list) {
+        return (list || []).some(m => INTENT_RE.test(m.text || ''));
+    }
+
     function switchTo(view) {
         const item = document.querySelector(`.nav-item[href="#${view}"]`);
         if (item) item.click();
@@ -50,13 +56,17 @@ document.addEventListener('DOMContentLoaded', () => {
         (agents || []).forEach(a => agentName[a.id] = a.name);
 
         const byChat = {};
+        const msgsPerChat = {};
         (chats || []).forEach(m => {
             const key = m.chat_id;
             if (!byChat[key]) byChat[key] = { chatId: key, last: m, count: 0, agentId: m.agent_id };
             byChat[key].count++;
             byChat[key].last = m;
             byChat[key].agentId = m.agent_id;
+            msgsPerChat[key] = msgsPerChat[key] || [];
+            msgsPerChat[key].push(m);
         });
+        Object.keys(byChat).forEach(k => byChat[k].interested = isInterested(msgsPerChat[k]));
 
         const list = Object.values(byChat).sort((a, b) =>
             (a.last.created_at < b.last.created_at) ? 1 : -1);
@@ -74,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${list.map(c => `
                 <div class="client-row">
                     <div class="client-info">
-                        <div class="client-id">💬 ${esc(c.chatId)} <span class="client-agent">· ${esc(agentName[c.agentId] || 'Агент')}</span></div>
+                        <div class="client-id">💬 ${esc(c.chatId)} ${c.interested ? '<span class="client-hot">🔥 интерес</span>' : ''} <span class="client-agent">· ${esc(agentName[c.agentId] || 'Агент')}</span></div>
                         <div class="client-msg">${esc((c.last.text || '').slice(0, 120))}</div>
                         <div class="client-meta">${c.count} сообщений · ${timeAgo(c.last.created_at)}${findPhone(c.last.text) ? ` · 📞 <span class="client-phone">${esc(findPhone(c.last.text))}</span>` : ''}</div>
                     </div>
