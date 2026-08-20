@@ -518,7 +518,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const scriptBtn = card.querySelector('.script-lead-btn');
             scriptBtn.addEventListener('click', () => {
                 if (typeof window.__generateScript === 'function') {
-                    window.__generateScript();
+                    window.__generateScript({
+                        offer: need || '',
+                        context: `Лид: ${name} (${contact}).${need ? ' Потребность: ' + need : ''}${probability ? ' Вероятность продажи: ' + probability + '%' : ''}.`
+                    });
                 } else {
                     alert('Перейдите во вкладку «Скрипты» и создайте скрипт вручную.');
                 }
