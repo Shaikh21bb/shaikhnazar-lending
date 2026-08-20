@@ -25,23 +25,27 @@
             <div class="auth-logo">
                 <span class="auth-logo-pill">shaikh</span>
             </div>
-            <h1>Вход в систему</h1>
-            <p class="auth-sub">Вход в систему для бизнеса</p>
+            <div class="auth-lang">
+                <button type="button" class="lang-btn active" data-lang="ru">RU</button>
+                <button type="button" class="lang-btn" data-lang="kz">Қазақша</button>
+            </div>
+            <h1 data-i18n="title">Вход в систему</h1>
+            <p class="auth-sub" data-i18n="subtitle">Вход в систему для бизнеса</p>
 
             <div id="auth-error"></div>
 
             <form id="auth-form" class="auth-form">
-                <label for="email">Логин (Email)</label>
+                <label for="email" data-i18n="login">Логин (Email)</label>
                 <input type="text" id="email" required placeholder="name@company.com" autocomplete="username">
-                <label for="password">Пароль</label>
+                <label for="password" data-i18n="pass">Пароль</label>
                 <input type="password" id="password" required placeholder="••••••••" autocomplete="current-password">
-                <button type="submit" class="island island-primary auth-submit" id="submit-btn">Войти</button>
+                <button type="submit" class="island island-primary auth-submit" id="submit-btn" data-i18n="enter">Войти</button>
             </form>
 
             <div class="auth-footer" id="toggle-wrap">
-                <a href="index.html">← Вернуться на сайт</a>
+                <a href="index.html" data-i18n="back">← Вернуться на сайт</a>
                 <span aria-hidden="true">·</span>
-                <a href="admin.html">Панель владельца</a>
+                <a href="admin.html" data-i18n="owner">Панель владельца</a>
             </div>
         </div>
     </div>
@@ -50,6 +54,53 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./js/supabase.js"></script>
 
+    <script>
+        const LOGIN_I18N = {
+            ru: {
+                title: 'Вход в систему',
+                subtitle: 'Вход в систему для бизнеса',
+                login: 'Логин (Email)',
+                pass: 'Пароль',
+                enter: 'Войти',
+                back: '← Вернуться на сайт',
+                owner: 'Панель владельца',
+                fill: 'Пожалуйста, заполните все поля.',
+                err: 'Ошибка: Неверный логин или пароль',
+                conn: 'Произошла ошибка при связи с базой данных.'
+            },
+            kz: {
+                title: 'Жүйеге кіру',
+                subtitle: 'Бизнес үшін жүйеге кіру',
+                login: 'Логин (Email)',
+                pass: 'Құпия сөз',
+                enter: 'Кіру',
+                back: '← Сайтқа қайту',
+                owner: 'Иелер панелі',
+                fill: 'Барлық өрістерді толтырыңыз.',
+                err: 'Қате: логин немесе құпия сөз дұрыс емес',
+                conn: 'Деректер базасымен байланыста қате орын алды.'
+            }
+        };
+        let loginLang = localStorage.getItem('shaikh_lang') || 'ru';
+        function applyLoginLang(lang) {
+            const t = LOGIN_I18N[lang] || LOGIN_I18N.ru;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const k = el.getAttribute('data-i18n');
+                if (t[k]) el.textContent = t[k];
+            });
+            const err = document.getElementById('auth-error');
+            if (err) err.style.display = 'none';
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+        }
+        applyLoginLang(loginLang);
+        document.querySelectorAll('.lang-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                loginLang = b.dataset.lang;
+                localStorage.setItem('shaikh_lang', loginLang);
+                applyLoginLang(loginLang);
+            });
+        });
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const authForm = document.getElementById('auth-form');
@@ -66,17 +117,18 @@
 
             authForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                const t = LOGIN_I18N[loginLang] || LOGIN_I18N.ru;
                 const login = emailInput.value.trim();
                 const password = passwordInput.value.trim();
 
                 if (!login || !password) {
-                    alert('Пожалуйста, заполните все поля.');
+                    alert(t.fill);
                     return;
                 }
 
                 submitBtn.disabled = true;
                 const originalText = submitBtn.textContent;
-                submitBtn.textContent = 'Вход...';
+                submitBtn.textContent = loginLang === 'kz' ? 'Кіру...' : 'Вход...';
                 if (authError) authError.style.display = 'none';
 
                 try {
@@ -94,19 +146,19 @@
                         window.location.href = 'dashboard.html';
                     } else {
                         if (authError) {
-                            authError.textContent = 'Ошибка: Неверный логин или пароль';
+                            authError.textContent = t.err;
                             authError.style.display = 'block';
                         } else {
-                            alert('Ошибка: Неверный логин или пароль');
+                            alert(t.err);
                         }
                     }
                 } catch (error) {
                     console.error('Ошибка входа:', error);
                     if (authError) {
-                        authError.textContent = 'Произошла ошибка при связи с базой данных.';
+                        authError.textContent = t.conn;
                         authError.style.display = 'block';
                     } else {
-                        alert('Произошла ошибка при связи с базой данных.');
+                        alert(t.conn);
                     }
                 } finally {
                     submitBtn.disabled = false;
