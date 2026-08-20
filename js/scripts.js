@@ -19,6 +19,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }).catch(() => alert('Не удалось скопировать.'));
     }
 
+    function printScript(title, text) {
+        const w = window.open('', '_blank', 'width=720,height=820');
+        if (!w) { alert('Разрешите всплывающие окна для печати.'); return; }
+        w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
+<style>body{font-family:Georgia,serif;max-width:640px;margin:42px auto;padding:0 20px;color:#111;line-height:1.65;font-size:15px;}
+h1{font-size:21px;margin-bottom:4px;padding-bottom:10px;border-bottom:2px solid #111;}
+.meta{font-size:12px;color:#666;margin-bottom:22px;}
+pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
+<body><h1>${escapeHtml(title)}</h1><div class="meta">SHAIKH Industries · скрипт продаж · ${new Date().toLocaleDateString('ru-RU')}</div>
+<pre>${escapeHtml(text)}</pre><script>window.onload=function(){setTimeout(function(){window.print();},250);};<\/script></body></html>`);
+        w.document.close();
+    }
+
     /* ─── Library ────────────────────────────────────────────── */
     async function loadScripts() {
         const grid = document.getElementById('scripts-grid');
@@ -50,10 +63,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <pre class="script-text">${escapeHtml(s.script)}</pre>
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                 <button class="island island-sm js-script-copy">Копировать</button>
+                <button class="island island-sm js-script-print">Печать</button>
                 <button class="island island-sm island-danger js-script-delete">Удалить</button>
             </div>
         `;
         card.querySelector('.js-script-copy').addEventListener('click', () => copyText(s.script, card.querySelector('.js-script-copy')));
+        const printBtn = card.querySelector('.js-script-print');
+        if (printBtn) printBtn.addEventListener('click', () => printScript(s.lead_name || 'Скрипт продаж', s.script));
         card.querySelector('.js-script-delete').addEventListener('click', async () => {
             if (!confirm('Удалить скрипт?')) return;
             await supabaseClient.from(SCRIPTS_TABLE).delete().eq('id', s.id);
