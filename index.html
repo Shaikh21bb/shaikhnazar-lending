@@ -39,7 +39,7 @@
             <div class="header-right">
                 <div class="lang-switcher">
                     <button class="lang-btn active interactive" data-lang="ru">RU</button>
-                    <button class="lang-btn interactive" data-lang="kz">KZ</button>
+                    <button class="lang-btn interactive" data-lang="kk">KZ</button>
                 </div>
                 <a href="login.html" class="nav-contact interactive" style="font-weight: 500;">Войти в систему</a>
                 <a href="#contact" class="btn btn-outline interactive" style="padding: 0.4rem 1.2rem; margin-left: 1rem;" data-i18n="nav.contact">Связаться</a>
@@ -277,7 +277,7 @@ const translations = {
         'cta.btn_ig': 'Instagram',
         'footer.tagline': 'Minimalist Digital Solutions'
     },
-    kz: {
+    kk: {
         'nav.contact': 'Байланыс',
         'nav.services': 'Қызметтер',
         'nav.portfolio': 'Жұмыстар',
@@ -490,8 +490,16 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(updateScrollHeight, 50);
     }
 
+    const savedLang = localStorage.getItem('shaikh_lang');
+    let siteLang = savedLang === 'kz' ? 'kk' : (savedLang || 'ru');
+    applyTranslation(siteLang);
+
     document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', () => applyTranslation(btn.dataset.lang));
+        btn.addEventListener('click', () => {
+            siteLang = btn.dataset.lang === 'ru' ? 'ru' : 'kk';
+            localStorage.setItem('shaikh_lang', siteLang);
+            applyTranslation(siteLang);
+        });
     });
 
     /* =========================================

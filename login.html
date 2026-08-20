@@ -29,7 +29,7 @@
             </div>
             <div class="auth-lang">
                 <button type="button" class="lang-btn active" data-lang="ru">RU</button>
-                <button type="button" class="lang-btn" data-lang="kz">Қазақша</button>
+                <button type="button" class="lang-btn" data-lang="kk">Қазақша</button>
             </div>
             <h1 data-i18n="title">Вход в систему</h1>
             <p class="auth-sub" data-i18n="subtitle">Вход в систему для бизнеса</p>
@@ -75,7 +75,7 @@
                 err: 'Ошибка: Неверный логин или пароль',
                 conn: 'Произошла ошибка при связи с базой данных.'
             },
-            kz: {
+            kk: {
                 title: 'Жүйеге кіру',
                 subtitle: 'Бизнес үшін жүйеге кіру',
                 login: 'Логин (Email)',
@@ -88,7 +88,7 @@
                 conn: 'Деректер базасымен байланыста қате орын алды.'
             }
         };
-        let loginLang = localStorage.getItem('shaikh_lang') || 'ru';
+        let loginLang = localStorage.getItem('shaikh_lang') === 'kz' ? 'kk' : (localStorage.getItem('shaikh_lang') || 'ru');
         function applyLoginLang(lang) {
             const t = LOGIN_I18N[lang] || LOGIN_I18N.ru;
             document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -150,7 +150,7 @@
 
                 submitBtn.disabled = true;
                 const originalText = submitBtn.textContent;
-                submitBtn.textContent = loginLang === 'kz' ? 'Кіру...' : 'Вход...';
+                submitBtn.textContent = loginLang === 'kk' ? 'Кіру...' : 'Вход...';
                 if (authError) authError.style.display = 'none';
 
                 try {
