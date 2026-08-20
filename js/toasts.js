@@ -55,19 +55,28 @@ document.addEventListener('DOMContentLoaded', () => {
     async function poll() {
         if (document.hidden) return;
         if (window.__roleReady) await window.__roleReady;
-        if (window.__scope && window.__scope.isManager) return;
+        const scope = window.__scope || {};
+        const isManager = !!scope.isManager;
+
+        let taskQuery = supabaseClient.from('tasks')
+            .select('id,title,status,created_at')
+            .order('created_at', { ascending: false })
+            .limit(8);
+        if (isManager && scope.chatId) taskQuery = taskQuery.eq('chat_id', scope.chatId);
+
         try {
-            const [{ data: msgs, error: mErr }, { data: tasks, error: tErr }] = await Promise.all([
-                supabaseClient.from('agent_chats')
-                    .select('agent_id,chat_id,text,created_at')
-                    .eq('role', 'user')
-                    .order('created_at', { ascending: false })
-                    .limit(10),
-                supabaseClient.from('tasks')
-                    .select('id,title,status,created_at')
-                    .order('created_at', { ascending: false })
-                    .limit(5)
+            const [chatReq, taskReq] = await Promise.all([
+                isManager
+                    ? Promise.resolve({ data: [], error: null })
+                    : supabaseClient.from('agent_chats')
+                        .select('agent_id,chat_id,text,created_at')
+                        .eq('role', 'user')
+                        .order('created_at', { ascending: false })
+                        .limit(10),
+                taskQuery
             ]);
+
+            const msgs = chatReq.data, mErr = chatReq.error, tasks = taskReq.data, tErr = taskReq.error;
 
             if (!mErr && msgs && msgs.length) {
                 const fresh = msgs.filter(m => m.created_at && m.created_at > lastSeen);
@@ -90,7 +99,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 tasks.forEach(t => {
                     const prev = knownTasks[t.id];
                     knownTasks[t.id] = t.status;
-                    if (prev && prev !== 'done' && t.status === 'done') {
+                    if (!prev && t.status !== 'done') {
+                        showToast('📌 Новая задача', t.title || 'Задача');
+                    } else if (prev && prev !== 'done' && t.status === 'done') {
                         showToast('🎉 Задача выполнена', t.title || 'Задача');
                     }
                 });

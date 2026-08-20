@@ -18,6 +18,59 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
 
+    function downloadCSV(filename, rows) {
+        const csv = rows.map(r => r.map(cell => {
+            const s = String(cell ?? '');
+            return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }).join(';')).join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    const exportBtn = document.getElementById('stats-export');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', async () => {
+            exportBtn.disabled = true;
+            const label = exportBtn.querySelector('span');
+            const old = label.textContent;
+            label.textContent = 'Выгрузка...';
+            try {
+                const [{ data: tasks }, { data: chats }, { data: scripts }] = await Promise.all([
+                    supabaseClient.from('tasks').select('id,title,manager,due_at,status,created_at'),
+                    supabaseClient.from('agent_chats').select('agent_id,chat_id,role,text,created_at').order('created_at', { ascending: true }),
+                    supabaseClient.from('scripts').select('lead_name,lead_phone,channel,script,created_at')
+                ]);
+                const agents = {};
+                const { data: agentsAll } = await supabaseClient.from('agents').select('id,name');
+                (agentsAll || []).forEach(a => agents[a.id] = a.name);
+
+                downloadCSV(`shaikh_tasks_${new Date().toISOString().slice(0,10)}.csv`, [
+                    ['ID', 'Задача', 'Менеджер', 'Дедлайн', 'Статус', 'Создана'],
+                    ...((tasks || []).map(t => [t.id, t.title, t.manager, t.due_at ? new Date(t.due_at).toLocaleString('ru-RU') : '', t.status, fmtDate(t.created_at)]))
+                ]);
+
+                const allChats = [['Дата', 'Агент', 'Роль', 'Chat ID', 'Текст'], ...(chats || []).map(c => [fmtDate(c.created_at), agents[c.agent_id] || c.agent_id, c.role, c.chat_id, c.text])];
+                try { downloadCSV(`shaikh_dialogs_${new Date().toISOString().slice(0,10)}.csv`, allChats); } catch (e) { console.error(e); }
+
+                downloadCSV(`shaikh_scripts_${new Date().toISOString().slice(0,10)}.csv`, [
+                    ['Лид', 'Телефон', 'Канал', 'Текст скрипта', 'Дата'],
+                    ...((scripts || []).map(s => [s.lead_name, s.lead_phone, s.channel, s.script, fmtDate(s.created_at)]))
+                ]);
+
+                alert('Скачано 3 файла: задачи, диалоги, скрипты.');
+            } catch (e) {
+                alert('Ошибка выгрузки: ' + (e && e.message ? e.message : e));
+            } finally {
+                exportBtn.disabled = false;
+                label.textContent = old;
+            }
+        });
+    }
+
     function buildCard(label, value, sub) {
         return `<div class="stat-card glass">
             <div class="stat-label">${esc(label)}</div>
