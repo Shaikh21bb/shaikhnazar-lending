@@ -349,6 +349,22 @@ input, select, textarea {
     cursor: not-allowed;
 }
 
+.tasks-badge {
+    display: none;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 99px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+}
+
+.tasks-badge.show { display: inline-block; }
+
 .soon-badge {
     font-size: 0.58rem;
     font-weight: 600;

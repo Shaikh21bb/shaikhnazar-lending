@@ -101,10 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const cal = document.getElementById('calendar');
         if (!cal) return;
 
-        const year = calendarMonth.getFullYear();
-        const month = calendarMonth.getMonth();
-        const today = new Date();
-        const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+        const now = new Date();
+        const overdueCount = tasksCache.filter(t =>
+            t.status !== 'done' && t.due_at && new Date(t.due_at) < now).length;
+        document.querySelectorAll('.tasks-badge').forEach(b => {
+            b.textContent = overdueCount > 99 ? '99+' : overdueCount;
+            b.classList.toggle('show', overdueCount > 0);
+        });
 
         const byDay = {};
         tasksCache.forEach(t => {
@@ -115,8 +118,10 @@ document.addEventListener('DOMContentLoaded', () => {
             byDay[key].push(t);
         });
 
-        const now = new Date();
-
+        const year = calendarMonth.getFullYear();
+        const month = calendarMonth.getMonth();
+        const today = new Date();
+        const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
         const monthName = calendarMonth.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
         const first = new Date(year, month, 1);
         const startDow = (first.getDay() + 6) % 7; // Monday-first
