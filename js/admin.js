@@ -43,11 +43,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             totalCount.textContent = `${data.length} менеджер(ов)`;
-            
+
+            const { data: managers } = await supabaseClient.from('managers').select('name');
+            const names = new Set((managers || []).map(m => String(m.name || '').trim().toLowerCase()));
+
+            const roleBadge = (m) => {
+                const login = String(m.login || '').trim().toLowerCase();
+                if (login === 'admin') return '<span style="color:#7CFF9B; font-size:0.8rem;">полный доступ</span>';
+                if (names.has(login)) return '<span style="color:#FFD66B; font-size:0.8rem;">привязан · только своё</span>';
+                return '<span style="color:var(--danger-color); font-size:0.8rem;">нет привязки · вход ограничен</span>';
+            };
+
             managerList.innerHTML = data.map(m => `
                 <div class="manager-card" id="mgr-${m.id}">
                     <div class="manager-info">
-                        <div class="manager-login">👤 ${m.login}</div>
+                        <div class="manager-login">👤 ${m.login} &nbsp; ${roleBadge(m)}</div>
                         <div class="manager-pass">🔑 ${m.password}</div>
                     </div>
                     <button class="delete-btn" onclick="window.__deleteManager('${m.id}', '${m.login}')">Отозвать доступ</button>
