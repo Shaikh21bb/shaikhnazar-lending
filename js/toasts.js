@@ -1,8 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     const KEY = 'shaikh_last_seen_chat_at';
     const TASK_KEY = 'shaikh_known_tasks';
+    const SEEDED_KEY = 'shaikh_tasks_seeded';
     let lastSeen = localStorage.getItem(KEY) || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     let knownTasks = {};
+    let seeded = localStorage.getItem(SEEDED_KEY) === '1';
     try { knownTasks = JSON.parse(localStorage.getItem(TASK_KEY) || '{}'); } catch (e) { knownTasks = {}; }
     let agentNames = {};
 
@@ -99,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tasks.forEach(t => {
                     const prev = knownTasks[t.id];
                     knownTasks[t.id] = t.status;
+                    if (!seeded) return;
                     if (!prev && t.status !== 'done') {
                         showToast('📌 Новая задача', t.title || 'Задача');
                     } else if (prev && prev !== 'done' && t.status === 'done') {
@@ -106,6 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
                 localStorage.setItem(TASK_KEY, JSON.stringify(knownTasks));
+                if (!seeded) {
+                    seeded = true;
+                    localStorage.setItem(SEEDED_KEY, '1');
+                }
             }
         } catch (e) {
             console.error('Toast poll error:', e.message);

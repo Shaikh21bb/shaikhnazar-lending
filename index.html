@@ -9,12 +9,12 @@
     <meta property="og:site_name" content="SHAIKH Industries">
     <meta property="og:title" content="SHAIKH Industries — Бизнес в цифре на автопилоте">
     <meta property="og:description" content="Премиальные сайты и AI-системы для бизнеса. ИИ-анализ, агенты, CRM, скрипты продаж.">
-    <meta property="og:image" content="https://shaikh.digital/images/project1.png">
+    <meta property="og:image" content="https://shaikh.digital/images/project1.jpg">
     <meta property="og:url" content="https://shaikh.digital/">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="SHAIKH Industries — Бизнес в цифре на автопилоте">
     <meta name="twitter:description" content="Премиальные сайты и AI-системы для бизнеса.">
-    <meta name="twitter:image" content="https://shaikh.digital/images/project1.png">
+    <meta name="twitter:image" content="https://shaikh.digital/images/project1.jpg">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -225,13 +225,13 @@ const PORTFOLIO_PROJECTS = [
     {
         title: "Urpaq.ai",
         category: "EdTech Platform",
-        image: "./images/project1.png",
+        image: "./images/project1.jpg",
         link: "https://urpaq-edu.vercel.app/"
     },
     {
         title: "Pyrascope",
         category: "AI Agent",
-        image: "./images/project2.png",
+        image: "./images/project2.jpg",
         link: "#"
     }
 ];
@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
             grid.innerHTML += `
                 <${tag} ${hrefAttr} class="portfolio-item interactive fade-in reveal-trigger">
                     <div class="portfolio-img-wrap">
-                        <img src="${proj.image}" alt="${proj.title}" class="portfolio-img" data-speed="0.15">
+                        <img src="${proj.image}" alt="${proj.title}" class="portfolio-img" data-speed="0.15" loading="lazy" decoding="async">
                     </div>
                     <div class="portfolio-info">
                         <h3 class="portfolio-title">${proj.title}</h3>

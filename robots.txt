@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /$
+Allow: /
+Disallow: /login
+Disallow: /dashboard
+Disallow: /admin
+
+Sitemap: https://shaikh.digital/sitemap.xml
