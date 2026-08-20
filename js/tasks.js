@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let tasksCache = [];
     let calendarMonth = new Date();
     let editingTaskId = null;
+    let overdueOnly = false;
 
     function escapeHtml(str) {
         if (!str) return '';
@@ -93,7 +94,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (error) return;
         tasksCache = data || [];
         renderCalendar();
+        renderAlerts();
         renderTasksList();
+    }
+
+    function renderAlerts() {
+        const box = document.getElementById('tasks-alerts');
+        if (!box) return;
+        const overdue = tasksCache.filter(t => t.status !== 'done' && t.due_at && new Date(t.due_at) < new Date());
+        if (overdue.length === 0) {
+            box.innerHTML = '';
+            overdueOnly = false;
+            return;
+        }
+        box.innerHTML = `<div class="tasks-alert-banner">
+            ⚠️ Просроченных задач: <b>${overdue.length}</b>
+            <button class="island island-sm" id="tasks-alert-toggle">${overdueOnly ? 'Показать все' : 'Показать только их'}</button>
+            </div>`;
+        document.getElementById('tasks-alert-toggle').addEventListener('click', () => {
+            overdueOnly = !overdueOnly;
+            renderTasksList();
+            renderAlerts();
+        });
     }
 
     /* ─── Calendar ────────────────────────────────────────────── */
@@ -148,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cal.innerHTML = `
             <div class="cal-head">
                 <button class="island island-sm" id="cal-prev">‹</button>
-                <div class="cal-month">${escapeHtml(monthName)}</div>
+                <div class="cal-month">${escapeHtml(monthName)} <button class="island island-sm" id="cal-today" style="margin-left:0.4rem; font-size:0.7rem;">Сегодня</button></div>
                 <button class="island island-sm" id="cal-next">›</button>
             </div>
             <div class="cal-grid">
@@ -163,6 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('cal-prev').addEventListener('click', () => { calendarMonth = new Date(year, month - 1, 1); renderCalendar(); });
         document.getElementById('cal-next').addEventListener('click', () => { calendarMonth = new Date(year, month + 1, 1); renderCalendar(); });
+        const calToday = document.getElementById('cal-today');
+        if (calToday) calToday.addEventListener('click', () => { calendarMonth = new Date(); renderCalendar(); });
         cal.querySelectorAll('.cal-cell:not(.cal-empty)').forEach(cell => {
             cell.addEventListener('click', () => {
                 const day = Number(cell.dataset.day);
@@ -203,7 +227,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!b.due_at) return -1;
             return a.due_at < b.due_at ? -1 : 1;
         });
-        sorted.forEach(t => list.appendChild(buildTaskCard(t)));
+        const nowFilter = new Date();
+        (overdueOnly ? sorted.filter(t => t.status !== 'done' && t.due_at && new Date(t.due_at) < nowFilter) : sorted)
+            .forEach(t => list.appendChild(buildTaskCard(t)));
     }
 
     function buildTaskCard(t) {

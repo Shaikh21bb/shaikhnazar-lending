@@ -1966,6 +1966,20 @@ input, select, textarea {
     overflow: hidden;
 }
 
+.tasks-alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.7rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
 .clients-search {
     margin-bottom: 1rem;
 }

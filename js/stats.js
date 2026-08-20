@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const grid = document.getElementById('stats-grid');
     const tasksBox = document.getElementById('stats-tasks');
     const dialogsBox = document.getElementById('stats-dialogs');
+    const managersBox = document.getElementById('stats-managers');
     const recentBox = document.getElementById('stats-recent-scripts');
     const refreshBtn = document.getElementById('stats-refresh');
     if (!grid && !tasksBox) return;
@@ -149,6 +150,45 @@ document.addEventListener('DOMContentLoaded', () => {
             : '';
         taskHtml += `</div>`;
         tasksBox.innerHTML = taskHtml;
+
+        // ─── Tasks by manager ───────────────────────────────
+        if (managersBox) {
+            const byManager = {};
+            tasks.forEach(t => {
+                const key = t.manager || 'Без менеджера';
+                if (!byManager[key]) byManager[key] = { total: 0, done: 0, pending: 0, confirmed: 0, overdue: 0 };
+                byManager[key].total++;
+                if (t.status === 'done') byManager[key].done++;
+                else if (t.status === 'confirmed') byManager[key].confirmed++;
+                else byManager[key].pending++;
+                if (t.status !== 'done' && t.due_at && new Date(t.due_at) < now) byManager[key].overdue++;
+            });
+
+            const rows = Object.entries(byManager).sort((a, b) =>
+                (b[1].overdue - a[1].overdue) || (b[1].total - a[1].total));
+
+            if (rows.length === 0) {
+                managersBox.innerHTML = '<div class="agents-empty">Задач пока нет.</div>';
+            } else {
+                managersBox.innerHTML = rows.map(([name, s]) => {
+                    const rate = s.total ? Math.round((s.done / s.total) * 100) : 0;
+                    const status = s.overdue
+                        ? `<span class="stat-alert stat-alert-bad" style="padding:0.15rem 0.5rem;">⚠ ${s.overdue} просрочено</span>`
+                        : '<span style="color:#22c55e; font-size:0.8rem;">✓ без просрочек</span>';
+                    return `
+                        <div style="display:flex; align-items:center; gap:0.8rem; padding:0.5rem 0; border-bottom:1px solid rgba(148,163,184,0.08); flex-wrap:wrap;">
+                            <span style="min-width:130px; font-size:0.9rem;">${esc(name)}</span>
+                            <div class="stat-bar" style="flex:1; min-width:140px;">
+                                <div class="stat-bar-fill" style="width:${rate}%; ${rate >= 70 ? '' : 'background:linear-gradient(90deg,#f59e0b,#d97706);'}"></div>
+                            </div>
+                            <span style="font-size:0.8rem; color:var(--muted, #9aa3b2); min-width:170px;">
+                                ${s.done}/${s.total} выполнено · ${rate}% · ${s.pending} ожидают · ${s.confirmed} в работе
+                            </span>
+                            ${status}
+                        </div>`;
+                }).join('');
+            }
+        }
 
         // ─── Dialogs by agent ──────────────────────────────
         if (dialogsBox) {
