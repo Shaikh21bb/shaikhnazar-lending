@@ -136,5 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     load();
+    setInterval(load, 60000);
     if (refreshBtn) refreshBtn.addEventListener('click', () => { load(); refreshBtn.textContent = 'Обновляю...'; setTimeout(() => { refreshBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><polyline points="3 21 3 16 8 16"/></svg> Обновить'; }, 1000); });
 });

@@ -103,5 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     load();
+    setInterval(load, 60000);
     if (refreshBtn) refreshBtn.addEventListener('click', load);
 });
