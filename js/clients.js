@@ -1,7 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
     const listEl = document.getElementById('clients-list');
     const refreshBtn = document.getElementById('clients-refresh');
+    const searchInput = document.getElementById('clients-search');
     if (!listEl) return;
+
+    let rawList = [];
+    let filterTerm = '';
+    const agentName = {};
 
     function esc(str) {
         return String(str || '').replace(/[&<>"']/g, c => ({
@@ -73,11 +78,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         Object.keys(byChat).forEach(k => byChat[k].interested = isInterested(msgsPerChat[k]));
 
-        const list = Object.values(byChat).sort((a, b) =>
+        rawList = Object.values(byChat).sort((a, b) =>
             (a.last.created_at < b.last.created_at) ? 1 : -1);
+        window.__msgsPerChat = msgsPerChat;
+
+        render();
+    }
+
+    function render() {
+        if (rawList.length === 0) {
+            listEl.innerHTML = '<div class="agents-empty">Клиентов пока нет. Когда кто-то напишет вашему агенту в Telegram — он появится здесь.</div>';
+            return;
+        }
+
+        const list = rawList.filter(c => {
+            if (!filterTerm) return true;
+            const q = filterTerm.toLowerCase();
+            const phone = findPhone(c.last.text);
+            return String(c.chatId).toLowerCase().includes(q)
+                || phone.toLowerCase().includes(q)
+                || (c.last.text || '').toLowerCase().includes(q);
+        });
 
         if (list.length === 0) {
-            listEl.innerHTML = '<div class="agents-empty">Клиентов пока нет. Когда кто-то напишет вашему агенту в Telegram — он появится здесь.</div>';
+            listEl.innerHTML = '<div class="agents-empty">По запросу ничего не найдено.</div>';
             return;
         }
 
@@ -118,8 +142,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         listEl.querySelectorAll('.js-client-script').forEach(btn => {
             btn.addEventListener('click', () => {
-                window.__generateScript();
+                const msgs = (window.__msgsPerChat || {})[btn.dataset.chat] || [];
+                const lastUser = msgs.filter(m => m.role === 'user').pop();
+                window.__generateScript({
+                    context: lastUser ? `${lastUser.text} (клиент ${btn.dataset.chat})` : `Клиент ${btn.dataset.chat}`,
+                    offer: ''
+                });
             });
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            filterTerm = searchInput.value.trim();
+            render();
         });
     }
 

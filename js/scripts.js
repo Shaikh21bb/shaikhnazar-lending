@@ -148,7 +148,7 @@ pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
         }
     }
 
-    function openScriptModal() {
+    function openScriptModal(prefill) {
         resultScript = '';
         scriptMeta = {};
         scriptForm.reset();
@@ -159,6 +159,11 @@ pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
         if (saveBtn) { saveBtn.textContent = 'Сохранить в библиотеку'; saveBtn.disabled = false; }
         const ctx = document.getElementById('ai-context');
         if (ctx && ctx.value) contextInput.value = ctx.value;
+        if (prefill) {
+            if (prefill.context) contextInput.value = contextInput.value
+                ? contextInput.value + '\n' + prefill.context : prefill.context;
+            if (prefill.offer) offerInput.value = prefill.offer;
+        }
         scriptModal.classList.add('open');
         setTimeout(() => offerInput.focus(), 100);
     }
