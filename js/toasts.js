@@ -122,4 +122,13 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAgents();
     setTimeout(poll, 6000);
     setInterval(poll, 20000);
+
+    window.addEventListener('online', () => showToast(
+        __t('Соединение восстановлено', 'Байланыс қалпына келді'),
+        __t('Данные снова обновляются.', 'Деректер қайта жаңартылады.')
+    ));
+    window.addEventListener('offline', () => showToast(
+        __t('Офлайн', 'Офлайн'),
+        __t('Нет соединения. Данные временно не обновляются.', 'Байланыс жоқ. Деректер уақытша жаңартылмайды.')
+    ));
 });
