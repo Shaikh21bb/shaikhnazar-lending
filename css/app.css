@@ -2151,3 +2151,23 @@ input, select, textarea {
     font-weight: 600;
     vertical-align: middle;
 }
+
+/* ─── Overdue tasks ───────────────────────────────────────── */
+.cal-dot-overdue {
+    background: #ef4444;
+}
+
+.task-overdue {
+    border-color: rgba(239, 68, 68, 0.45) !important;
+}
+
+.task-overdue-badge {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 99px;
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+}

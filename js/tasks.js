@@ -110,6 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
             byDay[key].push(t);
         });
 
+        const now = new Date();
+
         const monthName = calendarMonth.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
         const first = new Date(year, month, 1);
         const startDow = (first.getDay() + 6) % 7; // Monday-first
@@ -123,10 +125,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const isToday = key === todayKey;
             const pending = dayTasks.filter(t => t.status !== 'done');
             const open = dayTasks.filter(t => t.status === 'done');
+            const overdue = dayTasks.filter(t => t.status !== 'done' && t.due_at && new Date(t.due_at) < now);
             cells += `
                 <div class="cal-cell ${isToday ? 'cal-today' : ''}" data-day="${d}">
                     <div class="cal-day-num">${d}</div>
-                    ${pending.length ? `<div class="cal-dot cal-dot-open"></div>` : ''}
+                    ${pending.length ? `<div class="cal-dot ${overdue.length ? 'cal-dot-overdue' : 'cal-dot-open'}"></div>` : ''}
                     ${open.length ? `<div class="cal-dot cal-dot-done"></div>` : ''}
                     ${pending.length ? `<div class="cal-count">${pending.length}</div>` : ''}
                 </div>`;
@@ -194,14 +197,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildTaskCard(t) {
+        const isOverdue = t.status !== 'done' && t.due_at && new Date(t.due_at) < new Date();
         const card = document.createElement('div');
-        card.className = 'task-card';
+        card.className = 'task-card' + (isOverdue ? ' task-overdue' : '');
         card.innerHTML = `
             <div class="task-card-top">
                 <div class="task-title">${escapeHtml(t.title)}</div>
                 <span class="task-status ${statusClass(t.status)}">${STATUS_LABEL[t.status] || t.status}</span>
             </div>
             ${t.description ? `<div class="task-desc">${escapeHtml(t.description)}</div>` : ''}
+            ${isOverdue ? `<div class="task-overdue-badge">⚠️ Просрочено</div>` : ''}
             <div class="task-meta-row">
                 <span>🕒 ${fmtDate(t.due_at)}</span>
                 ${t.manager ? `<span>👤 ${escapeHtml(t.manager)}</span>` : ''}
