@@ -84,7 +84,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadTasks() {
-        const { data, error } = await supabaseClient.from(TASKS_TABLE).select('*').order('created_at', { ascending: true });
+        if (window.__roleReady) await window.__roleReady;
+        let req = supabaseClient.from(TASKS_TABLE).select('*').order('created_at', { ascending: true });
+        if (window.__scope && window.__scope.isManager && window.__scope.chatId) {
+            req = req.eq('chat_id', window.__scope.chatId);
+        }
+        const { data, error } = await req;
         if (error) return;
         tasksCache = data || [];
         renderCalendar();

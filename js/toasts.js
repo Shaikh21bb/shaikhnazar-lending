@@ -54,6 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function poll() {
         if (document.hidden) return;
+        if (window.__roleReady) await window.__roleReady;
+        if (window.__scope && window.__scope.isManager) return;
         try {
             const [{ data: msgs, error: mErr }, { data: tasks, error: tErr }] = await Promise.all([
                 supabaseClient.from('agent_chats')

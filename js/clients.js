@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function load() {
+        if (window.__roleReady) await window.__roleReady;
         const [{ data: chats, error: cErr }, { data: agents, error: aErr }] = await Promise.all([
             supabaseClient.from('agent_chats')
                 .select('agent_id,chat_id,text,role,created_at')
@@ -46,6 +47,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 .limit(600),
             supabaseClient.from('agents').select('id,name')
         ]);
+
+        if (window.__scope && window.__scope.isManager && window.__scope.agentId) {
+            chats = (chats || []).filter(m => m.agent_id === window.__scope.agentId);
+        }
 
         if (cErr || aErr) {
             listEl.innerHTML = `<div class="agents-empty">Ошибка загрузки: ${esc((cErr && cErr.message) || (aErr && aErr.message))}</div>`;
