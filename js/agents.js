@@ -380,6 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="text" class="new-chat-input" id="new-chat-id" placeholder="Chat ID клиента в Telegram (напр. 123456789)" list="known-chats">
                 <datalist id="known-chats">${list.map(s => `<option value="${escapeHtml(s.chatId)}">`).join('')}</datalist>
                 <button class="agent-btn" id="new-chat-go" style="flex:0 0 auto; padding:0.55rem 1rem;">Открыть</button>
+                <button class="agent-btn" id="dialog-to-task" style="flex:0 0 auto; padding:0.55rem 1rem;" title="Создать задачу по этому клиенту">В задачу</button>
                 <button class="agent-btn" id="dialogs-export" style="flex:0 0 auto; padding:0.55rem 1rem;" title="Скачать все диалоги в .txt">Экспорт</button>
             </div>
             <div class="dialogs-layout">
@@ -412,6 +413,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const exportBtn = document.getElementById('dialogs-export');
         if (exportBtn) exportBtn.addEventListener('click', () => exportDialogs());
+
+        const toTaskBtn = document.getElementById('dialog-to-task');
+        if (toTaskBtn) toTaskBtn.addEventListener('click', () => {
+            if (!currentChatId) { alert('Сначала выберите чат клиента слева.'); return; }
+            if (typeof window.__openLeadTask !== 'function') {
+                alert('Раздел задач недоступен.');
+                return;
+            }
+            document.getElementById('dialogs-modal').classList.remove('open');
+            window.__openLeadTask({ name: 'Клиент ' + currentChatId, contact: currentChatId });
+        });
 
         const replyInput = document.getElementById('chat-reply-input');
         const replyBtn = document.getElementById('chat-reply-send');
