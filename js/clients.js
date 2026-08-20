@@ -21,6 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${d} дн назад`;
     }
 
+    function findPhone(text) {
+        if (!text) return '';
+        const m = String(text).match(/((\+7|8|7)[\s\-()]*\d{3}[\s\-()]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2})|((\+?\d[\d\s\-()]{7,}\d))/);
+        return m ? m[0].trim() : '';
+    }
+
     function switchTo(view) {
         const item = document.querySelector(`.nav-item[href="#${view}"]`);
         if (item) item.click();
@@ -70,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="client-info">
                         <div class="client-id">💬 ${esc(c.chatId)} <span class="client-agent">· ${esc(agentName[c.agentId] || 'Агент')}</span></div>
                         <div class="client-msg">${esc((c.last.text || '').slice(0, 120))}</div>
-                        <div class="client-meta">${c.count} сообщений · ${timeAgo(c.last.created_at)}</div>
+                        <div class="client-meta">${c.count} сообщений · ${timeAgo(c.last.created_at)}${findPhone(c.last.text) ? ` · 📞 <span class="client-phone">${esc(findPhone(c.last.text))}</span>` : ''}</div>
                     </div>
                     <div class="client-actions">
                         <button class="island island-sm js-client-reply" data-agent="${esc(c.agentId)}" data-chat="${esc(c.chatId)}">Ответить</button>

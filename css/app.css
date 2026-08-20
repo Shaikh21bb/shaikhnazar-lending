@@ -2132,3 +2132,10 @@ input, select, textarea {
 .client-meta { font-size: 0.72rem; color: var(--muted, #9aa3b2); margin-top: 0.15rem; }
 
 .client-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
+
+/* ─── Phone highlight ─────────────────────────────────────── */
+.client-phone {
+    color: #4ade80;
+    font-weight: 600;
+    font-family: var(--font-mono, ui-monospace, monospace);
+}
