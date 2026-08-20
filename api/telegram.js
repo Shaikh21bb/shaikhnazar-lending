@@ -105,9 +105,13 @@ async function replyToMessage(agent, message) {
 
     // Команда старта — фиксируем chat владельца для обратной связи
     if (text === '/start' || text === '/start@shaikh') {
+        const greeting = agent.language === 'kk'
+            ? 'Сәлеметсіз бе! Мен сіздердің AI-менеджерімізбін. Сұрағыңызды жазыңыз — оқыған менеджердей тез әрі дұрыс жауап беремін.'
+            : 'Привет! Я ваш AI-агент. Напишите мне сообщение — отвечу как обученный менеджер.';
         await telegram('sendMessage', agent.token, {
             chat_id: chatId,
-            text: 'Привет! Я ваш AI-агент. Напишите мне сообщение — отвечу как обученный менеджер.'
+            text: greeting,
+            parse_mode: 'HTML'
         });
         await saveHistory(agent.id, chatId, 'user', text);
         await saveHistory(agent.id, chatId, 'assistant', 'Стартовое приветствие отправлено.');
@@ -158,6 +162,11 @@ ${historyText || 'Диалога ещё не было — клиент толь�
 `;
 
     await saveHistory(agent.id, chatId, 'user', text);
+
+    // Индикатор «печатает…», чтобы ответ не выглядел мгновенным
+    try {
+        await telegram('sendChatAction', agent.token, { chat_id: chatId, action: 'typing' });
+    } catch (e) { console.error('sendChatAction error:', e.message); }
 
     let reply;
     try {
