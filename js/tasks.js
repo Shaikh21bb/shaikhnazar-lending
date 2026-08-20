@@ -301,13 +301,19 @@ document.addEventListener('DOMContentLoaded', () => {
         taskLeadInput.value = task ? JSON.stringify({ name: task.lead_name, contact: task.lead_contact }) : (prefill && prefill.lead ? JSON.stringify(prefill.lead) : '');
 
         taskManagerInput.innerHTML = '';
-        managersCache.forEach(m => {
+        const scopeMgr = (window.__scope && window.__scope.isManager) ? window.__scope.name : null;
+        const allowedManagers = scopeMgr ? managersCache.filter(m => m.name === scopeMgr) : managersCache;
+        if (allowedManagers.length === 0) {
+            allowedManagers.push({ name: scopeMgr || '', chat_id: '' });
+        }
+        allowedManagers.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.name;
             opt.textContent = `${m.name}${m.chat_id ? ' (chat: ' + m.chat_id + ')' : ''}`;
             taskManagerInput.appendChild(opt);
         });
         if (task && task.manager) taskManagerInput.value = task.manager;
+        else if (scopeMgr) taskManagerInput.value = scopeMgr;
 
         taskAgentInput.innerHTML = '';
         const telegramAgents = agentsCache.filter(a => a.platform === 'telegram');

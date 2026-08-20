@@ -36,6 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyManagerUi() {
         document.querySelectorAll('.nav-item[href="#analyzer"], .nav-item[href="#agents"], .nav-item[href="#stats"]')
             .forEach(el => el.style.display = 'none');
+        const mgrSection = document.getElementById('managers-section');
+        if (mgrSection) mgrSection.style.display = 'none';
         const chip = document.getElementById('user-email');
         if (chip && chip.textContent) chip.textContent += ' · менеджер';
         setTimeout(() => {
