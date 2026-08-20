@@ -1,0 +1,105 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const KEY = 'shaikh_last_seen_chat_at';
+    const TASK_KEY = 'shaikh_known_tasks';
+    let lastSeen = localStorage.getItem(KEY) || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    let knownTasks = {};
+    try { knownTasks = JSON.parse(localStorage.getItem(TASK_KEY) || '{}'); } catch (e) { knownTasks = {}; }
+    let agentNames = {};
+
+    function esc(str) {
+        return String(str || '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[c]);
+    }
+
+    function ensureRoot() {
+        let root = document.getElementById('toast-root');
+        if (!root) {
+            root = document.createElement('div');
+            root.id = 'toast-root';
+            root.className = 'toast-root';
+            document.body.appendChild(root);
+        }
+        return root;
+    }
+
+    function dismiss(toast) {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }
+
+    function showToast(title, body) {
+        const root = ensureRoot();
+        while (root.children.length >= 4) root.removeChild(root.firstChild);
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.innerHTML = `
+            <button class="toast-close">✕</button>
+            <div class="toast-title">${esc(title)}</div>
+            <div class="toast-body">${esc(body)}</div>
+        `;
+        root.appendChild(t);
+        requestAnimationFrame(() => t.classList.add('show'));
+        t.querySelector('.toast-close').addEventListener('click', () => dismiss(t));
+        setTimeout(() => dismiss(t), 8000);
+    }
+
+    async function loadAgents() {
+        const { data, error } = await supabaseClient.from('agents').select('id,name');
+        if (!error && data) {
+            agentNames = {};
+            data.forEach(a => agentNames[a.id] = a.name);
+        }
+    }
+
+    async function poll() {
+        if (document.hidden) return;
+        try {
+            const [{ data: msgs, error: mErr }, { data: tasks, error: tErr }] = await Promise.all([
+                supabaseClient.from('agent_chats')
+                    .select('agent_id,chat_id,text,created_at')
+                    .eq('role', 'user')
+                    .order('created_at', { ascending: false })
+                    .limit(10),
+                supabaseClient.from('tasks')
+                    .select('id,title,status,created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(5)
+            ]);
+
+            if (!mErr && msgs && msgs.length) {
+                const fresh = msgs.filter(m => m.created_at && m.created_at > lastSeen);
+                if (fresh.length) {
+                    fresh.slice(0, 3).reverse().forEach(m => {
+                        showToast(
+                            `💬 ${agentNames[m.agent_id] || 'Агент'} — клиент ${m.chat_id}`,
+                            (m.text || '').slice(0, 90) || 'Новое сообщение'
+                        );
+                    });
+                    const newest = msgs[0].created_at;
+                    if (newest && newest > lastSeen) {
+                        lastSeen = newest;
+                        localStorage.setItem(KEY, newest);
+                    }
+                }
+            }
+
+            if (!tErr && tasks && tasks.length) {
+                tasks.forEach(t => {
+                    const prev = knownTasks[t.id];
+                    knownTasks[t.id] = t.status;
+                    if (prev && prev !== 'done' && t.status === 'done') {
+                        showToast('🎉 Задача выполнена', t.title || 'Задача');
+                    }
+                });
+                localStorage.setItem(TASK_KEY, JSON.stringify(knownTasks));
+            }
+        } catch (e) {
+            console.error('Toast poll error:', e.message);
+        }
+    }
+
+    loadAgents();
+    setTimeout(poll, 6000);
+    setInterval(poll, 20000);
+});

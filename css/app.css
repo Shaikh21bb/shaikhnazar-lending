@@ -2039,3 +2039,57 @@ input, select, textarea {
     outline: none;
     border-color: rgba(148, 163, 184, 0.5);
 }
+
+/* ─── Toasts ──────────────────────────────────────────────── */
+.toast-root {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+    max-width: min(340px, calc(100vw - 2rem));
+}
+
+.toast {
+    position: relative;
+    pointer-events: auto;
+    background: rgba(15, 23, 42, 0.94);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 0.75rem;
+    padding: 0.7rem 2rem 0.7rem 0.9rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    transform: translateX(120%);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.toast.show {
+    transform: none;
+    opacity: 1;
+}
+
+.toast-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.2rem;
+}
+
+.toast-body {
+    font-size: 0.8rem;
+    color: var(--muted, #9aa3b2);
+    word-break: break-word;
+}
+
+.toast-close {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.55rem;
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
