@@ -161,6 +161,7 @@ a, button {
 .btn-solid:hover {
     background-color: var(--text-secondary);
     transform: scale(0.97);
+    box-shadow: 0 16px 32px -18px rgba(0, 0, 0, 0.45);
 }
 
 .btn-outline {
@@ -169,6 +170,7 @@ a, button {
 }
 .btn-outline:hover {
     border-color: var(--text-primary);
+    transform: scale(0.97);
 }
 
 /* =========================================
@@ -926,4 +928,10 @@ header .container {
     /* Disable hover-only effects on touch */
     .service-row:hover { background: linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03)); }
     .btn-solid:hover { transform: none; }
+}
+
+/* Focus rings (a11y) */
+:is(a, button, input, textarea, select):focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: 2px;
 }

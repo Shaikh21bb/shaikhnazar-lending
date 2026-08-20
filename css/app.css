@@ -742,12 +742,13 @@ input, select, textarea {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    transition: border-color 0.15s, background 0.15s;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
 .metric-card:hover {
     border-color: var(--border-strong);
     background: var(--surface-2);
+    box-shadow: 0 8px 28px -14px rgba(124, 111, 255, 0.35);
 }
 
 .metric-icon {
@@ -2358,4 +2359,11 @@ html { scrollbar-width: thin; scrollbar-color: #2A2A33 transparent; }
 @media (max-width: 340px) {
     .mobile-dock .nav-item { padding: 0.5rem 0.75rem; font-size: 0.72rem; }
     .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+/* ═══ Focus rings (a11y) ════════════════════════════════════ */
+:is(a, button, input, textarea, select, .nav-item, .lang-btn, .manager-tab):focus-visible {
+    outline: 2px solid rgba(124, 111, 255, 0.65);
+    outline-offset: 2px;
+    border-radius: 8px;
 }
