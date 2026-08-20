@@ -5,7 +5,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const managersBox = document.getElementById('stats-managers');
     const recentBox = document.getElementById('stats-recent-scripts');
     const refreshBtn = document.getElementById('stats-refresh');
+    const rangeSelect = document.getElementById('stats-range');
     if (!grid && !tasksBox) return;
+
+    function rangeCutoff() {
+        const v = rangeSelect ? rangeSelect.value : 'all';
+        if (!v || v === 'all') return null;
+        const now = new Date();
+        if (v === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const days = { '7d': 7, '30d': 30, '90d': 90 }[v] || 0;
+        return new Date(now.getTime() - days * 86400000);
+    }
 
     function esc(str) {
         if (!str) return '';
@@ -45,21 +55,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     supabaseClient.from('agent_chats').select('agent_id,chat_id,role,text,created_at').order('created_at', { ascending: true }),
                     supabaseClient.from('scripts').select('lead_name,lead_contact,lead_need,script,created_at')
                 ]);
+                const cutoff = rangeCutoff();
+                let tasksList = tasks || [];
+                let chatsList = chats || [];
+                let scriptsList = scripts || [];
+                if (cutoff) {
+                    tasksList = tasksList.filter(t => t.created_at && new Date(t.created_at) >= cutoff);
+                    chatsList = chatsList.filter(c => c.created_at && new Date(c.created_at) >= cutoff);
+                    scriptsList = scriptsList.filter(s => s.created_at && new Date(s.created_at) >= cutoff);
+                }
                 const agents = {};
                 const { data: agentsAll } = await supabaseClient.from('agents').select('id,name');
                 (agentsAll || []).forEach(a => agents[a.id] = a.name);
 
                 downloadCSV(`shaikh_tasks_${new Date().toISOString().slice(0,10)}.csv`, [
                     ['ID', 'Задача', 'Менеджер', 'Дедлайн', 'Статус', 'Создана'],
-                    ...((tasks || []).map(t => [t.id, t.title, t.manager, t.due_at ? new Date(t.due_at).toLocaleString('ru-RU') : '', t.status, fmtDate(t.created_at)]))
+                    ...(tasksList.map(t => [t.id, t.title, t.manager, t.due_at ? new Date(t.due_at).toLocaleString('ru-RU') : '', t.status, fmtDate(t.created_at)]))
                 ]);
 
-                const allChats = [['Дата', 'Агент', 'Роль', 'Chat ID', 'Текст'], ...(chats || []).map(c => [fmtDate(c.created_at), agents[c.agent_id] || c.agent_id, c.role, c.chat_id, c.text])];
+                const allChats = [['Дата', 'Агент', 'Роль', 'Chat ID', 'Текст'], ...(chatsList.map(c => [fmtDate(c.created_at), agents[c.agent_id] || c.agent_id, c.role, c.chat_id, c.text]))];
                 try { downloadCSV(`shaikh_dialogs_${new Date().toISOString().slice(0,10)}.csv`, allChats); } catch (e) { console.error(e); }
 
                 downloadCSV(`shaikh_scripts_${new Date().toISOString().slice(0,10)}.csv`, [
                     ['Лид', 'Контакт', 'Потребность', 'Текст скрипта', 'Дата'],
-                    ...((scripts || []).map(s => [s.lead_name, s.lead_contact, s.lead_need, s.script, fmtDate(s.created_at)]))
+                    ...(scriptsList.map(s => [s.lead_name, s.lead_contact, s.lead_need, s.script, fmtDate(s.created_at)]))
                 ]);
 
                 alert('Скачано 3 файла: задачи, диалоги, скрипты.');
@@ -100,11 +119,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const agents = agentsR.data || [];
         const projects = projectsR.data || [];
         const managers = managersR.data || [];
-        const scripts = scriptsR.data || [];
-        const scriptsRecent = scriptsRecentR.data || [];
-        const tasks = tasksR.data || [];
-        const chats = chatsR.data || [];
-        const msgCount = msgsR.count || 0;
+        let scripts = scriptsR.data || [];
+        let scriptsRecent = scriptsRecentR.data || [];
+        let tasks = tasksR.data || [];
+        let chats = chatsR.data || [];
+        let msgCount = msgsR.count || 0;
+
+        const cutoff = rangeCutoff();
+        if (cutoff) {
+            tasks = tasks.filter(t => t.created_at && new Date(t.created_at) >= cutoff);
+            chats = chats.filter(c => c.created_at && new Date(c.created_at) >= cutoff);
+            scripts = scripts.filter(s => s.created_at && new Date(s.created_at) >= cutoff);
+            scriptsRecent = scriptsRecent.filter(s => s.created_at && new Date(s.created_at) >= cutoff);
+            msgCount = tasks.length; // msgCount head query is global; keep cardinal using tasks when filtered
+        }
 
         // ─── Cards ──────────────────────────────────────────
         grid.innerHTML = [
@@ -230,5 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     load();
     setInterval(load, 60000);
+    if (rangeSelect) rangeSelect.addEventListener('change', load);
     if (refreshBtn) refreshBtn.addEventListener('click', () => { load(); refreshBtn.textContent = 'Обновляю...'; setTimeout(() => { refreshBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><polyline points="3 21 3 16 8 16"/></svg> Обновить'; }, 1000); });
 });

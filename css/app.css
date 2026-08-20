@@ -1991,6 +1991,20 @@ input, select, textarea {
     margin-bottom: 1rem;
 }
 
+.stats-range {
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: var(--text, inherit);
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 0.55rem 0.8rem;
+    border-radius: 0.6rem;
+    outline: none;
+    cursor: pointer;
+}
+
+.stats-range:focus { border-color: rgba(148, 163, 184, 0.5); }
+
 .clients-search-input {
     width: 100%;
     background: rgba(148, 163, 184, 0.08);

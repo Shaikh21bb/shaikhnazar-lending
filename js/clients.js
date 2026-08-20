@@ -77,6 +77,13 @@ document.addEventListener('DOMContentLoaded', () => {
             msgsPerChat[key].push(m);
         });
         Object.keys(byChat).forEach(k => byChat[k].interested = isInterested(msgsPerChat[k]));
+        Object.keys(byChat).forEach(k => {
+            byChat[k].phone = '';
+            for (let i = msgsPerChat[k].length - 1; i >= 0; i--) {
+                const p = findPhone(msgsPerChat[k][i].text);
+                if (p) { byChat[k].phone = p; break; }
+            }
+        });
 
         rawList = Object.values(byChat).sort((a, b) =>
             (a.last.created_at < b.last.created_at) ? 1 : -1);
@@ -94,9 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const list = rawList.filter(c => {
             if (!filterTerm) return true;
             const q = filterTerm.toLowerCase();
-            const phone = findPhone(c.last.text);
             return String(c.chatId).toLowerCase().includes(q)
-                || phone.toLowerCase().includes(q)
+                || (c.phone || '').toLowerCase().includes(q)
                 || (c.last.text || '').toLowerCase().includes(q);
         });
 
@@ -115,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="client-info">
                         <div class="client-id">💬 ${esc(c.chatId)} ${c.interested ? '<span class="client-hot">🔥 интерес</span>' : ''} <span class="client-agent">· ${esc(agentName[c.agentId] || 'Агент')}</span></div>
                         <div class="client-msg">${esc((c.last.text || '').slice(0, 120))}</div>
-                        <div class="client-meta">${c.count} сообщений · ${timeAgo(c.last.created_at)}${findPhone(c.last.text) ? ` · 📞 <span class="client-phone">${esc(findPhone(c.last.text))}</span>` : ''}</div>
+                        <div class="client-meta">${c.count} сообщений · ${timeAgo(c.last.created_at)}${c.phone ? ` · 📞 <a class="client-phone" href="tel:${esc(c.phone.replace(/\D/g, ''))}" style="text-decoration:none;">${esc(c.phone)}</a>` : ''}</div>
                     </div>
                     <div class="client-actions">
                         <button class="island island-sm js-client-reply" data-agent="${esc(c.agentId)}" data-chat="${esc(c.chatId)}">Ответить</button>
