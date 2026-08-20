@@ -194,6 +194,16 @@
             border-color: rgba(255, 51, 51, 0.5);
         }
 
+        @media (max-width: 640px) {
+            body { padding: 2rem 1rem; }
+            .admin-title { font-size: 1.8rem; }
+            .create-box { flex-direction: column; align-items: stretch; }
+            .create-btn { height: 50px; }
+            .manager-card { flex-direction: column; align-items: flex-start; gap: 0.8rem; }
+            .delete-btn { width: 100%; }
+            .master-form { padding: 2rem 1.2rem; width: 100%; }
+        }
+
         /* Overlay for Master Password */
         #master-overlay {
             position: fixed;

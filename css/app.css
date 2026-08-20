@@ -1905,7 +1905,13 @@ input, select, textarea {
         border: 1px solid var(--border);
         border-radius: 999px;
         box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+        max-width: calc(100vw - 1rem);
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
     }
+
+    .mobile-dock::-webkit-scrollbar { display: none; }
 
     .mobile-dock .nav-item,
     .mobile-dock .dock-link {
@@ -1918,6 +1924,7 @@ input, select, textarea {
         cursor: pointer;
         transition: all 0.15s;
         white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .mobile-dock .nav-item.active {
@@ -2221,4 +2228,81 @@ input, select, textarea {
     font-size: 0.72rem;
     font-weight: 600;
     margin-bottom: 0.4rem;
+}
+
+/* ═══ Mobile (≤480px) full polish ═══════════════════════════ */
+@media (max-width: 480px) {
+    .app-content { padding: 5.5rem 0.9rem 7.5rem; }
+
+    .topbar-inner { gap: 0.4rem; }
+    .topbar-right { gap: 0.35rem; }
+    .topbar-right .island { padding: 0.45rem 0.6rem; font-size: 0.72rem; }
+    .topbar-logo { font-size: 1.05rem; }
+
+    .page-hero h1 { font-size: 1.45rem; letter-spacing: -0.01em; }
+    .page-hero p { font-size: 0.85rem; }
+
+    .results-header { flex-direction: column; gap: 0.7rem; }
+    .results-header .island { width: 100%; justify-content: center; }
+
+    .metric-value { font-size: 1.3rem; }
+    .metric-card { padding: 0.85rem; }
+    .dashboard-grid { gap: 0.5rem; }
+
+    .lead-card { padding: 1rem; }
+    .lead-name { font-size: 1.05rem; }
+    .lead-card .primary-btn,
+    .lead-card .wa-direct-btn { font-size: 13px; padding: 9px; }
+
+    /* Client rows → cards */
+    .client-row { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    .client-actions { width: 100%; justify-content: flex-start; }
+    .client-actions .island { flex: 1; justify-content: center; }
+    .client-id { font-size: 0.92rem; word-break: break-all; }
+
+    /* Task cards */
+    .task-card-top { flex-wrap: wrap; }
+    .task-meta-row { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+    .agent-card-actions .island { flex: 1 1 45%; justify-content: center; }
+
+    /* Calendar */
+    .cal-cell { min-height: 44px; }
+    .cal-day-num { font-size: 0.8rem; }
+    .cal-count { font-size: 0.7rem; }
+    .cal-head .island { padding: 0.4rem 0.6rem; }
+    .cal-month { font-size: 0.85rem; }
+
+    /* Stats cards */
+    .stat-value { font-size: 1.7rem; }
+    .stat-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .stat-card { padding: 0.85rem; }
+    .stat-label { font-size: 0.7rem; }
+    .stats-panel { padding: 0.95rem; }
+
+    /* Script library cards */
+    .script-card { padding: 1rem; }
+    .script-text { max-height: 200px; overflow-y: auto; }
+
+    /* Manager tabs */
+    .manager-tab { padding: 0.45rem 0.8rem; font-size: 0.78rem; }
+
+    /* Modals */
+    .agent-modal { padding: 0.8rem; }
+    .agent-modal-card { max-height: 92vh; padding: 1.2rem; }
+    .task-modal { padding: 1.2rem; }
+
+    .auth-card { padding: 2rem 1.2rem; }
+    .auth-sub { font-size: 0.9rem; }
+    .auth-footer { flex-direction: column; gap: 0.35rem; text-align: center; }
+
+    .toast-root { right: 0.6rem; top: 0.6rem; max-width: calc(100vw - 1.2rem); }
+    .tasks-alert-banner { font-size: 0.82rem; }
+
+    .settings-grid { padding: 1rem; }
+    .upload-zone { padding: 2rem 1.1rem; }
+}
+
+@media (max-width: 340px) {
+    .mobile-dock .nav-item { padding: 0.5rem 0.75rem; font-size: 0.72rem; }
+    .dashboard-grid { grid-template-columns: 1fr; }
 }

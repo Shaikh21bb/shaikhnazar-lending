@@ -478,27 +478,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${verdict ? `<div class="lead-verdict"><strong>ИИ Вердикт:</strong> ${verdict}</div>` : ''}
                 <div class="badge" style="margin-top:1rem; background: ${document.body.getAttribute('data-theme') === 'dark' ? 'rgba(255, 193, 7, 0.1)' : '#FEF3C7'}; color: ${document.body.getAttribute('data-theme') === 'dark' ? '#FFC107' : '#D97706'}; border: 1px solid ${document.body.getAttribute('data-theme') === 'dark' ? 'rgba(255, 193, 7, 0.3)' : 'transparent'}; padding: 0.3rem 0.8rem;">🔥 ГОРЯЧИЙ ЛИД</div>
                 
-                <div style="display:flex; gap:0.5rem; margin-top:12px;">
+                <div style="display:flex; gap:0.5rem; margin-top:12px; flex-wrap:wrap;">
                     <!-- Direct WhatsApp Button -->
-                    <a href="#" class="wa-direct-btn" style="flex:1; padding:10px; font-size:14px; display:flex; justify-content:center; align-items:center; gap:8px; border-radius:8px; text-decoration:none; font-weight:600; transition:all 0.2s;">
+                    <a href="#" class="wa-direct-btn" style="flex:1 1 calc(50% - 0.25rem); padding:10px; font-size:14px; min-width:0; display:flex; justify-content:center; align-items:center; gap:8px; border-radius:8px; text-decoration:none; font-weight:600; transition:all 0.2s;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
                         Написать
                     </a>
                     
                     <!-- Copy Details Button -->
-                    <button class="copy-btn primary-btn" style="flex:1; padding:10px; font-size:14px; display:flex; justify-content:center; align-items:center; gap:8px;">
+                    <button class="copy-btn primary-btn" style="flex:1 1 calc(50% - 0.25rem); padding:10px; font-size:14px; min-width:0; display:flex; justify-content:center; align-items:center; gap:8px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         Скопировать
                     </button>
 
                     <!-- Assign Task Button -->
-                    <button class="task-lead-btn" style="flex:1; padding:10px; font-size:14px; display:flex; justify-content:center; align-items:center; gap:8px;">
+                    <button class="task-lead-btn" style="flex:1 1 calc(50% - 0.25rem); padding:10px; font-size:14px; min-width:0; display:flex; justify-content:center; align-items:center; gap:8px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                         Задача
                     </button>
 
                     <!-- Generate Script Button -->
-                    <button class="script-lead-btn" style="flex:1; padding:10px; font-size:14px; display:flex; justify-content:center; align-items:center; gap:8px;">
+                    <button class="script-lead-btn" style="flex:1 1 calc(50% - 0.25rem); padding:10px; font-size:14px; min-width:0; display:flex; justify-content:center; align-items:center; gap:8px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         Скрипт
                     </button>
