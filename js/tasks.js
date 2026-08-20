@@ -474,4 +474,5 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAgents();
     loadManagers();
     loadTasks();
+    setInterval(loadTasks, 60000);
 });

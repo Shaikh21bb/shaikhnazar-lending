@@ -213,4 +213,5 @@ pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
     });
 
     loadScripts();
+    setInterval(loadScripts, 60000);
 });

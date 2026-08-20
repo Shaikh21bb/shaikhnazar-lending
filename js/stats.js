@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const [{ data: tasks }, { data: chats }, { data: scripts }] = await Promise.all([
                     supabaseClient.from('tasks').select('id,title,manager,due_at,status,created_at'),
                     supabaseClient.from('agent_chats').select('agent_id,chat_id,role,text,created_at').order('created_at', { ascending: true }),
-                    supabaseClient.from('scripts').select('lead_name,lead_phone,channel,script,created_at')
+                    supabaseClient.from('scripts').select('lead_name,lead_contact,lead_need,script,created_at')
                 ]);
                 const agents = {};
                 const { data: agentsAll } = await supabaseClient.from('agents').select('id,name');
@@ -58,8 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 try { downloadCSV(`shaikh_dialogs_${new Date().toISOString().slice(0,10)}.csv`, allChats); } catch (e) { console.error(e); }
 
                 downloadCSV(`shaikh_scripts_${new Date().toISOString().slice(0,10)}.csv`, [
-                    ['Лид', 'Телефон', 'Канал', 'Текст скрипта', 'Дата'],
-                    ...((scripts || []).map(s => [s.lead_name, s.lead_phone, s.channel, s.script, fmtDate(s.created_at)]))
+                    ['Лид', 'Контакт', 'Потребность', 'Текст скрипта', 'Дата'],
+                    ...((scripts || []).map(s => [s.lead_name, s.lead_contact, s.lead_need, s.script, fmtDate(s.created_at)]))
                 ]);
 
                 alert('Скачано 3 файла: задачи, диалоги, скрипты.');
