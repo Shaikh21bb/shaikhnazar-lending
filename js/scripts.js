@@ -73,10 +73,50 @@ document.addEventListener('DOMContentLoaded', () => {
     const textEl = document.getElementById('script-text');
     const copyBtn = document.getElementById('script-copy');
     const saveBtn = document.getElementById('script-save');
+    const variantBtn = document.getElementById('script-variant');
     const closeBtn = document.getElementById('script-close');
     const generateBtn = document.getElementById('script-generate');
     const actionsEl = document.getElementById('script-actions');
     let scriptMeta = {};
+
+    async function generateScript() {
+        const offer = offerInput.value.trim();
+        if (!offer) return;
+
+        generateBtn.disabled = true;
+        generateBtn.textContent = 'Генерация...';
+        if (variantBtn) variantBtn.disabled = true;
+        resultEl.style.display = 'none';
+        actionsEl.style.display = 'flex';
+
+        try {
+            const res = await fetch('/api/script', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    offer: offer,
+                    audience: audienceInput.value.trim(),
+                    context: contextInput.value.trim(),
+                    language: langInput ? langInput.value : 'kk'
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Ошибка генерации');
+
+            resultScript = data.script;
+            scriptMeta = { offer: offer, audience: audienceInput.value.trim() };
+            textEl.value = data.script;
+            resultEl.style.display = 'block';
+            actionsEl.style.display = 'none';
+        } catch (err) {
+            alert('Ошибка: ' + err.message);
+            resultEl.style.display = 'block';
+        } finally {
+            generateBtn.disabled = false;
+            generateBtn.textContent = 'Сгенерировать';
+            if (variantBtn) variantBtn.disabled = false;
+        }
+    }
 
     function openScriptModal() {
         resultScript = '';
@@ -105,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeBtn) closeBtn.addEventListener('click', () => scriptModal.classList.remove('open'));
 
     if (copyBtn) copyBtn.addEventListener('click', () => copyText(textEl.value || resultScript, copyBtn));
+    if (variantBtn) variantBtn.addEventListener('click', () => generateScript());
 
     if (saveBtn) saveBtn.addEventListener('click', async () => {
         const text = (textEl.value || '').trim();
@@ -133,39 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (scriptForm) scriptForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const offer = offerInput.value.trim();
-        if (!offer) return;
-
-        generateBtn.disabled = true;
-        generateBtn.textContent = 'Генерация...';
-        resultEl.style.display = 'none';
-        actionsEl.style.display = 'flex';
-
-        try {
-            const res = await fetch('/api/script', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    offer: offer,
-                    audience: audienceInput.value.trim(),
-                    context: contextInput.value.trim(),
-                    language: langInput ? langInput.value : 'kk'
-                })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Ошибка генерации');
-
-            resultScript = data.script;
-            scriptMeta = { offer: offer, audience: audienceInput.value.trim() };
-            textEl.value = data.script;
-            resultEl.style.display = 'block';
-            actionsEl.style.display = 'none';
-        } catch (err) {
-            alert('Ошибка: ' + err.message);
-        } finally {
-            generateBtn.disabled = false;
-            generateBtn.textContent = 'Сгенерировать';
-        }
+        generateScript();
     });
 
     loadScripts();
