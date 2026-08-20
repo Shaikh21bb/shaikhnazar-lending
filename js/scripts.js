@@ -32,6 +32,17 @@ pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
         w.document.close();
     }
 
+    function downloadScript(title, text) {
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `script_${(title || 'skript').replace(/[^\wа-яё-]/gi, '_').slice(0, 40)}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    }
+
     /* ─── Library ────────────────────────────────────────────── */
     async function loadScripts() {
         const grid = document.getElementById('scripts-grid');
@@ -63,6 +74,7 @@ pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
             <pre class="script-text">${escapeHtml(s.script)}</pre>
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                 <button class="island island-sm js-script-copy">Копировать</button>
+                <button class="island island-sm js-script-download">Скачать</button>
                 <button class="island island-sm js-script-print">Печать</button>
                 <button class="island island-sm island-danger js-script-delete">Удалить</button>
             </div>
@@ -70,6 +82,8 @@ pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
         card.querySelector('.js-script-copy').addEventListener('click', () => copyText(s.script, card.querySelector('.js-script-copy')));
         const printBtn = card.querySelector('.js-script-print');
         if (printBtn) printBtn.addEventListener('click', () => printScript(s.lead_name || 'Скрипт продаж', s.script));
+        const downloadBtn = card.querySelector('.js-script-download');
+        if (downloadBtn) downloadBtn.addEventListener('click', () => downloadScript(s.lead_name || 'Скрипт продаж', s.script));
         card.querySelector('.js-script-delete').addEventListener('click', async () => {
             if (!confirm('Удалить скрипт?')) return;
             await supabaseClient.from(SCRIPTS_TABLE).delete().eq('id', s.id);
