@@ -435,6 +435,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (exportBtn) exportBtn.addEventListener('click', () => exportDialogs());
 
         const toTaskBtn = document.getElementById('dialog-to-task');
+        const copyThreadBtn = document.getElementById('copy-current-thread');
+        const threadWrap = document.getElementById('dialogs-thread');
+        if (threadWrap && (toTaskBtn || copyThreadBtn)) {
+            const bar = document.createElement('div');
+            bar.style.cssText = 'display:flex; gap:0.4rem; margin-bottom:0.5rem; flex-wrap:wrap;';
+            bar.innerHTML = `
+                <button class="island island-sm" id="copy-current-thread">Копировать чат</button>
+            `;
+            threadWrap.prepend(bar);
+        }
         if (toTaskBtn) toTaskBtn.addEventListener('click', () => {
             if (!currentChatId) { alert('Сначала выберите чат клиента слева.'); return; }
             if (typeof window.__openLeadTask !== 'function') {
@@ -443,6 +453,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             document.getElementById('dialogs-modal').classList.remove('open');
             window.__openLeadTask({ name: 'Клиент ' + currentChatId, contact: currentChatId });
+        });
+
+        const copyThreadButton = document.getElementById('copy-current-thread');
+        if (copyThreadButton) copyThreadButton.addEventListener('click', () => {
+            if (!currentChatId) { alert('Выберите чат клиента.'); return; }
+            const messages = dialogsMessages.filter(m => m.chat_id === currentChatId);
+            if (!messages.length) { alert('В этом чате пусто.'); return; }
+            const text = messages.map(m => {
+                const time = new Date(m.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                const who = m.role === 'user' ? 'Клиент' : 'Агент';
+                return `[${time}] ${who}: ${m.text}`;
+            }).join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                copyThreadButton.textContent = 'Скопировано ✅';
+                setTimeout(() => { copyThreadButton.textContent = 'Копировать чат'; }, 2000);
+            }).catch(() => alert('Не удалось скопировать.'));
         });
 
         const replyInput = document.getElementById('chat-reply-input');
