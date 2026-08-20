@@ -346,14 +346,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /* ─── Dialogs ─────────────────────────────────────────────── */
-    function openDialogs(agent) {
+    function openDialogs(agent, initialChatId) {
         currentDialogsAgent = agent;
-        currentChatId = null;
+        currentChatId = initialChatId || null;
         dialogsMessages = [];
         document.getElementById('dialogs-title').textContent = `Диалоги · ${agent.name || ''}`;
         document.getElementById('dialogs-modal').classList.add('open');
         renderDialogs();
     }
+
+    window.__openAgentDialog = (agent, chatId) => openDialogs(agent, chatId);
 
     async function renderDialogs() {
         const body = document.getElementById('dialogs-body');

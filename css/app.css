@@ -2093,3 +2093,42 @@ input, select, textarea {
     cursor: pointer;
     font-size: 0.8rem;
 }
+
+/* ─── Clients view ────────────────────────────────────────── */
+.client-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.client-row:last-child { border-bottom: none; }
+
+.client-row-head {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted, #9aa3b2);
+    padding-bottom: 0.4rem;
+}
+
+.client-info { flex: 1; min-width: 0; }
+
+.client-id { font-weight: 600; margin-bottom: 0.2rem; }
+
+.client-agent { font-weight: 400; font-size: 0.8rem; color: var(--muted, #9aa3b2); }
+
+.client-msg {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 560px;
+}
+
+.client-meta { font-size: 0.72rem; color: var(--muted, #9aa3b2); margin-top: 0.15rem; }
+
+.client-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
