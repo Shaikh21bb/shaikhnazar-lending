@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 <div class="history-card-actions">
-                    <button class="hist-open-btn" onclick="window.__openSession(${s.id})">Открыть</button>
+                    <button class="hist-open-btn" onclick="window.__openSession(${s.id})">${__t ? __t('Открыть', 'Ашу') : 'Открыть'}</button>
                     <button class="hist-delete-btn" onclick="window.__deleteSession(${s.id})">X</button>
                 </div>
             </div>

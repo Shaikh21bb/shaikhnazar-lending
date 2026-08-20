@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const KEY = 'shaikh_lang';
-    let lang = localStorage.getItem(KEY) || 'ru';
+    let lang = window.__getLang ? window.__getLang() : (localStorage.getItem(KEY) || 'ru');
 
     const KK = {
         'nav.analyzer': 'ИИ-талдау',
@@ -38,8 +38,13 @@ document.addEventListener('DOMContentLoaded', () => {
         'm.newTaskModal': 'Жаңа тапсырма',
         'm.newManager': 'Жаңа менеджер',
         'm.broadcast': 'Клиенттерге тарату',
-        'm.script': 'Сату скриптісі'
+        'm.script': 'Сату скриптісі',
+        'h.clearAll': 'Бәрін тазалау',
+        'h.open': 'Ашу'
     };
+
+    const RANGE_KK = { all: 'Барлық уақыт', today: 'Бүгін', '7d': '7 күн', '30d': '30 күн', '90d': '90 күн' };
+    const RANGE_RU = { all: 'Всё время', today: 'Сегодня', '7d': '7 дней', '30d': '30 дней', '90d': '90 дней' };
 
     function apply() {
         document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -54,6 +59,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = document.getElementById(id);
             if (btn) btn.textContent = lang === 'kk' ? ru : kk;
         });
+        const range = document.getElementById('stats-range');
+        if (range) {
+            Array.from(range.options).forEach(o => {
+                const map = lang === 'kk' ? RANGE_KK : RANGE_RU;
+                if (map[o.value]) o.textContent = map[o.value];
+            });
+        }
+        const cs = document.getElementById('clients-search');
+        if (cs) {
+            cs.placeholder = lang === 'kk'
+                ? 'chat ID, телефон немесе мәтін бойынша іздеу...'
+                : 'Поиск по chat ID, телефону или тексту...';
+        }
     }
 
     const toggle = (btnId) => {

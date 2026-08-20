@@ -130,7 +130,7 @@
             <section id="history-section">
                 <div class="history-header">
                     <h3>История анализов</h3>
-                    <button class="hist-open-btn" onclick="window.__clearAllSessions()">Очистить всё</button>
+                    <button class="hist-open-btn" onclick="window.__clearAllSessions()" data-i18n="h.clearAll" data-i18n-ru="Очистить всё">Очистить всё</button>
                 </div>
                 <div id="history-list"></div>
             </section>
@@ -510,6 +510,7 @@
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/lang.js"></script>
     <script src="./js/supabase.js"></script>
 
     <script src="./js/shyraq.js"></script>

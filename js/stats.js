@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             exportBtn.disabled = true;
             const label = exportBtn.querySelector('span');
             const old = label.textContent;
-            label.textContent = 'Выгрузка...';
+            label.textContent = __t('Выгрузка...', 'Жүктеу...');
             try {
                 const [{ data: tasks }, { data: chats }, { data: scripts }] = await Promise.all([
                     supabaseClient.from('tasks').select('id,title,manager,due_at,status,created_at'),
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ...(scriptsList.map(s => [s.lead_name, s.lead_contact, s.lead_need, s.script, fmtDate(s.created_at)]))
                 ]);
 
-                alert('Скачано 3 файла: задачи, диалоги, скрипты.');
+                alert(__t('Скачано 3 файла: задачи, диалоги, скрипты.', '3 файл жүктелді: тапсырмалар, диалогтар, скрипттер.'));
             } catch (e) {
                 alert('Ошибка выгрузки: ' + (e && e.message ? e.message : e));
             } finally {
@@ -136,12 +136,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ─── Cards ──────────────────────────────────────────
         grid.innerHTML = [
-            buildCard('Агентов', agents.length, 'Telegram-боты'),
-            buildCard('Проектов', projects.length, 'обучение агентов'),
-            buildCard('Менеджеров', managers.length, 'получают задачи'),
-            buildCard('Скриптов', scripts.length, 'в библиотеке'),
-            buildCard('Диалогов', new Set(chats.map(c => c.chat_id)).size, 'уникальных клиентов'),
-            buildCard('Сообщений', msgCount, 'в переписках агентов')
+            buildCard(__t('Агентов', 'Агенттер'), agents.length, __t('Telegram-боты', 'Telegram-боттар')),
+            buildCard(__t('Проектов', 'Жобалар'), projects.length, __t('обучение агентов', 'агенттерді оқыту')),
+            buildCard(__t('Менеджеров', 'Менеджерлер'), managers.length, __t('получают задачи', 'тапсырмалар алады')),
+            buildCard(__t('Скриптов', 'Скрипттер'), scripts.length, __t('в библиотеке', 'кітапханада')),
+            buildCard(__t('Диалогов', 'Диалогтар'), new Set(chats.map(c => c.chat_id)).size, __t('уникальных клиентов', 'бірегей клиенттер')),
+            buildCard(__t('Сообщений', 'Хабарламалар'), msgCount, __t('в переписках агентов', 'агенттер жазысуында'))
         ].join('');
 
         // ─── Tasks overview ────────────────────────────────
@@ -155,26 +155,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const doneRate = tasks.length ? Math.round((done.length / tasks.length) * 100) : 0;
 
         let taskHtml = `
-            <h3 style="margin: 0 0 1rem;">Задачи</h3>
+            <h3 style="margin: 0 0 1rem;">${__t('Задачи', 'Тапсырмалар')}</h3>
             <div class="stat-task-row">
-                <span>Всего</span><b>${tasks.length}</b>
-                <span>В работе</span><b>${pending.length + confirmed.length}</b>
-                <span>Выполнено</span><b>${done.length}</b>
+                <span>${__t('Всего', 'Барлығы')}</span><b>${tasks.length}</b>
+                <span>${__t('В работе', 'Істе жатқаны')}</span><b>${pending.length + confirmed.length}</b>
+                <span>${__t('Выполнено', 'Орындалды')}</span><b>${done.length}</b>
             </div>
             <div class="stat-bar"><div class="stat-bar-fill" style="width:${doneRate}%"></div></div>
-            <div class="stat-bar-label">Выполнено ${doneRate}%</div>
+            <div class="stat-bar-label">${__t('Выполнено', 'Орындалды')} ${doneRate}%</div>
         `;
         taskHtml += `<div class="stat-alerts">`;
         if (overdue.length) {
-            taskHtml += `<div class="stat-alert stat-alert-bad">⚠️ Просрочено: <b>${overdue.length}</b> — задачи с прошлым дедлайном</div>`;
+            taskHtml += `<div class="stat-alert stat-alert-bad">⚠️ ${__t('Просрочено:', 'Мерзімі өткен:')} <b>${overdue.length}</b> — ${__t('задачи с прошлым дедлайном', 'мерзімі өткен тапсырмалар')}</div>`;
         } else {
-            taskHtml += `<div class="stat-alert stat-alert-good">✓ Просроченных нет</div>`;
+            taskHtml += `<div class="stat-alert stat-alert-good">✓ ${__t('Просроченных нет', 'Мерзімі өткен жоқ')}</div>`;
         }
         taskHtml += dueToday.length
-            ? `<div class="stat-alert">🕒 Дедлайн сегодня: <b>${dueToday.length}</b></div>`
+            ? `<div class="stat-alert">🕒 ${__t('Дедлайн сегодня:', 'Бүгінгі дедлайн:')} <b>${dueToday.length}</b></div>`
             : '';
         taskHtml += pending.length
-            ? `<div class="stat-alert">⏳ Не подтверждено менеджером: <b>${pending.length}</b></div>`
+            ? `<div class="stat-alert">⏳ ${__t('Не подтверждено менеджером:', 'Менеджер растамаған:')} <b>${pending.length}</b></div>`
             : '';
         taskHtml += `</div>`;
         tasksBox.innerHTML = taskHtml;
@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (managersBox) {
             const byManager = {};
             tasks.forEach(t => {
-                const key = t.manager || 'Без менеджера';
+                const key = t.manager || __t('Без менеджера', 'Менеджерсіз');
                 if (!byManager[key]) byManager[key] = { total: 0, done: 0, pending: 0, confirmed: 0, overdue: 0 };
                 byManager[key].total++;
                 if (t.status === 'done') byManager[key].done++;
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (t.status !== 'done' && t.due_at && new Date(t.due_at) < now) byManager[key].overdue++;
             });
             managers.forEach(m => {
-                const key = m.name || 'Без менеджера';
+                const key = m.name || __t('Без менеджера', 'Менеджерсіз');
                 if (!byManager[key]) byManager[key] = { total: 0, done: 0, pending: 0, confirmed: 0, overdue: 0 };
             });
 
@@ -200,13 +200,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 (b[1].overdue - a[1].overdue) || (b[1].total - a[1].total));
 
             if (rows.length === 0) {
-                managersBox.innerHTML = '<div class="agents-empty">Задач пока нет.</div>';
+                managersBox.innerHTML = `<div class="agents-empty">${__t('Задач пока нет.', 'Әзірге тапсырма жоқ.')}</div>`;
             } else {
                 managersBox.innerHTML = rows.map(([name, s]) => {
                     const rate = s.total ? Math.round((s.done / s.total) * 100) : 0;
                     const status = s.overdue
-                        ? `<span class="stat-alert stat-alert-bad" style="padding:0.15rem 0.5rem;">⚠ ${s.overdue} просрочено</span>`
-                        : '<span style="color:#22c55e; font-size:0.8rem;">✓ без просрочек</span>';
+                        ? `<span class="stat-alert stat-alert-bad" style="padding:0.15rem 0.5rem;">⚠ ${s.overdue} ${__t('просрочено', 'мерзімі өткен')}</span>`
+                        : `<span style="color:#22c55e; font-size:0.8rem;">✓ ${__t('без просрочек', 'мерзім бойынша')}</span>`;
                     return `
                         <div style="display:flex; align-items:center; gap:0.8rem; padding:0.5rem 0; border-bottom:1px solid rgba(148,163,184,0.08); flex-wrap:wrap;">
                             <span style="min-width:130px; font-size:0.9rem;">${esc(name)}</span>
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="stat-bar-fill" style="width:${rate}%; ${rate >= 70 ? '' : 'background:linear-gradient(90deg,#f59e0b,#d97706);'}"></div>
                             </div>
                             <span style="font-size:0.8rem; color:var(--muted, #9aa3b2); min-width:170px;">
-                                ${s.done}/${s.total} выполнено · ${rate}% · ${s.pending} ожидают · ${s.confirmed} в работе
+                                ${s.done}/${s.total} ${__t('выполнено', 'орындалды')} · ${rate}% · ${s.pending} ${__t('ожидают', 'күтуде')} · ${s.confirmed} ${__t('в работе', 'істе')}
                             </span>
                             ${status}
                         </div>`;
@@ -237,13 +237,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const keys = Object.keys(byAgent);
             dialogsBox.innerHTML = keys.length
-                ? `<h3 style="margin: 0 0 1rem;">Диалоги по агентам</h3>`
+                ? `<h3 style="margin: 0 0 1rem;">${__t('Диалоги по агентам', 'Агенттер бойынша диалогтар')}</h3>`
                   + keys.map(k => `
                     <div class="stat-dialog-row">
-                        <span class="stat-dialog-name">${esc(nameOf[k] || 'Агент')}</span>
-                        <span class="stat-dialog-count">${byAgent[k].size} клиентов</span>
+                        <span class="stat-dialog-name">${esc(nameOf[k] || __t('Агент', 'Агент'))}</span>
+                        <span class="stat-dialog-count">${byAgent[k].size} ${__t('клиентов', 'клиент')}</span>
                     </div>`).join('')
-                : `<h3 style="margin: 0 0 1rem;">Диалоги</h3><div class="agents-empty">Переписки появятся, когда клиенты напишут вашим агентам.</div>`;
+                : `<h3 style="margin: 0 0 1rem;">${__t('Диалоги', 'Диалогтар')}</h3><div class="agents-empty">${__t('Переписки появятся, когда клиенты напишут вашим агентам.', 'Клиенттер агенттерге жазғанда жазысулар пайда болады.')}</div>`;
         }
 
         // ─── Recent scripts ────────────────────────────────
@@ -252,16 +252,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? scriptsRecent.map(s => `
                     <div class="stat-script-row">
                         <div style="flex:1; min-width:0;">
-                            <div class="stat-script-offer">${esc(s.lead_name || 'Без названия')}</div>
+                            <div class="stat-script-offer">${esc(s.lead_name || __t('Без названия', 'Атауы жоқ'))}</div>
                             <div class="stat-script-meta">${fmtDate(s.created_at)}</div>
                         </div>
                     </div>`).join('')
-                : '<div class="agents-empty">Скрипты появятся после первой генерации.</div>';
+                : `<div class="agents-empty">${__t('Скрипты появятся после первой генерации.', 'Алғашқы генерациядан кейін скрипттер пайда болады.')}</div>`;
         }
     }
 
     load();
     setInterval(load, 60000);
     if (rangeSelect) rangeSelect.addEventListener('change', load);
-    if (refreshBtn) refreshBtn.addEventListener('click', () => { load(); refreshBtn.textContent = 'Обновляю...'; setTimeout(() => { refreshBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><polyline points="3 21 3 16 8 16"/></svg> Обновить'; }, 1000); });
+    if (refreshBtn) refreshBtn.addEventListener('click', () => { load(); refreshBtn.textContent = __t('Обновляю...', 'Жаңартылуда...'); setTimeout(() => { refreshBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><polyline points="3 21 3 16 8 16"/></svg> ' + __t('Обновить', 'Жаңарту') + ''; }, 1000); });
 });

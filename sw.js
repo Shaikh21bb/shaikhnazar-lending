@@ -12,6 +12,7 @@ const CORE = [
     '/css/app.css',
     '/css/style.css',
     '/js/main.js',
+    '/js/lang.js',
     '/js/supabase.js',
     '/js/shyraq.js',
     '/js/agents.js',

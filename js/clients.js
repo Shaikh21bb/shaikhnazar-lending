@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!iso) return '';
         const diff = Date.now() - new Date(iso).getTime();
         const m = Math.floor(diff / 60000);
-        if (m < 1) return 'только что';
+        if (m < 1) return __t('только что', 'қазір ғана');
         if (m < 60) return `${m} мин назад`;
         const h = Math.floor(m / 60);
         if (h < 24) return `${h} ч назад`;
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         listEl.querySelectorAll('.js-client-task').forEach(btn => {
             btn.addEventListener('click', () => {
                 const chatId = btn.dataset.chat;
-                window.__openLeadTask({ name: 'Клиент ' + chatId, contact: chatId });
+                window.__openLeadTask({ name: __t('Клиент', 'Клиент') + ' ' + chatId, contact: chatId });
             });
         });
 

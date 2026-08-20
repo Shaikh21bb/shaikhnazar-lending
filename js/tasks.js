@@ -16,7 +16,17 @@ document.addEventListener('DOMContentLoaded', () => {
         })[c]);
     }
 
-    const STATUS_LABEL = { pending: 'Запланировано', confirmed: 'Подтверждено', done: 'Выполнено' };
+    const STATUS_LABEL = {
+        pending: 'Запланировано',
+        confirmed: 'Подтверждено',
+        done: 'Выполнено'
+    };
+    const STATUS_LABEL_KK = {
+        pending: 'Жоспарланған',
+        confirmed: 'Расталған',
+        done: 'Орындалған'
+    };
+    const statusLabel = (s) => __t(STATUS_LABEL[s] || s, STATUS_LABEL_KK[s] || s);
     function statusClass(s) {
         return { pending: 'st-pending', confirmed: 'st-confirmed', done: 'st-done' }[s] || 'st-pending';
     }
@@ -50,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const grid = document.getElementById('managers-list');
         if (!grid) return;
         if (managersCache.length === 0) {
-            grid.innerHTML = '<div class="agents-empty glass">Менеджеров пока нет. Добавьте менеджера и его Telegram chat ID — ему будут приходить задачи от агента.</div>';
+            grid.innerHTML = `<div class="agents-empty glass">${__t('Менеджеров пока нет. Добавьте менеджера и его Telegram chat ID — ему будут приходить задачи от агента.', 'Әзірге менеджерлер жоқ. Менеджер және оның Telegram chat ID мәліметін қосыңыз — агенттің тапсырмалары оған келеді.')}</div>`;
             return;
         }
         grid.innerHTML = '';
@@ -63,15 +73,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="flex:1; min-width:0;">
                         <div class="project-name">${escapeHtml(m.name)}</div>
                         <div class="project-desc" style="font-family:var(--font-mono); font-size:0.72rem;">chat ID: ${escapeHtml(m.chat_id || '—')}</div>
-                        ${m.agent_id ? `<div class="project-desc">🤖 Агент: ${escapeHtml(agentName(m.agent_id))}</div>` : ''}
+                        ${m.agent_id ? `<div class="project-desc">🤖 ${__t('Агент:', 'Агент:')} ${escapeHtml(agentName(m.agent_id))}</div>` : ''}
                     </div>
                 </div>
                 <div class="agent-card-actions">
-                    <button class="island island-sm island-danger js-manager-delete">Удалить</button>
+                    <button class="island island-sm island-danger js-manager-delete">${__t('Удалить', 'Жою')}</button>
                 </div>
             `;
             card.querySelector('.js-manager-delete').addEventListener('click', async () => {
-                if (!confirm(`Удалить менеджера «${m.name}»?`)) return;
+                if (!confirm(__t(`Удалить менеджера «${m.name}»?`, `Менеджер «${m.name}» жойылсын ба?`))) return;
                 await supabaseClient.from(MANAGERS_TABLE).delete().eq('id', m.id);
                 loadManagers();
             });
@@ -108,8 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         box.innerHTML = `<div class="tasks-alert-banner">
-            ⚠️ Просроченных задач: <b>${overdue.length}</b>
-            <button class="island island-sm" id="tasks-alert-toggle">${overdueOnly ? 'Показать все' : 'Показать только их'}</button>
+            ⚠️ ${__t('Просроченных задач:', 'Мерзімі өткен тапсырмалар:')} <b>${overdue.length}</b>
+            <button class="island island-sm" id="tasks-alert-toggle">${overdueOnly ? __t('Показать все', 'Барлығын көрсету') : __t('Показать только их', 'Тек өткендерін көрсету')}</button>
             </div>`;
         document.getElementById('tasks-alert-toggle').addEventListener('click', () => {
             overdueOnly = !overdueOnly;
@@ -144,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const month = calendarMonth.getMonth();
         const today = new Date();
         const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
-        const monthName = calendarMonth.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
+        const monthName = calendarMonth.toLocaleString(__getLang() === 'kk' ? 'kk-KZ' : 'ru-RU', { month: 'long', year: 'numeric' });
         const first = new Date(year, month, 1);
         const startDow = (first.getDay() + 6) % 7; // Monday-first
         const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -170,16 +180,19 @@ document.addEventListener('DOMContentLoaded', () => {
         cal.innerHTML = `
             <div class="cal-head">
                 <button class="island island-sm" id="cal-prev">‹</button>
-                <div class="cal-month">${escapeHtml(monthName)} <button class="island island-sm" id="cal-today" style="margin-left:0.4rem; font-size:0.7rem;">Сегодня</button></div>
+                <div class="cal-month">${escapeHtml(monthName)} <button class="island island-sm" id="cal-today" style="margin-left:0.4rem; font-size:0.7rem;">${__t('Сегодня', 'Бүгін')}</button></div>
                 <button class="island island-sm" id="cal-next">›</button>
             </div>
             <div class="cal-grid">
-                ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(d => `<div class="cal-dow">${d}</div>`).join('')}
+                ${(__getLang() === 'kk'
+                    ? ['Дс', 'Сс', 'Ср', 'Бс', 'Жм', 'Сб', 'Жс']
+                    : ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+                ).map(d => `<div class="cal-dow">${d}</div>`).join('')}
                 ${cells}
             </div>
             <div class="cal-legend">
-                <span><span class="cal-dot cal-dot-open"></span> активные</span>
-                <span><span class="cal-dot cal-dot-done"></span> выполнено</span>
+                <span><span class="cal-dot cal-dot-open"></span> ${__t('активные', 'белсенді')}</span>
+                <span><span class="cal-dot cal-dot-done"></span> ${__t('выполнено', 'орындалды')}</span>
             </div>
         `;
 
@@ -204,9 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const dateKey = `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
         const filtered = tasksCache.filter(t => t.due_at && new Date(t.due_at).getFullYear() === date.getFullYear()
             && new Date(t.due_at).getMonth() === date.getMonth() && new Date(t.due_at).getDate() === date.getDate());
-        list.innerHTML = `<div class="tasks-filter-info">Задачи на ${escapeHtml(date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }))} <button class="island island-sm" id="clear-day-filter" style="margin-left:0.5rem;">Показать все</button></div>`;
+        list.innerHTML = `<div class="tasks-filter-info">${__t('Задачи на', 'Тапсырмалар:')} ${escapeHtml(date.toLocaleDateString(__getLang() === 'kk' ? 'kk-KZ' : 'ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }))} <button class="island island-sm" id="clear-day-filter" style="margin-left:0.5rem;">${__t('Показать все', 'Барлығын көрсету')}</button></div>`;
         if (dayTasks.length === 0) {
-            list.innerHTML += '<div class="agents-empty glass">На этот день задач нет.</div>';
+            list.innerHTML += `<div class="agents-empty glass">${__t('На этот день задач нет.', 'Бұл күні тапсырма жоқ.')}</div>`;
         } else {
             dayTasks.slice().sort((a, b) => (a.due_at || '') < (b.due_at || '') ? -1 : 1).forEach(t => list.appendChild(buildTaskCard(t)));
         }
@@ -219,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!list) return;
         list.innerHTML = '';
         if (tasksCache.length === 0) {
-            list.innerHTML = '<div class="agents-empty glass">Задач пока нет. Создайте первую задачу и назначьте менеджера — агент уведомит его в Telegram.</div>';
+            list.innerHTML = `<div class="agents-empty glass">${__t('Задач пока нет. Создайте первую задачу и назначьте менеджера — агент уведомит его в Telegram.', 'Әзірге тапсырма жоқ. Бірінші тапсырманы құрып, менеджерді тағайындаңыз — агент оны Telegram-да хабарлайды.')}</div>`;
             return;
         }
         const sorted = tasksCache.slice().sort((a, b) => {
@@ -239,21 +252,21 @@ document.addEventListener('DOMContentLoaded', () => {
         card.innerHTML = `
             <div class="task-card-top">
                 <div class="task-title">${escapeHtml(t.title)}</div>
-                <span class="task-status ${statusClass(t.status)}">${STATUS_LABEL[t.status] || t.status}</span>
+                <span class="task-status ${statusClass(t.status)}">${statusLabel(t.status)}</span>
             </div>
             ${t.description ? `<div class="task-desc">${escapeHtml(t.description)}</div>` : ''}
-            ${isOverdue ? `<div class="task-overdue-badge">⚠️ Просрочено</div>` : ''}
+            ${isOverdue ? `<div class="task-overdue-badge">⚠️ ${__t('Просрочено', 'Мерзімі өткен')}</div>` : ''}
             <div class="task-meta-row">
                 <span>🕒 ${fmtDate(t.due_at)}</span>
                 ${t.manager ? `<span>👤 ${escapeHtml(t.manager)}</span>` : ''}
                 ${t.lead_name ? `<span>🎯 ${escapeHtml(t.lead_name)}${t.lead_contact ? ' · ' + escapeHtml(t.lead_contact) : ''}</span>` : ''}
             </div>
             <div class="agent-card-actions" style="flex-wrap:wrap;">
-                ${t.status !== 'done' ? `<button class="island island-sm js-task-notify">Уведомить</button>` : ''}
-                ${t.status === 'pending' ? `<button class="island island-sm js-task-confirm">Подтвердить</button>` : ''}
-                ${t.status !== 'done' ? `<button class="island island-sm js-task-done">Готово</button>` : ''}
-                <button class="island island-sm js-task-edit">Изменить</button>
-                <button class="island island-sm island-danger js-task-delete">Удалить</button>
+                ${t.status !== 'done' ? `<button class="island island-sm js-task-notify">${__t('Уведомить', 'Хабарлау')}</button>` : ''}
+                ${t.status === 'pending' ? `<button class="island island-sm js-task-confirm">${__t('Подтвердить', 'Растау')}</button>` : ''}
+                ${t.status !== 'done' ? `<button class="island island-sm js-task-done">${__t('Готово', 'Дайын')}</button>` : ''}
+                <button class="island island-sm js-task-edit">${__t('Изменить', 'Өзгерту')}</button>
+                <button class="island island-sm island-danger js-task-delete">${__t('Удалить', 'Жою')}</button>
             </div>
         `;
 
@@ -268,13 +281,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({ taskId: t.id })
                 });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Ошибка');
-                alert('Уведомление отправлено менеджеру в Telegram.');
+                if (!res.ok) throw new Error(data.error || __t('Ошибка', 'Қате'));
+                alert(__t('Уведомление отправлено менеджеру в Telegram.', 'Менеджерге Telegram-да хабарлама жіберілді.'));
             } catch (err) {
                 alert('Ошибка: ' + err.message);
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Уведомить';
+                btn.textContent = __t('Уведомить', 'Хабарлау');
             }
         });
 
@@ -286,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
         card.querySelector('.js-task-done').addEventListener('click', () => setStatus('done'));
         card.querySelector('.js-task-edit').addEventListener('click', () => openTaskModal(t));
         card.querySelector('.js-task-delete').addEventListener('click', async () => {
-            if (!confirm('Удалить задачу?')) return;
+            if (!confirm(__t('Удалить задачу?', 'Тапсырманы жою?'))) return;
             await supabaseClient.from(TASKS_TABLE).delete().eq('id', t.id);
             loadTasks();
         });
@@ -316,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.__openLeadTask = (lead) => {
         openTaskModal(null, {
-            title: `Перезвонить клиенту: ${lead.name || ''}`,
+            title: `${__t('Перезвонить клиенту:', 'Клиентке қоңырау шалу:')} ${lead.name || ''}`,
             lead: lead
         });
     };
@@ -349,19 +362,19 @@ document.addEventListener('DOMContentLoaded', () => {
         taskAgentInput.innerHTML = '';
         const telegramAgents = agentsCache.filter(a => a.platform === 'telegram');
         if (telegramAgents.length === 0) {
-            taskAgentInput.innerHTML = '<option value="">— сначала добавьте Telegram-агента —</option>';
+            taskAgentInput.innerHTML = `<option value="">${__t('— сначала добавьте Telegram-агента —', '— алдымен Telegram-агент қосыңыз —')}</option>`;
         } else {
-            taskAgentInput.innerHTML = '<option value="">— выберите агента для уведомления —</option>';
+            taskAgentInput.innerHTML = `<option value="">${__t('— выберите агента для уведомления —', '— хабарлау үшін агентті таңдаңыз —')}</option>`;
             telegramAgents.forEach(a => {
                 const opt = document.createElement('option');
                 opt.value = a.id;
-                opt.textContent = a.name || 'Агент';
+                opt.textContent = a.name || __t('Агент', 'Агент');
                 taskAgentInput.appendChild(opt);
             });
         }
         if (task && task.agent_id) taskAgentInput.value = task.agent_id;
 
-        document.getElementById('task-modal-title').textContent = task ? 'Изменить задачу' : 'Новая задача';
+        document.getElementById('task-modal-title').textContent = task ? __t('Изменить задачу', 'Тапсырманы өзгерту') : __t('Новая задача', 'Жаңа тапсырма');
         taskModal.classList.add('open');
     }
 
@@ -399,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { data, error } = id
             ? await supabaseClient.from(TASKS_TABLE).update(payload).eq('id', id).select()
             : await supabaseClient.from(TASKS_TABLE).insert(payload).select();
-        if (error) { alert('Ошибка сохранения: ' + error.message); return; }
+        if (error) { alert(__t('Ошибка сохранения: ', 'Сақтау қатесі: ') + error.message); return; }
 
         closeTaskModal();
         const task = data && data[0];
@@ -433,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!managerAgentInput) return;
         if (agentsCache.length === 0) await loadAgents();
         const telegramAgents = agentsCache.filter(a => a.platform === 'telegram');
-        managerAgentInput.innerHTML = '<option value="">— без агента —</option>';
+        managerAgentInput.innerHTML = `<option value="">${__t('— без агента —', '— агентсіз —')}</option>`;
         telegramAgents.forEach(a => {
             const opt = document.createElement('option');
             opt.value = a.id;
@@ -465,7 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chat_id: chatId || null,
             agent_id: managerAgentInput.value || null
         });
-        if (error) { alert('Ошибка: ' + error.message); return; }
+        if (error) { alert(__t('Ошибка: ', 'Қате: ') + error.message); return; }
         managerModal.classList.remove('open');
         loadManagers();
     });

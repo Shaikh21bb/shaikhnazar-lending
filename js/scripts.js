@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
         navigator.clipboard.writeText(text).then(() => {
             if (btn) {
                 const orig = btn.textContent;
-                btn.textContent = 'Скопировано! ✅';
+                btn.textContent = __t('Скопировано! ✅', 'Көшірілді! ✅');
                 setTimeout(() => { btn.textContent = orig; }, 2000);
             }
         }).catch(() => alert('Не удалось скопировать.'));
@@ -66,7 +66,7 @@ pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
         card.innerHTML = `
             <div class="script-card-top">
                 <div>
-                    <div class="script-card-name">${escapeHtml(s.lead_name || 'Без имени')}</div>
+                    <div class="script-card-name">${escapeHtml(s.lead_name || __t('Без имени', 'Атауы жоқ'))}</div>
                     ${s.lead_need ? `<div class="script-card-need">🎯 ${escapeHtml(s.lead_need)}</div>` : ''}
                 </div>
                 <div class="script-card-date">${escapeHtml(new Date(s.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }))}</div>
@@ -81,9 +81,9 @@ pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
         `;
         card.querySelector('.js-script-copy').addEventListener('click', () => copyText(s.script, card.querySelector('.js-script-copy')));
         const printBtn = card.querySelector('.js-script-print');
-        if (printBtn) printBtn.addEventListener('click', () => printScript(s.lead_name || 'Скрипт продаж', s.script));
+        if (printBtn) printBtn.addEventListener('click', () => printScript(s.lead_name || __t('Скрипт продаж', 'Сату скриптісі'), s.script));
         const downloadBtn = card.querySelector('.js-script-download');
-        if (downloadBtn) downloadBtn.addEventListener('click', () => downloadScript(s.lead_name || 'Скрипт продаж', s.script));
+        if (downloadBtn) downloadBtn.addEventListener('click', () => downloadScript(s.lead_name || __t('Скрипт продаж', 'Сату скриптісі'), s.script));
         card.querySelector('.js-script-delete').addEventListener('click', async () => {
             if (!confirm('Удалить скрипт?')) return;
             await supabaseClient.from(SCRIPTS_TABLE).delete().eq('id', s.id);
@@ -114,7 +114,7 @@ pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
         if (!offer) return;
 
         generateBtn.disabled = true;
-        generateBtn.textContent = 'Генерация...';
+        generateBtn.textContent = __t('Генерация...', 'Генерация...');
         if (variantBtn) variantBtn.disabled = true;
         resultEl.style.display = 'none';
         actionsEl.style.display = 'flex';
@@ -143,7 +143,7 @@ pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
             resultEl.style.display = 'block';
         } finally {
             generateBtn.disabled = false;
-            generateBtn.textContent = 'Сгенерировать';
+            generateBtn.textContent = __t('Сгенерировать', 'Жасау');
             if (variantBtn) variantBtn.disabled = false;
         }
     }
@@ -155,7 +155,7 @@ pre{white-space:pre-wrap;font-family:Georgia,serif;margin:0;}</style></head>
         resultEl.style.display = 'none';
         actionsEl.style.display = 'flex';
         generateBtn.disabled = false;
-        generateBtn.textContent = 'Сгенерировать';
+        generateBtn.textContent = __t('Сгенерировать', 'Жасау');
         if (saveBtn) { saveBtn.textContent = 'Сохранить в библиотеку'; saveBtn.disabled = false; }
         const ctx = document.getElementById('ai-context');
         if (ctx && ctx.value) contextInput.value = ctx.value;

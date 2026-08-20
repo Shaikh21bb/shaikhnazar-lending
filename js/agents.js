@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${p.description ? `<div class="project-desc">${escapeHtml(p.description)}</div>` : ''}
                 </div>
             </div>
-            <div class="project-knowledge-preview">${escapeHtml((p.knowledge || 'База знаний пуста — агент будет отвечать без обучения.').slice(0, 160))}${(p.knowledge || '').length > 160 ? '…' : ''}</div>
+            <div class="project-knowledge-preview">${escapeHtml((p.knowledge || __t('База знаний пуста — агент будет отвечать без обучения.', 'Білім базасы бос — агент оқытусыз жауап береді.')).slice(0, 160))}${(p.knowledge || '').length > 160 ? '…' : ''}</div>
             <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
                 ${agentsCount > 0 ? `<span class="project-chip">${agentsCount} агент(ов)</span>` : ''}
             </div>
@@ -189,11 +189,11 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="agent-card-top">
                 <div class="agent-icon ${isTelegram ? 'agent-telegram' : 'agent-whatsapp'}">${isTelegram ? TELEGRAM_ICON : WHATSAPP_ICON}</div>
                 <div style="flex:1; min-width:0;">
-                    <div class="agent-name">${escapeHtml(agent.name || 'Без имени')}</div>
-                    <div class="agent-meta">${platformLabel(agent.platform)} · ${escapeHtml(agent.token || 'нет токена')}</div>
+                    <div class="agent-name">${escapeHtml(agent.name || __t('Без имени', 'Атауы жоқ'))}</div>
+                    <div class="agent-meta">${platformLabel(agent.platform)} · ${escapeHtml(agent.token || __t('нет токена', 'токен жоқ'))}</div>
                     ${isConnected ? '<div class="connected-badge">Бот подключён</div>' : ''}
                 </div>
-                <span class="agent-status ${isActive ? 'status-active' : 'status-paused'}">${isActive ? 'Активен' : 'Пауза'}</span>
+                <span class="agent-status ${isActive ? 'status-active' : 'status-paused'}">${isActive ? __t('Активен', 'Белсенді') : __t('Пауза', 'Пауза')}</span>
             </div>
 
             ${isTelegram ? `
@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="agent-card-actions" style="flex-wrap:wrap;">
                 ${isTelegram ? `<button class="island island-sm js-agent-dialogs">Диалоги</button>` : ''}
                 ${isTelegram ? `<button class="island island-sm js-agent-broadcast">Рассылка</button>` : ''}
-                <button class="island island-sm js-agent-toggle">${isActive ? 'Пауза' : 'Запустить'}</button>
+                <button class="island island-sm js-agent-toggle">${isActive ? __t('Пауза', 'Пауза') : __t('Запустить', 'Іске қосу')}</button>
                 ${isTelegram && !isConnected
                     ? `<button class="island island-sm js-agent-connect">Подключить бота</button>`
                     : (isTelegram ? `<button class="island island-sm js-agent-connect">Отключить</button>` : '')}
@@ -245,7 +245,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Ошибка');
-                alert(isConnected ? 'Бот отключён.' : `Бот подключён! Теперь напишите боту в Telegram — он ответит как обученный агент.`);
+                alert(isConnected
+                    ? __t('Бот отключён.', 'Бот өшірілді.')
+                    : __t('Бот подключён! Теперь напишите боту в Telegram — он ответит как обученный агент.', 'Бот қосылды! Енді ботқа Telegram-да жазыңыз — ол оқытылған агент ретінде жауап береді.'));
             } catch (err) {
                 alert('Ошибка подключения: ' + err.message + '\nУбедитесь, что сайт задеплоен на Vercel (webhook нужен публичный HTTPS URL).');
             } finally {
@@ -296,8 +298,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .eq('agent_id', agent.id);
         const recipients = new Set((data || []).map(r => r.chat_id)).size;
         hint.textContent = recipients
-            ? `Сообщение придёт ${recipients} клиенту(-ам), которые писали этому агенту.`
-            : 'Пока нет клиентов, которые писали этому агенту. Клиенты появятся после первых сообщений в бота.';
+            ? __t(`Сообщение придёт ${recipients} клиенту(-ам), которые писали этому агенту.`, `${recipients} клиентке хабарлама жіберіледі.`)
+            : __t('Пока нет клиентов, которые писали этому агенту. Клиенты появятся после первых сообщений в бота.', 'Бұл агентке жазған клиенттер әзірге жоқ. Клиенттер ботқа алғашқы хабарламалардан кейін пайда болады.');
 
         modal.classList.add('open');
         setTimeout(() => textInput.focus(), 100);
@@ -457,9 +459,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const copyThreadButton = document.getElementById('copy-current-thread');
         if (copyThreadButton) copyThreadButton.addEventListener('click', () => {
-            if (!currentChatId) { alert('Выберите чат клиента.'); return; }
+            if (!currentChatId) { alert(__t('Выберите чат клиента.', 'Клиент чатын таңдаңыз.')); return; }
             const messages = dialogsMessages.filter(m => m.chat_id === currentChatId);
-            if (!messages.length) { alert('В этом чате пусто.'); return; }
+            if (!messages.length) { alert(__t('В этом чате пусто.', 'Бұл чат бос.')); return; }
             const text = messages.map(m => {
                 const time = new Date(m.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
                 const who = m.role === 'user' ? 'Клиент' : 'Агент';
