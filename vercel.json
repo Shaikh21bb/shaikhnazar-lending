@@ -3,5 +3,18 @@
   "crons": [
     { "path": "/api/tasks/remind", "schedule": "0 8 * * *" },
     { "path": "/api/tasks/digest", "schedule": "0 9 * * *" }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.webmanifest",
+      "headers": [ { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" } ]
+    }
   ]
 }
