@@ -562,4 +562,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ─── Init ──────────────────────────────────────────────────────
     renderHistory();
+
+    // ─── Persist settings ──────────────────────────────────────────
+    const SETTINGS_KEY = 'shyraq_settings';
+    try {
+        const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+        if (saved.managers && managersCountInput) managersCountInput.value = saved.managers;
+        if (saved.strictness && strictnessInput) strictnessInput.value = saved.strictness;
+        if (saved.context && contextInput) contextInput.value = saved.context;
+    } catch (e) { /* ignore */ }
+
+    [managersCountInput, strictnessInput, contextInput].forEach(el => {
+        if (!el) return;
+        el.addEventListener('input', () => {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+                managers: managersCountInput ? managersCountInput.value : '',
+                strictness: strictnessInput ? strictnessInput.value : '',
+                context: contextInput ? contextInput.value : ''
+            }));
+        });
+    });
 });
