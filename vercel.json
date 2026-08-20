@@ -1,6 +1,7 @@
 {
   "cleanUrls": true,
   "crons": [
-    { "path": "/api/tasks/remind", "schedule": "0 8 * * *" }
+    { "path": "/api/tasks/remind", "schedule": "0 8 * * *" },
+    { "path": "/api/tasks/digest", "schedule": "0 9 * * *" }
   ]
 }
