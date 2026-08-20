@@ -191,6 +191,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 else byManager[key].pending++;
                 if (t.status !== 'done' && t.due_at && new Date(t.due_at) < now) byManager[key].overdue++;
             });
+            managers.forEach(m => {
+                const key = m.name || 'Без менеджера';
+                if (!byManager[key]) byManager[key] = { total: 0, done: 0, pending: 0, confirmed: 0, overdue: 0 };
+            });
 
             const rows = Object.entries(byManager).sort((a, b) =>
                 (b[1].overdue - a[1].overdue) || (b[1].total - a[1].total));
