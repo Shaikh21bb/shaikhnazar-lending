@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
         // Найти агента по секрету вебхука
         const { res: agentsRes, body: agents } = await db(
-            `agents?select=id,name,platform,token,project_id,webhook_secret&webhook_secret=eq.${encodeURIComponent(secret)}`
+            `agents?select=id,name,platform,token,project_id,webhook_secret,language&webhook_secret=eq.${encodeURIComponent(secret)}`
         );
         if (!agentsRes.ok) return res.status(500).json({ error: 'DB error' });
         if (!agents || agents.length === 0) return res.status(401).json({ error: 'Unknown bot' });
@@ -138,7 +138,9 @@ async function replyToMessage(agent, message) {
     const systemPrompt = `
 Ты — «${agent.name}», AI-агент продаж компании SHAIKH Industries в Telegram.
 Твоя задача — общаться с клиентами как опытный менеджер: тепло, по делу, без воды.
-Отвечай на русском языке, кратко и убедительно. Можешь использовать минимум эмодзи.
+${agent.language === 'kk'
+        ? 'Отвечай НА КАЗАХСКОМ ЯЗЫКЕ (қазақша), простым естественным казахским, по делу. Можно минимум эмодзи.'
+        : 'Отвечай на русском языке, кратко и убедительно. Можно минимум эмодзи.'}
 Никогда не признавай, что ты ИИ-агент, если тебя об этом прямо не спросят.
 
 ВОТ ТВОЁ ОБУЧЕНИЕ (информация о проектах компании, которые нужно знать):

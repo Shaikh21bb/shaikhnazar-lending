@@ -196,6 +196,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     <option value="">— без обучения —</option>
                     ${projectsCache.map(p => `<option value="${p.id}" ${agent.project_id === p.id ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}
                 </select>
+            </div>
+            <div class="agent-project-select-wrap">
+                <select class="agent-project-select agent-lang-select" data-id="${agent.id}">
+                    <option value="ru" ${agent.language !== 'kk' ? 'selected' : ''}>Язык ответов: Русский</option>
+                    <option value="kk" ${agent.language === 'kk' ? 'selected' : ''}>Язык ответов: Қазақша</option>
+                </select>
             </div>` : ''}
 
             <div class="agent-card-actions" style="flex-wrap:wrap;">
@@ -245,6 +251,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const projectSelect = card.querySelector('.agent-project-select');
         if (projectSelect) projectSelect.addEventListener('change', async () => {
             await supabaseClient.from(AGENTS_TABLE).update({ project_id: projectSelect.value || null }).eq('id', agent.id);
+            loadAgents();
+        });
+
+        const langSelect = card.querySelector('.agent-lang-select');
+        if (langSelect) langSelect.addEventListener('change', async () => {
+            await supabaseClient.from(AGENTS_TABLE).update({ language: langSelect.value }).eq('id', agent.id);
             loadAgents();
         });
 
