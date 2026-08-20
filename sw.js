@@ -1,4 +1,4 @@
-const VERSION = 'shaikh-sys-v1';
+const VERSION = 'shaikh-sys-v2';
 const CORE = [
     '/',
     '/index.html',
@@ -62,12 +62,15 @@ self.addEventListener('fetch', (e) => {
     }
 
     e.respondWith(
-        caches.match(e.request).then((cached) =>
-            cached || fetch(e.request).then((res) => {
-                const copy = res.clone();
-                caches.open(VERSION).then((c) => c.put(e.request, copy));
-                return res;
-            })
-        )
+        caches.match(e.request).then((cached) => {
+            const network = fetch(e.request)
+                .then((res) => {
+                    const copy = res.clone();
+                    caches.open(VERSION).then((c) => c.put(e.request, copy));
+                    return res;
+                })
+                .catch(() => cached);
+            return cached || network;
+        })
     );
 });
