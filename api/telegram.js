@@ -178,8 +178,7 @@ ${historyText || 'Диалога ещё не было — клиент толь�
 
     await telegram('sendMessage', agent.token, {
         chat_id: chatId,
-        text: reply,
-        parse_mode: 'HTML'
+        text: reply
     });
     await saveHistory(agent.id, chatId, 'assistant', reply);
 }
