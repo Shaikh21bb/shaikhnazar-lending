@@ -23,27 +23,27 @@
             <nav class="topbar-nav">
                 <a href="#analyzer" class="nav-item active">
                     <span class="nav-icon"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
-                    ИИ-Анализ
+                    <span data-i18n="nav.analyzer" data-i18n-ru="ИИ-Анализ">ИИ-Анализ</span>
                 </a>
                 <a href="#agents" class="nav-item">
                     <span class="nav-icon"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 2a5 5 0 0 1 5 5v3a5 5 0 0 1-10 0V7a5 5 0 0 1 5-5z"/><path d="M4 11v1a8 8 0 0 0 16 0v-1"/><line x1="12" y1="20" x2="12" y2="22"/></svg></span>
-                    Агенты
+                    <span data-i18n="nav.agents" data-i18n-ru="Агенты">Агенты</span>
                 </a>
                 <a href="#clients" class="nav-item">
                     <span class="nav-icon"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-                    Клиенты
+                    <span data-i18n="nav.clients" data-i18n-ru="Клиенты">Клиенты</span>
                 </a>
                 <a href="#tasks" class="nav-item">
                     <span class="nav-icon"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
-                    Задачи
+                    <span data-i18n="nav.tasks" data-i18n-ru="Задачи">Задачи</span>
                 </a>
                 <a href="#scripts" class="nav-item">
                     <span class="nav-icon"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
-                    Скрипты
+                    <span data-i18n="nav.scripts" data-i18n-ru="Скрипты">Скрипты</span>
                 </a>
                 <a href="#stats" class="nav-item">
                     <span class="nav-icon"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span>
-                    Статистика
+                    <span data-i18n="nav.stats" data-i18n-ru="Статистика">Статистика</span>
                 </a>
             </nav>
             <div class="topbar-right">
@@ -51,6 +51,7 @@
                     <div class="user-avatar"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
                     <span id="user-email" class="user-email">Загрузка...</span>
                 </div>
+                <button class="island island-sm" id="lang-toggle">Қазақша</button>
                 <button class="island island-sm logout-trigger">Выйти</button>
             </div>
         </div>
@@ -58,14 +59,15 @@
 
     <!-- Mobile Dock -->
     <nav class="mobile-dock">
-        <a href="#analyzer" class="nav-item active">ИИ-Анализ</a>
-        <a href="#agents" class="nav-item">Агенты</a>
-        <a href="#clients" class="nav-item">Клиенты</a>
-        <a href="#tasks" class="nav-item">Задачи</a>
-        <a href="#scripts" class="nav-item">Скрипты</a>
-        <a href="#stats" class="nav-item">Статистика</a>
-        <a href="index.html" class="dock-link">Сайт</a>
-        <button class="dock-link logout-trigger">Выйти</button>
+        <a href="#analyzer" class="nav-item active"><span data-i18n="nav.analyzer" data-i18n-ru="ИИ-Анализ">ИИ-Анализ</span></a>
+        <a href="#agents" class="nav-item"><span data-i18n="nav.agents" data-i18n-ru="Агенты">Агенты</span></a>
+        <a href="#clients" class="nav-item"><span data-i18n="nav.clients" data-i18n-ru="Клиенты">Клиенты</span></a>
+        <a href="#tasks" class="nav-item"><span data-i18n="nav.tasks" data-i18n-ru="Задачи">Задачи</span></a>
+        <a href="#scripts" class="nav-item"><span data-i18n="nav.scripts" data-i18n-ru="Скрипты">Скрипты</span></a>
+        <a href="#stats" class="nav-item"><span data-i18n="nav.stats" data-i18n-ru="Статистика">Статистика</span></a>
+        <a href="index.html" class="dock-link"><span data-i18n="nav.site" data-i18n-ru="Сайт">Сайт</span></a>
+        <button class="dock-link" id="lang-toggle-mobile" style="min-width:0;">Қазақша</button>
+        <button class="dock-link logout-trigger"><span data-i18n="nav.logout" data-i18n-ru="Выйти">Выйти</span></button>
     </nav>
 
     <main class="app-content">
@@ -73,8 +75,8 @@
         <!-- AI Analyzer View -->
         <div id="view-analyzer" class="dashboard-view active-view">
             <section class="page-hero">
-                <h1 class="grad-text">AI Анализ лидов</h1>
-                <p>Загрузите выгрузку зрителей вебинара (CSV или PDF). Искусственный интеллект проанализирует вовлеченность и найдет самых «теплых» клиентов.</p>
+                <h1 class="grad-text"><span data-i18n="t.analyzer" data-i18n-ru="AI Анализ лидов">AI Анализ лидов</span></h1>
+                <p><span data-i18n="t.analyzer-sub" data-i18n-ru="Загрузите выгрузку зрителей вебинара (CSV или PDF). Искусственный интеллект проанализирует вовлеченность и найдет самых «теплых» клиентов.">Загрузите выгрузку зрителей вебинара (CSV или PDF). Искусственный интеллект проанализирует вовлеченность и найдет самых «теплых» клиентов.</span></p>
             </section>
 
             <!-- AI Settings -->
@@ -179,12 +181,12 @@
             <section style="padding-top: 1rem;">
                 <div class="results-header">
                     <div>
-                        <h2 class="section-title grad-text">Мои агенты</h2>
-                        <p class="section-subtitle" style="margin-bottom: 0;">AI-боты для Telegram и WhatsApp. Добавляйте агентов и управляйте ими.</p>
+                        <h2 class="section-title grad-text"><span data-i18n="t.agents" data-i18n-ru="Мои агенты">Мои агенты</span></h2>
+                        <p class="section-subtitle" style="margin-bottom: 0;"><span data-i18n="t.agents-sub" data-i18n-ru="AI-боты для Telegram и WhatsApp. Добавляйте агентов и управляйте ими.">AI-боты для Telegram и WhatsApp. Добавляйте агентов и управляйте ими.</span></p>
                     </div>
                     <button class="island island-sm" id="agent-add-btn">
                         <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        Добавить агента
+                        <span data-i18n="b.addAgent" data-i18n-ru="Добавить агента">Добавить агента</span>
                     </button>
                 </div>
                 <div id="agents-grid" class="agents-grid"></div>
@@ -194,12 +196,12 @@
             <section style="padding-top: 2.5rem;">
                 <div class="results-header">
                     <div>
-                        <h2 class="section-title">Обучение</h2>
-                        <p class="section-subtitle" style="margin-bottom: 0;">Проекты — база знаний, на которой обучаются агенты. Добавьте информацию о будущих проектах, и агенты будут отвечать клиентам на её основе.</p>
+                        <h2 class="section-title"><span data-i18n="t.projects" data-i18n-ru="Обучение">Обучение</span></h2>
+                        <p class="section-subtitle" style="margin-bottom: 0;"><span data-i18n="t.projects-sub" data-i18n-ru="Проекты — база знаний, на которой обучаются агенты. Добавьте информацию о будущих проектах, и агенты будут отвечать клиентам на её основе.">Проекты — база знаний, на которой обучаются агенты. Добавьте информацию о будущих проектах, и агенты будут отвечать клиентам на её основе.</span></p>
                     </div>
                     <button class="island island-sm" id="project-add-btn">
                         <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        Добавить проект
+                        <span data-i18n="b.addProject" data-i18n-ru="Добавить проект">Добавить проект</span>
                     </button>
                 </div>
                 <div id="projects-grid" class="agents-grid"></div>
@@ -211,12 +213,12 @@
             <section style="padding-top: 1rem;">
                 <div class="results-header">
                     <div>
-                        <h2 class="section-title">Задачи и календарь</h2>
-                        <p class="section-subtitle" style="margin-bottom: 0;">Делегируйте задачи менеджерам — агент уведомит их в Telegram, а они подтвердят кнопками прямо в чате. Напоминания приходят автоматически: не подтверждена (30 мин), дедлайн скоро (1 ч) и просрочена.</p>
+                        <h2 class="section-title"><span data-i18n="t.tasks" data-i18n-ru="Задачи и календарь">Задачи и календарь</span></h2>
+                        <p class="section-subtitle" style="margin-bottom: 0;"><span data-i18n="t.tasks-sub" data-i18n-ru="Делегируйте задачи менеджерам — агент уведомит их в Telegram, а они подтвердят кнопками прямо в чате. Напоминания приходят автоматически: не подтверждена (30 мин), дедлайн скоро (1 ч) и просрочена.">Делегируйте задачи менеджерам — агент уведомит их в Telegram, а они подтвердят кнопками прямо в чате. Напоминания приходят автоматически: не подтверждена (30 мин), дедлайн скоро (1 ч) и просрочена.</span></p>
                     </div>
                     <button class="island island-sm" id="task-add-btn">
                         <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        Новая задача
+                        <span data-i18n="b.newTask" data-i18n-ru="Новая задача">Новая задача</span>
                     </button>
                 </div>
                 <div class="tasks-layout">
@@ -228,12 +230,12 @@
             <section style="padding-top: 2.5rem;">
                 <div class="results-header">
                     <div>
-                        <h2 class="section-title">Менеджеры</h2>
-                        <p class="section-subtitle" style="margin-bottom: 0;">Добавьте менеджеров и их Telegram chat ID — им будут приходить задачи. Chat ID можно узнать у бота @userinfobot.</p>
+                        <h2 class="section-title"><span data-i18n="t.managers" data-i18n-ru="Менеджеры">Менеджеры</span></h2>
+                        <p class="section-subtitle" style="margin-bottom: 0;"><span data-i18n="t.managers-sub" data-i18n-ru="Добавьте менеджеров и их Telegram chat ID — им будут приходить задачи. Chat ID можно узнать у бота @userinfobot.">Добавьте менеджеров и их Telegram chat ID — им будут приходить задачи. Chat ID можно узнать у бота @userinfobot.</span></p>
                     </div>
                     <button class="island island-sm" id="manager-add-btn">
                         <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        Добавить менеджера
+                        <span data-i18n="b.addManager" data-i18n-ru="Добавить менеджера">Добавить менеджера</span>
                     </button>
                 </div>
                 <div id="managers-list" class="agents-grid"></div>
@@ -245,12 +247,12 @@
             <section style="padding-top: 1rem;">
                 <div class="results-header">
                     <div>
-                        <h2 class="section-title">Скрипты продаж</h2>
-                        <p class="section-subtitle" style="margin-bottom: 0;">Готовые скрипты под каждого клиента. Сгенерируйте из лида — и менеджеру останется только позвонить.</p>
+                        <h2 class="section-title"><span data-i18n="t.scripts" data-i18n-ru="Скрипты продаж">Скрипты продаж</span></h2>
+                        <p class="section-subtitle" style="margin-bottom: 0;"><span data-i18n="t.scripts-sub" data-i18n-ru="Готовые скрипты под каждого клиента. Сгенерируйте из лида — и менеджеру останется только позвонить.">Готовые скрипты под каждого клиента. Сгенерируйте из лида — и менеджеру останется только позвонить.</span></p>
                     </div>
                     <button class="island island-sm" id="script-add-btn">
                         <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        Создать скрипт
+                        <span data-i18n="b.createScript" data-i18n-ru="Создать скрипт">Создать скрипт</span>
                     </button>
                 </div>
                 <div id="scripts-grid" class="scripts-grid"></div>
@@ -262,8 +264,8 @@
             <section style="padding-top: 1rem;">
                 <div class="results-header">
                     <div>
-                        <h2 class="section-title">Клиенты</h2>
-                        <p class="section-subtitle" style="margin-bottom: 0;">Все, кто писал вашим агентам в Telegram. Последнее сообщение, активность и быстрые действия.</p>
+                        <h2 class="section-title"><span data-i18n="t.clients" data-i18n-ru="Клиенты">Клиенты</span></h2>
+                        <p class="section-subtitle" style="margin-bottom: 0;"><span data-i18n="t.clients-sub" data-i18n-ru="Все, кто писал вашим агентам в Telegram. Последнее сообщение, активность и быстрые действия.">Все, кто писал вашим агентам в Telegram. Последнее сообщение, активность и быстрые действия.</span></p>
                     </div>
                     <button class="island island-sm" id="clients-refresh">
                         <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><polyline points="3 21 3 16 8 16"/></svg>
@@ -279,12 +281,12 @@
             <section style="padding-top: 1rem;">
                 <div class="results-header">
                     <div>
-                        <h2 class="section-title">Статистика</h2>
-                        <p class="section-subtitle" style="margin-bottom: 0;">Сводка по агентам, задачам, диалогам и скриптам.</p>
+                        <h2 class="section-title"><span data-i18n="t.stats" data-i18n-ru="Статистика">Статистика</span></h2>
+                        <p class="section-subtitle" style="margin-bottom: 0;"><span data-i18n="t.stats-sub" data-i18n-ru="Сводка по агентам, задачам, диалогам и скриптам.">Сводка по агентам, задачам, диалогам и скриптам.</span></p>
                     </div>
                     <button class="island island-sm" id="stats-refresh">
                         <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><polyline points="3 21 3 16 8 16"/></svg>
-                        Обновить
+                        <span data-i18n="b.refresh" data-i18n-ru="Обновить">Обновить</span>
                     </button>
                 </div>
                 <div class="stat-grid" id="stats-grid"></div>
@@ -480,6 +482,7 @@
     <script src="./js/scripts.js"></script>
     <script src="./js/stats.js"></script>
     <script src="./js/clients.js"></script>
+    <script src="./js/i18n.js"></script>
     <script src="./js/toasts.js"></script>
 
     <script>
