@@ -351,6 +351,35 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> 📋 Скопировать всех для ${label}`;
         btn.addEventListener('click', () => copyAllLeads(leads, label));
         container.appendChild(btn);
+
+        const exp = document.createElement('button');
+        exp.className = 'primary-btn';
+        exp.style.cssText = 'padding: 10px 24px; font-size: 14px; display:inline-flex; align-items:center; gap:8px; background:#2563eb;';
+        exp.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ⬇ Экспорт CSV`;
+        exp.addEventListener('click', () => exportLeadsCsv(leads));
+        container.appendChild(exp);
+
+        if (container.id === 'copy-all-wrapper' || container.tagName === 'DIV') {
+            container.style.cssText += '; gap:0.6rem;';
+        }
+    }
+
+    function exportLeadsCsv(leads) {
+        const esc = c => {
+            const s = String(c ?? '');
+            return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        };
+        const rows = [
+            ['Имя', 'Контакт', 'Потребность', 'Вероятность', 'Вердикт', 'Менеджер', 'Время просмотра', 'Время'],
+            ...leads.map(l => [l.name, l.contact, l.need, l.probability, l.verdict, l.manager, l.watchTime, l.time].map(esc))
+        ];
+        const csv = rows.map(r => r.join(';')).join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `shaikh_lidy_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
     }
 
     function updateCopyAllBtn(leads, label) {
