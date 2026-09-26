@@ -37,12 +37,21 @@ if ! curl --silent --fail --max-time 2 http://127.0.0.1:11434/api/version >/dev/
   echo "Ollama не запустился. WhatsApp-мост не изменён."
   exit 1
 fi
-if ! ollama list | grep -q '^qwen3:1.7b[[:space:]]'; then
-  echo "Первый запуск: загружается локальная модель qwen3:1.7b (около 1,4 ГБ)."
-  ollama pull qwen3:1.7b
+model="${LOCAL_AGENT_MODEL:-qwen3.5:9b-mlx}"
+case "$model" in
+  qwen3.5:9b-mlx|qwen3:1.7b|llama3.1:8b) ;;
+  *)
+    echo "Неизвестная модель: $model. Выберите одну из трёх установленных моделей."
+    exit 1
+    ;;
+esac
+if ! ollama list | awk -v requested="$model" 'NR > 1 && $1 == requested { found = 1 } END { exit !found }'; then
+  echo "Первый запуск: загружается локальная модель $model."
+  ollama pull "$model"
 fi
+export LOCAL_AGENT_MODEL="$model"
 
 docker compose -f compose.whatsapp.yaml up -d --build
-echo "WhatsApp, локальный n8n и Ollama запущены. n8n: http://localhost:5678."
+echo "WhatsApp, локальный n8n и Ollama запущены. Модель: $model. n8n: http://localhost:5678."
 echo "Автоответы требуют заполненного обучения, AI ON на сайте и локального переключателя enable-sales-agent.command."
 echo "Для выключения запустите stop-whatsapp.command."

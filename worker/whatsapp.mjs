@@ -12,7 +12,7 @@ const localAgent = process.env.LOCAL_AGENT_WEBHOOK_URL
     ? new LocalSalesAgent({
         sessionDir,
         webhookUrl: process.env.LOCAL_AGENT_WEBHOOK_URL,
-        model: process.env.LOCAL_AGENT_MODEL || 'qwen3:1.7b'
+        model: process.env.LOCAL_AGENT_MODEL || 'qwen3.5:9b-mlx'
     })
     : null;
 

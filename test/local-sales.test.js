@@ -54,6 +54,7 @@ test('local Sales Agent uses n8n, stores history locally and never resends a dup
         assert.equal((await agent.reply({ ...base, messageId: 'msg-2', text: 'Подробнее?' })).replied, true);
         assert.equal(payloads.length, 2);
         assert.equal(payloads[0].stream, false);
+        assert.equal(payloads[0].model, 'qwen3.5:9b-mlx');
         assert.equal(payloads[0].messages[0].role, 'system');
         assert.match(payloads[0].messages[0].content, /Продаём консультацию/);
         assert.deepEqual(payloads[1].messages.slice(-3).map(x => x.role), ['user', 'assistant', 'user']);

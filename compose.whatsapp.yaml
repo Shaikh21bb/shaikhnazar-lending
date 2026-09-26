@@ -60,7 +60,7 @@ services:
     environment:
       WHATSAPP_SESSION_DIR: /app/session
       LOCAL_AGENT_WEBHOOK_URL: http://n8n:5678/webhook/shaikh-sales-local
-      LOCAL_AGENT_MODEL: qwen3:1.7b
+      LOCAL_AGENT_MODEL: ${LOCAL_AGENT_MODEL:-qwen3.5:9b-mlx}
     volumes:
       - whatsapp-session:/app/session
     read_only: true
