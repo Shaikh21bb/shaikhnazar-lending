@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LocalSalesAgent } from '../worker/local-sales.mjs';
@@ -73,4 +73,60 @@ test('local Sales Agent rejects a webhook outside its private Docker network', (
     assert.throws(() => new LocalSalesAgent({
         sessionDir: '/tmp', webhookUrl: 'https://example.com/webhook/shaikh-sales-local'
     }), /inside the Docker n8n network/);
+});
+
+test('dashboard control changes apply once and do not undo a later local pause', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'shaikh-local-control-'));
+    const agent = new LocalSalesAgent({ sessionDir: dir, webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local' });
+    try {
+        const config = { enableRevision: 'change-1', autoReplies: true, model: 'qwen3:1.7b' };
+        await agent.applyControl(config);
+        assert.equal(await agent.isEnabled(), true);
+        assert.equal(agent.model, 'qwen3:1.7b');
+        await unlink(join(dir, 'sales-agent.enabled'));
+        await agent.applyControl(config);
+        assert.equal(await agent.isEnabled(), false);
+        await agent.applyControl({ ...config, enableRevision: 'change-2' });
+        assert.equal(await agent.isEnabled(), true);
+        await agent.applyControl({ ...config, enableRevision: 'change-3', autoReplies: false });
+        assert.equal(await agent.isEnabled(), false);
+    } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('test generation works while paused, uses the selected model and never sends WhatsApp', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'shaikh-local-demo-'));
+    let payload;
+    const agent = new LocalSalesAgent({
+        sessionDir: dir, webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local',
+        fetcher: async (_url, options) => {
+            payload = JSON.parse(options.body);
+            return new Response(JSON.stringify({ message: { content: 'Тестовый ответ' } }));
+        }
+    });
+    try {
+        assert.equal(await agent.isEnabled(), false);
+        const answer = await agent.generate({ text: 'Привет', context: { enabled: true, knowledge: 'Тестовая компания', model: 'llama3.1:8b' } });
+        assert.equal(answer, 'Тестовый ответ');
+        assert.equal(payload.model, 'llama3.1:8b');
+        assert.equal(await agent.isEnabled(), false);
+    } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('pausing during generation prevents the pending WhatsApp send', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'shaikh-local-pause-'));
+    await writeFile(join(dir, 'sales-agent.enabled'), 'enabled');
+    let sent = false;
+    const agent = new LocalSalesAgent({
+        sessionDir: dir, webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local',
+        fetcher: async () => {
+            await unlink(join(dir, 'sales-agent.enabled'));
+            return new Response(JSON.stringify({ message: { content: 'Не отправлять' } }));
+        }
+    });
+    try {
+        const result = await agent.reply({ externalId: 'customer', messageId: 'pause-1', text: 'Привет',
+            context: { enabled: true, knowledge: 'Тест' }, sendMessage: async () => { sent = true; } });
+        assert.equal(result.reason, 'disabled');
+        assert.equal(sent, false);
+    } finally { await rm(dir, { recursive: true, force: true }); }
 });

@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${p.description ? `<div class="project-desc">${escapeHtml(p.description)}</div>` : ''}
                 </div>
             </div>
-            <div class="project-knowledge-preview">${escapeHtml((p.knowledge || __t('База знаний пуста — агент будет отвечать без обучения.', 'Білім базасы бос — агент оқытусыз жауап береді.')).slice(0, 160))}${(p.knowledge || '').length > 160 ? '…' : ''}</div>
+            <div class="project-knowledge-preview">${escapeHtml((p.knowledge || __t('Добавьте материалы — ответы пока недоступны.', 'Материалдарды қосыңыз — жауаптар әзірге қолжетімсіз.')).slice(0, 160))}${(p.knowledge || '').length > 160 ? '…' : ''}</div>
             <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
                 ${agentsCount > 0 ? `<span class="project-chip">${agentsCount} агент(ов)</span>` : ''}
             </div>
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
             grid.innerHTML = `<div class="agents-empty glass">Ошибка загрузки: ${escapeHtml(error.message)}</div>`;
             return;
         }
-        allAgents = data || [];
+        allAgents = (data || []).sort((a, b) => Number(b.platform === 'whatsapp' && b.connected) - Number(a.platform === 'whatsapp' && a.connected));
         window.__agentsForProject = (projectId) => allAgents.filter(a => a.project_id === projectId).length;
         if (allAgents.length === 0) {
             grid.innerHTML = '<div class="agents-empty glass">Агентов пока нет. Нажмите «Добавить агента», чтобы подключить первого бота для Telegram.</div>';
@@ -222,6 +222,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const isActive = agent.status === 'active' && agent.ai_enabled !== false;
         const isTelegram = agent.platform === 'telegram';
         const isConnected = !!agent.connected;
+
+        if (!isTelegram && window.SalesStudio) {
+            return window.SalesStudio.createCard(agent, projectsCache, {
+                train: current => openProjectModal(projectsCache.find(project => project.id === current.project_id) || null, current),
+                connect: openWhatsAppConnection,
+                remove: async current => {
+                    if (!confirm(`Удалить агента «${current.name || ''}»?`)) return;
+                    const { error } = await supabaseClient.from(AGENTS_TABLE).delete().eq('id', current.id);
+                    if (error) alert('Не удалось удалить агента: ' + error.message);
+                    else loadAgents();
+                }
+            });
+        }
 
         const card = document.createElement('div');
         card.className = 'agent-card';

@@ -2,6 +2,8 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { db, readJsonBody } from '../_lib.js';
 import { requireDashboardSession } from '../_auth.js';
 import { findSalesAgent, getLocalSalesContext, handleSalesInbound } from '../_agent/sales.js';
+import { sanitizeRuntime, loadLocalState, localModel, dashboardLocalStatus, configureLocalAgent,
+    createLocalTest, localTestResult, claimLocalTest, finishLocalTest } from './local-control.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const JID = /^\d{6,20}@(s\.whatsapp\.net|lid)$/;
@@ -29,7 +31,8 @@ async function saveStatus(agentId, body) {
             state,
             qr_image: qrImage || null,
             last_seen_at: new Date().toISOString(),
-            last_error: String(body.error || '').slice(0, 500) || null
+            last_error: String(body.error || '').slice(0, 500) || null,
+            ...(body.runtime?.mode === 'local' ? { runtime: sanitizeRuntime(body.runtime) } : {})
         })
     });
     if (!status.res.ok) throw new Error(`Bridge status save failed (${status.res.status})`);
@@ -110,6 +113,7 @@ async function acknowledge(agentId, body) {
 }
 
 export default async function handler(req, res) {
+    res.setHeader?.('Cache-Control', 'private, no-store');
     if (process.env.WHATSAPP_DELIVERY_MODE !== 'qr') {
         return res.status(503).json({ error: 'QR bridge is not configured' });
     }
@@ -120,28 +124,32 @@ export default async function handler(req, res) {
         const agentId = String(req.query?.agentId || '');
         if (!UUID.test(agentId)) return res.status(400).json({ error: 'Invalid agent id' });
         try {
-            const result = await db(`whatsapp_bridge_sessions?select=state,qr_image,last_seen_at,last_error&agent_id=eq.${encodeURIComponent(agentId)}&limit=1`);
-            if (!result.res.ok) throw new Error(`Bridge status load failed (${result.res.status})`);
-            const row = result.body?.[0];
-            const fresh = row && Date.now() - new Date(row.last_seen_at).getTime() < 45000;
-            return res.status(200).json({
-                state: fresh ? row.state : 'offline',
-                qrImage: fresh && row.state === 'qr' ? row.qr_image : null,
-                lastSeenAt: row?.last_seen_at || null,
-                error: row?.last_error || null
-            });
+            if (req.query?.testId) return res.status(200).json(await localTestResult(agentId, String(req.query.testId)));
+            const agent = await findSalesAgent({ id: agentId, platform: 'whatsapp' });
+            if (!agent) return res.status(404).json({ error: 'Agent not found' });
+            return res.status(200).json(await dashboardLocalStatus(agent));
         } catch (error) {
             console.error('Bridge status error:', error);
-            return res.status(500).json({ error: 'Bridge status unavailable' });
+            return res.status(error.status || 500).json({ error: error.status ? error.message : 'Bridge status unavailable' });
         }
     }
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-    if (!process.env.WHATSAPP_BRIDGE_SECRET) return res.status(503).json({ error: 'Bridge secret missing' });
-    if (!validWorkerSecret(req.headers['x-whatsapp-bridge-secret'])) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
     try {
         const body = await readJsonBody(req);
+        if (['configure', 'test_create'].includes(body.action)) {
+            const session = requireDashboardSession(req, res);
+            if (!session) return;
+            if (session.role !== 'owner') return res.status(403).json({ error: 'Owner access required' });
+            if (!String(req.headers['content-type'] || '').includes('application/json')) return res.status(415).json({ error: 'JSON required' });
+            if (process.env.WHATSAPP_LOCAL_AGENT_ENABLED !== 'true') return res.status(503).json({ error: 'Local agent is not configured' });
+            if (!UUID.test(String(body.agentId || ''))) return res.status(400).json({ error: 'Invalid agent id' });
+            const agent = await findSalesAgent({ id: body.agentId, platform: 'whatsapp' });
+            if (!agent) return res.status(404).json({ error: 'Agent not found' });
+            return res.status(200).json(body.action === 'configure'
+                ? await configureLocalAgent(agent, body) : await createLocalTest(agent, body));
+        }
+        if (!process.env.WHATSAPP_BRIDGE_SECRET) return res.status(503).json({ error: 'Bridge secret missing' });
+        if (!validWorkerSecret(req.headers['x-whatsapp-bridge-secret'])) return res.status(401).json({ error: 'Unauthorized' });
         if (body.action === 'bootstrap') {
             const requestedId = String(body.agentId || '');
             if (requestedId && !UUID.test(requestedId)) return res.status(400).json({ error: 'Invalid agent id' });
@@ -167,12 +175,19 @@ export default async function handler(req, res) {
             if (process.env.WHATSAPP_LOCAL_AGENT_ENABLED !== 'true') {
                 return res.status(200).json({ enabled: false });
             }
-            return res.status(200).json(await getLocalSalesContext(agent));
+            const [context, local] = await Promise.all([getLocalSalesContext(agent), loadLocalState(agent.id)]);
+            return res.status(200).json(context.enabled ? { ...context, model: localModel(local) } : context);
         }
         if (body.action === 'status') {
             await saveStatus(agentId, body);
+            if (body.runtime?.mode === 'local' && process.env.WHATSAPP_LOCAL_AGENT_ENABLED === 'true') {
+                const local = await loadLocalState(agentId);
+                const job = body.runtime.testing ? null : await claimLocalTest(agent);
+                return res.status(200).json({ ok: true, config: local?.config || {}, testJob: job });
+            }
             return res.status(200).json({ ok: true });
         }
+        if (body.action === 'local_test_done') return res.status(200).json(await finishLocalTest(agentId, body));
         if (body.action === 'poll') {
             return res.status(200).json({ ok: true, jobs: await pollOutbox(agentId) });
         }
@@ -206,6 +221,6 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Unknown action' });
     } catch (error) {
         console.error('WhatsApp bridge error:', error);
-        return res.status(500).json({ error: 'Bridge request failed' });
+        return res.status(error.status || 500).json({ error: error.status ? error.message : 'Bridge request failed' });
     }
 }

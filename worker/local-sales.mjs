@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, stat, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 
 function prompt(context) {
@@ -52,6 +52,49 @@ export class LocalSalesAgent {
         this.model = model;
         this.fetcher = fetcher;
         this.inflight = new Map();
+        this.generationTail = Promise.resolve();
+    }
+
+    async applyControl(config = {}) {
+        if (['qwen3.5:9b-mlx', 'qwen3:1.7b', 'llama3.1:8b'].includes(config.model)) this.model = config.model;
+        if (!config.enableRevision || typeof config.autoReplies !== 'boolean') return;
+        const revisionPath = join(this.sessionDir, 'sales-control-revision');
+        const previous = await readFile(revisionPath, 'utf8').catch(error => {
+            if (error.code !== 'ENOENT') throw error;
+            return '';
+        });
+        if (previous === config.enableRevision) return;
+        const switchPath = join(this.sessionDir, 'sales-agent.enabled');
+        if (config.autoReplies) await writeFile(switchPath, 'enabled\n', { mode: 0o600 });
+        else await unlink(switchPath).catch(error => { if (error.code !== 'ENOENT') throw error; });
+        await writeFile(revisionPath, config.enableRevision, { mode: 0o600 });
+    }
+
+    async generate({ text, history = [], context }) {
+        if (!context?.enabled || !context.knowledge?.trim()) throw new Error('Сначала добавьте материалы обучения.');
+        const run = this.generationTail.catch(() => {}).then(async () => {
+            const messages = [
+                { role: 'system', content: prompt(context) },
+                ...history.slice(-12),
+                { role: 'user', content: String(text).slice(0, 4000) }
+            ];
+            const response = await this.fetcher(this.webhookUrl, {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ model: context.model || this.model, context: {
+                    enabled: true, name: context.name, language: context.language,
+                    knowledge: String(context.knowledge).slice(0, 24000)
+                }, messages, stream: false, think: false,
+                options: { temperature: 0.1, num_predict: 220, num_ctx: 16384 } }),
+                signal: AbortSignal.timeout(120000)
+            });
+            if (!response.ok) throw new Error(`Local n8n webhook failed (${response.status})`);
+            const data = await response.json();
+            const answer = String(data.message?.content || '').replace(/^<think>[\s\S]*?<\/think>\s*/i, '').trim().slice(0, 2000);
+            if (!answer || answer.includes('<think>')) throw new Error('Local model returned no safe reply');
+            return answer;
+        });
+        this.generationTail = run.catch(() => {});
+        return run;
     }
 
     async isEnabled() {
@@ -85,27 +128,8 @@ export class LocalSalesAgent {
         const path = join(historyDir, filename);
         const record = await readRecord(path);
         if (record.ids.includes(messageId)) return { replied: false, reason: 'duplicate' };
-        const messages = [
-            { role: 'system', content: prompt(context) },
-            ...record.messages.slice(-12),
-            { role: 'user', content: String(text).slice(0, 4000) }
-        ];
-        const response = await this.fetcher(this.webhookUrl, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ model: this.model, context: {
-                enabled: context.enabled,
-                name: context.name,
-                language: context.language,
-                knowledge: String(context.knowledge).slice(0, 24000)
-            }, messages, stream: false, think: false,
-                options: { temperature: 0.1, num_predict: 220, num_ctx: 16384 } }),
-            signal: AbortSignal.timeout(120000)
-        });
-        if (!response.ok) throw new Error(`Local n8n webhook failed (${response.status})`);
-        const data = await response.json();
-        const answer = String(data.message?.content || '').replace(/^<think>[\s\S]*?<\/think>\s*/i, '').trim().slice(0, 2000);
-        if (!answer || answer.includes('<think>')) throw new Error('Local model returned no safe reply');
+        const answer = await this.generate({ text, history: record.messages, context });
+        if (!await this.isEnabled()) return { replied: false, reason: 'disabled' };
 
         // Save the message ID before sending. A crash must not produce a duplicate WhatsApp reply.
         record.ids = [...record.ids, messageId].slice(-100);

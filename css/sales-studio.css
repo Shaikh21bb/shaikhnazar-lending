@@ -1,0 +1,70 @@
+#view-agents .results-header { margin-bottom: 1.5rem; }
+#view-agents > section:first-child > .results-header .section-title { text-transform: none; font-size: clamp(1.7rem,3vw,2.5rem); letter-spacing:-.045em; }
+.sales-studio { grid-column: 1 / -1; border:1px solid #30343d; border-radius:24px; background:linear-gradient(135deg,#171b20,#101216 58%); overflow:hidden; color:#f1f3f5; box-shadow:0 14px 55px #0003; }
+.sales-studio-header { display:flex; align-items:center; gap:16px; padding:25px 28px 18px; }
+.sales-avatar { width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg,#b9f7d7,#5aceac); color:#133e30; display:grid; place-items:center; font-size:26px; font-weight:800; position:relative; }
+.sales-avatar span { position:absolute; right:-3px; bottom:-3px; width:13px; height:13px; border:3px solid #171b20; background:#73e2b1; border-radius:50%; }
+.sales-identity { flex:1; min-width:0; }
+.sales-eyebrow { font:600 10px/1.5 'Manrope',sans-serif; letter-spacing:.15em; color:#91a39a; }
+.sales-identity h3 { margin:3px 0 0; font:700 24px/1.25 'Manrope',sans-serif; letter-spacing:-.035em; }
+.sales-live-badge { font-size:11px; font-weight:600; border-radius:999px; padding:8px 12px; color:#d6b970; background:#d6b97012; border:1px solid #d6b97030; }
+.sales-live-badge[data-state=ready] { color:#94ebc4; border-color:#94ebc435; background:#94ebc412; }
+.sales-live-badge[data-state=error] { color:#f3aaa3; border-color:#f3aaa340; background:#f3aaa312; }
+.sales-health { display:flex; flex-wrap:wrap; gap:18px; padding:0 28px 20px; border-bottom:1px solid #2a3036; }
+.sales-health > span { display:flex; gap:7px; align-items:center; color:#808b93; font-size:11px; }
+.sales-health i { width:6px; height:6px; border-radius:50%; background:#636b73; }
+.sales-health [data-good=true] { color:#bdc9c2; }
+.sales-health [data-good=true] i { background:#7ddbab; box-shadow:0 0 9px #7ddbab44; }
+.sales-studio-body { display:grid; grid-template-columns:minmax(300px,1fr) minmax(300px,1.05fr); }
+.sales-settings { padding:25px 28px; }
+.sales-section-label { display:flex; gap:9px; align-items:center; font-size:12px; font-weight:600; margin-bottom:23px; }
+.sales-section-label > span { color:#82988d; font-size:10px; border:1px solid #34483d; border-radius:5px; padding:3px 5px; }
+.sales-field { display:block; font-size:11px; font-weight:600; color:#b1bac2; margin-bottom:18px; text-transform:none; letter-spacing:0; }
+.sales-field select { display:block; width:100%; height:43px; margin:8px 0 0; padding:0 12px; color:#e7eced; font:500 13px 'Manrope',sans-serif; background:#20242b; border:1px solid #343b45; border-radius:10px; outline:none; }
+.sales-field select:focus { border-color:#9ae5bd; box-shadow:0 0 0 3px #9ae5bd12; }
+.sales-field small { display:block; font-size:10px; line-height:1.6; font-weight:400; color:#8e999f; margin-top:6px; }
+.sales-local-chip { float:right; font-size:9px; color:#8dd8b3; border:1px solid #4c7c622f; padding:2px 6px; border-radius:5px; }
+.sales-field-row { display:grid; grid-template-columns:1.4fr 1fr; gap:12px; }
+.sales-training-button { display:flex; align-items:center; gap:12px; width:100%; border:1px dashed #465249; border-radius:12px; padding:13px; background:#17221b55; color:#e7ece9; text-align:left; cursor:pointer; }
+.sales-training-button > span:nth-child(2) { flex:1; }
+.sales-training-button strong { font-size:12px; font-weight:600; display:block; }
+.sales-training-button small { font-size:10px; color:#93a298; display:block; margin-top:4px; }
+.sales-book-icon { font-size:22px; color:#9ad1ad; }
+.sales-training-button:hover { background:#22352877; border-color:#7eaa8d; }
+.sales-readiness { font-size:11px; line-height:1.7; color:#c6b487; margin:18px 0; min-height:36px; }
+.sales-readiness[data-ready=true] { color:#9eb6a8; }
+.sales-controls { display:flex; gap:9px; }
+.sales-primary,.sales-secondary { min-height:42px; border-radius:10px; padding:10px 14px; font:600 11px 'Manrope',sans-serif; cursor:pointer; }
+.sales-primary { background:#b5f3cf; border:1px solid #b5f3cf; color:#153528; flex:1; }
+.sales-primary:hover { background:#d0fbe1; }
+.sales-primary.is-running { background:#243a2e; border-color:#385443; color:#bce6cc; }
+.sales-secondary { background:#22272e; color:#c9d3d7; border:1px solid #36404a; }
+.sales-studio button:disabled { opacity:.5; cursor:wait; }
+.sales-session-stats { margin-top:18px; padding-top:15px; border-top:1px solid #2d343a; display:flex; justify-content:space-between; gap:8px; font-size:9px; color:#8c989d; }
+.sales-session-stats b { color:#eff4f2; font-size:16px; margin-right:4px; }
+.sales-operation-note { color:#7e8b93; font-size:10px; line-height:1.6; margin:12px 0 0; }
+.sales-delete { background:none; border:0; color:#8c9199; padding:0; margin-top:15px; font:400 10px 'Manrope',sans-serif; cursor:pointer; }
+.sales-delete:hover { color:#f28f8f; }
+.sales-playground { display:flex; flex-direction:column; border-left:1px solid #2a3036; background:radial-gradient(ellipse at 80% 0%,#264e371c,transparent 65%),#111519; padding:25px; min-height:490px; }
+.sales-playground-header { display:flex; align-items:center; justify-content:space-between; }
+.sales-playground-header h4 { font:600 17px/1.4 'Manrope',sans-serif; color:#e5ece9; margin:4px 0 0; letter-spacing:-.02em; }
+.sales-clear { color:#8ba395; border:1px solid #324138; width:29px; height:29px; border-radius:8px; background:#202c25; cursor:pointer; font-size:18px; }
+.sales-playground-hint { font-size:10px; color:#8b979d; line-height:1.7; max-width:330px; margin:9px 0 16px; }
+.sales-messages { height:250px; flex:1; overflow:auto; display:flex; flex-direction:column; align-items:flex-start; gap:12px; padding:5px 0 15px; scrollbar-width:thin; }
+.sales-chat-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:26px; max-width:310px; margin:auto; }
+.sales-spark { display:grid; place-items:center; width:48px; height:48px; border:1px solid #4b785f40; border-radius:15px; color:#a5dab9; background:#35583e22; font-size:27px; margin-bottom:15px; }
+.sales-chat-empty strong { color:#bac9c0; font-size:12px; font-weight:500; line-height:1.6; }
+.sales-chat-empty span { font-size:10px; line-height:1.7; color:#7f8e85; margin-top:8px; }
+.sales-message { max-width:94%; border-radius:13px 13px 13px 3px; padding:11px 14px; background:#26312c; color:#d8e7de; font-size:12px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
+.sales-message.user { align-self:flex-end; border-radius:13px 13px 3px 13px; background:#dae9de; color:#23382c; }
+.sales-message.thinking { color:#8fa99c; background:#1a2420; }
+.sales-prompts { display:flex; flex-wrap:wrap; gap:7px; margin:12px 0; }
+.sales-prompts button { background:transparent; border:1px solid #34423b; color:#9caf9f; border-radius:7px; padding:6px 9px; font:400 10px 'Manrope',sans-serif; cursor:pointer; }
+.sales-prompts button:hover { background:#293a30; color:#d1e7d7; }
+.sales-chat-form { display:flex; gap:10px; align-items:center; padding:6px 7px 6px 12px; border:1px solid #405048; border-radius:12px; background:#202a24; }
+.sales-chat-form input { min-width:0; flex:1; color:#e3eee7; background:none; border:0; outline:none; box-shadow:none; padding:6px 0; font:400 12px 'Manrope',sans-serif; }
+.sales-chat-form input::placeholder { color:#84968c; }
+.sales-chat-form button { flex:0 0 32px; width:32px; height:32px; border:0; border-radius:8px; background:#b5f3cf; color:#264f36; font-size:21px; cursor:pointer; }
+.sales-test-status { min-height:25px; font-size:9px; color:#80948a; line-height:1.6; margin-top:9px; }
+@media (max-width:800px) { .sales-studio-body{grid-template-columns:1fr}.sales-playground{border-left:0;border-top:1px solid #2a3036;min-height:430px}.sales-studio-header{padding:21px 19px 17px}.sales-health{padding:0 19px 18px;gap:13px}.sales-settings{padding:22px 19px}.sales-playground{padding:22px 19px}.sales-identity h3{font-size:20px}.sales-live-badge{font-size:9px;padding:6px 8px} }
+@media (max-width:420px) { .sales-studio-header{flex-wrap:wrap}.sales-live-badge{margin-left:68px}.sales-field-row{grid-template-columns:1fr}.sales-session-stats{flex-direction:column;gap:8px}.sales-controls{flex-wrap:wrap} }

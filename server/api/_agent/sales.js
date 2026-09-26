@@ -89,8 +89,8 @@ async function loadKnowledge(agent) {
     return [project.name, project.description, project.knowledge].filter(Boolean).join('\n\n').slice(0, 24000);
 }
 
-export async function getLocalSalesContext(agent) {
-    if (!isAgentEnabled(agent)) return { enabled: false };
+export async function getLocalSalesContext(agent, { preview = false } = {}) {
+    if ((!preview && !isAgentEnabled(agent)) || !agent.project_id) return { enabled: false };
     const { res, body } = await db(
         `projects?select=name,description,knowledge&id=eq.${encodeURIComponent(agent.project_id)}&limit=1`
     );

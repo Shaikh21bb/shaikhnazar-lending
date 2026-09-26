@@ -1,4 +1,4 @@
-const VERSION = 'shaikh-sys-v4-owner-auth';
+const VERSION = 'shaikh-sys-v5-sales-studio';
 const CORE = [
     '/',
     '/index.html',
@@ -10,12 +10,14 @@ const CORE = [
     '/icons/icon-512.png',
     '/icons/apple-touch-icon.png',
     '/css/app.css',
+    '/css/sales-studio.css',
     '/css/style.css',
     '/js/main.js',
     '/js/lang.js',
     '/js/supabase.js',
     '/js/shyraq.js',
     '/js/agents.js',
+    '/js/sales-studio.js',
     '/js/role.js',
     '/js/tasks.js',
     '/js/scripts.js',
