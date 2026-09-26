@@ -5,10 +5,10 @@ import { hashPassword } from '../_password.js';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function handler(req, res) {
+    res.setHeader('Cache-Control', 'no-store');
     const session = requireDashboardSession(req, res);
     if (!session) return;
     if (session.role !== 'owner') return res.status(403).json({ error: 'Owner access required' });
-    res.setHeader('Cache-Control', 'no-store');
 
     try {
         if (req.method === 'GET') {

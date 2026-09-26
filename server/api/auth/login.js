@@ -8,6 +8,7 @@ export function roleForLogin(login) {
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    res.setHeader('Cache-Control', 'no-store');
     try {
         const { login, password } = await readJsonBody(req);
         if (!login || !password) return res.status(400).json({ error: 'Login and password are required' });
