@@ -5,7 +5,18 @@
 -- ============================================================
 
 -- ------------------------------------------------------------
--- 1) Агенты (Telegram/WhatsApp боты)
+-- 1) Проекты (создаются до agents, потому что agents.project_id ссылается на них)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS projects (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name text NOT NULL,
+    description text,
+    knowledge text NOT NULL DEFAULT '',
+    created_at timestamptz DEFAULT now()
+);
+
+-- ------------------------------------------------------------
+-- 2) Агенты (Telegram/WhatsApp боты)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS agents (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -25,16 +36,8 @@ DROP POLICY IF EXISTS agents_public ON agents;
 CREATE POLICY agents_public ON agents FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------------------------
--- 2) Проекты (база знаний для обучения агентов)
+-- Проекты: политики доступа (таблица уже создана выше)
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS projects (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name text NOT NULL,
-    description text,
-    knowledge text NOT NULL DEFAULT '',
-    created_at timestamptz DEFAULT now()
-);
-
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS projects_public ON projects;
 CREATE POLICY projects_public ON projects FOR ALL USING (true) WITH CHECK (true);

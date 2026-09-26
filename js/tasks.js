@@ -90,7 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadAgents() {
-        const { data, error } = await supabaseClient.from('agents').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabaseClient.from('agents')
+            .select('id,name,platform,status,ai_enabled,created_at')
+            .order('created_at', { ascending: false });
         if (!error) agentsCache = data || [];
     }
 

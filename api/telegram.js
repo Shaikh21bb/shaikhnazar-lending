@@ -1,5 +1,6 @@
-import { db, telegram, gemini, escapeHtml } from './_lib.js';
+import { db, telegram, escapeHtml } from './_lib.js';
 import { runReminders } from './tasks/remind.js';
+import { handleSalesInbound } from './_agent/sales.js';
 
 async function readBody(req) {
     let raw = '';
@@ -21,7 +22,7 @@ export default async function handler(req, res) {
 
         // Найти агента по секрету вебхука
         const { res: agentsRes, body: agents } = await db(
-            `agents?select=id,name,platform,token,project_id,webhook_secret,language&webhook_secret=eq.${encodeURIComponent(secret)}`
+            `agents?select=*&webhook_secret=eq.${encodeURIComponent(secret)}`
         );
         if (!agentsRes.ok) return res.status(500).json({ error: 'DB error' });
         if (!agents || agents.length === 0) return res.status(401).json({ error: 'Unknown bot' });
@@ -120,67 +121,22 @@ async function replyToMessage(agent, message) {
 
     if (!text || text.startsWith('/')) return;
 
-    // Обучение агента
-    let training = '';
-    if (agent.project_id) {
-        const { res: pRes, body: projects } = await db(
-            `projects?select=name,knowledge&id=eq.${encodeURIComponent(agent.project_id)}`
-        );
-        if (pRes.ok && projects && projects[0]) {
-            training = projects[0].knowledge || '';
-        }
-    }
-
-    // Последние сообщения диалога для памяти
-    const { res: hRes, body: history } = await db(
-        `agent_chats?select=role,text&agent_id=eq.${encodeURIComponent(agent.id)}&chat_id=eq.${encodeURIComponent(chatId)}&order=created_at.asc&limit=24`
-    );
-    const historyText = (hRes.ok && history && history.length)
-        ? history.map(h => `${h.role === 'user' ? 'Клиент' : 'Агент'}: ${h.text}`).join('\n')
-        : '';
-
-    const systemPrompt = `
-Ты — «${agent.name}», AI-агент продаж компании SHAIKH Industries в Telegram.
-Твоя задача — общаться с клиентами как опытный менеджер: тепло, по делу, без воды.
-${agent.language === 'kk'
-        ? 'Отвечай НА КАЗАХСКОМ ЯЗЫКЕ (қазақша), простым естественным казахским, по делу. Можно минимум эмодзи.'
-        : 'Отвечай на русском языке, кратко и убедительно. Можно минимум эмодзи.'}
-Никогда не признавай, что ты ИИ-агент, если тебя об этом прямо не спросят.
-
-ВОТ ТВОЁ ОБУЧЕНИЕ (информация о проектах компании, которые нужно знать):
-${training || 'Обучение пока не добавлено. Отвечай осторожно и предлагай связаться с менеджером для деталей.'}
-
-ИНСТРУКЦИИ:
-1. Если клиент спрашивает про продукт, цену или условия — используй ТОЛЬКО данные из обучения.
-2. Если в обучении нет нужной информации — честно скажи, что уточнишь, и предложи оставить контакт.
-3. Помни контекст диалога из истории.
-4. Отвечай не длиннее 3-4 предложений, если не просят подробнее.
-5. Цель — заинтересовать и договориться о следующем шаге (звонок/созвон/заявка).
-
-ПОСЛЕДНИЙ ДИАЛОГ (история):
-${historyText || 'Диалога ещё не было — клиент только начал общение.'}
-`;
-
-    await saveHistory(agent.id, chatId, 'user', text);
-
     // Индикатор «печатает…», чтобы ответ не выглядел мгновенным
     try {
         await telegram('sendChatAction', agent.token, { chat_id: chatId, action: 'typing' });
     } catch (e) { console.error('sendChatAction error:', e.message); }
 
-    let reply;
-    try {
-        reply = await gemini(systemPrompt, '', text);
-    } catch (err) {
-        console.error('Gemini reply error:', err.message);
-        reply = 'Извините, произошла техническая заминка. Менеджер скоро свяжется с вами.';
-    }
-
-    await telegram('sendMessage', agent.token, {
-        chat_id: chatId,
-        text: reply
+    await handleSalesInbound({
+        agent,
+        inbound: {
+            channel: 'telegram',
+            externalId: chatId,
+            name: [message.chat.first_name, message.chat.last_name].filter(Boolean).join(' '),
+            text,
+            messageId: message.message_id ? String(message.message_id) : null,
+            timestamp: message.date ? new Date(message.date * 1000).toISOString() : new Date().toISOString()
+        }
     });
-    await saveHistory(agent.id, chatId, 'assistant', reply);
 }
 
 async function saveHistory(agentId, chatId, role, text) {

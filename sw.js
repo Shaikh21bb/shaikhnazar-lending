@@ -1,4 +1,4 @@
-const VERSION = 'shaikh-sys-v2';
+const VERSION = 'shaikh-sys-v3-sales-agent';
 const CORE = [
     '/',
     '/index.html',

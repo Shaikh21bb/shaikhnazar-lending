@@ -154,17 +154,16 @@
                 if (authError) authError.style.display = 'none';
 
                 try {
-                    const { data, error } = await supabaseClient
-                        .from('managers_auth')
-                        .select('*')
-                        .eq('login', login)
-                        .eq('password', password);
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ login, password })
+                    });
+                    const data = await response.json();
 
-                    if (error) throw error;
-
-                    if (data && data.length > 0) {
-                        localStorage.setItem('auth_token', data[0].id);
-                        localStorage.setItem('auth_email', data[0].login);
+                    if (response.ok) {
+                        localStorage.setItem('auth_token', data.id);
+                        localStorage.setItem('auth_email', data.login);
                         window.location.href = 'dashboard.html';
                     } else {
                         if (authError) {

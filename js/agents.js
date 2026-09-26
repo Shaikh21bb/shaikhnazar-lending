@@ -163,7 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadAgents() {
         const grid = document.getElementById('agents-grid');
         if (!grid) return;
-        const { data, error } = await supabaseClient.from(AGENTS_TABLE).select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabaseClient.from(AGENTS_TABLE)
+            .select('id,name,platform,connected,status,language,project_id,created_at,agent_type,ai_enabled')
+            .order('created_at', { ascending: false });
         if (error) {
             grid.innerHTML = `<div class="agents-empty glass">Ошибка загрузки: ${escapeHtml(error.message)}</div>`;
             return;
@@ -179,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildAgentCard(agent) {
-        const isActive = agent.status === 'active';
+        const isActive = agent.status === 'active' && agent.ai_enabled !== false;
         const isTelegram = agent.platform === 'telegram';
         const isConnected = !!agent.connected;
 
@@ -190,13 +192,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="agent-icon ${isTelegram ? 'agent-telegram' : 'agent-whatsapp'}">${isTelegram ? TELEGRAM_ICON : WHATSAPP_ICON}</div>
                 <div style="flex:1; min-width:0;">
                     <div class="agent-name">${escapeHtml(agent.name || __t('Без имени', 'Атауы жоқ'))}</div>
-                    <div class="agent-meta">${platformLabel(agent.platform)} · ${escapeHtml(agent.token || __t('нет токена', 'токен жоқ'))}</div>
+                    <div class="agent-meta">Sales Agent · ${platformLabel(agent.platform)}</div>
                     ${isConnected ? '<div class="connected-badge">Бот подключён</div>' : ''}
                 </div>
-                <span class="agent-status ${isActive ? 'status-active' : 'status-paused'}">${isActive ? __t('Активен', 'Белсенді') : __t('Пауза', 'Пауза')}</span>
+                <span class="agent-status ${isActive ? 'status-active' : 'status-paused'}">${isActive ? 'AI ON' : 'AI OFF'}</span>
             </div>
 
-            ${isTelegram ? `
             <div class="agent-project-select-wrap">
                 <select class="agent-project-select" data-id="${agent.id}">
                     <option value="">— без обучения —</option>
@@ -208,12 +209,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     <option value="ru" ${agent.language !== 'kk' ? 'selected' : ''}>Язык ответов: Русский</option>
                     <option value="kk" ${agent.language === 'kk' ? 'selected' : ''}>Язык ответов: Қазақша</option>
                 </select>
-            </div>` : ''}
+            </div>
 
             <div class="agent-card-actions" style="flex-wrap:wrap;">
-                ${isTelegram ? `<button class="island island-sm js-agent-dialogs">Диалоги</button>` : ''}
+                <button class="island island-sm js-agent-dialogs">Диалоги</button>
                 ${isTelegram ? `<button class="island island-sm js-agent-broadcast">Рассылка</button>` : ''}
-                <button class="island island-sm js-agent-toggle">${isActive ? __t('Пауза', 'Пауза') : __t('Запустить', 'Іске қосу')}</button>
+                <button class="island island-sm js-agent-toggle">${isActive ? 'Выключить AI' : 'Включить AI'}</button>
                 ${isTelegram && !isConnected
                     ? `<button class="island island-sm js-agent-connect">Подключить бота</button>`
                     : (isTelegram ? `<button class="island island-sm js-agent-connect">Отключить</button>` : '')}
@@ -222,8 +223,11 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         card.querySelector('.js-agent-toggle').addEventListener('click', async () => {
-            const next = isActive ? 'paused' : 'active';
-            await supabaseClient.from(AGENTS_TABLE).update({ status: next }).eq('id', agent.id);
+            const next = !isActive;
+            await supabaseClient.from(AGENTS_TABLE).update({
+                ai_enabled: next,
+                status: next ? 'active' : 'paused'
+            }).eq('id', agent.id);
             loadAgents();
         });
 
@@ -397,12 +401,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return aLast < bLast ? 1 : -1;
         });
 
+        let customerState = null;
+        if (currentChatId) {
+            const currentMessages = sessions[currentChatId]?.messages || [];
+            const channel = currentMessages[0]?.channel || currentDialogsAgent.platform || 'telegram';
+            const { data: customers } = await supabaseClient.from('customers')
+                .select('id,handoff_status,ai_enabled')
+                .eq('agent_id', currentDialogsAgent.id)
+                .eq('channel', channel)
+                .eq('external_id', currentChatId)
+                .limit(1);
+            customerState = customers && customers[0] ? customers[0] : null;
+        }
+
         body.innerHTML = `
             <div class="new-chat-row">
-                <input type="text" class="new-chat-input" id="new-chat-id" placeholder="Chat ID клиента в Telegram (напр. 123456789)" list="known-chats">
+                <input type="text" class="new-chat-input" id="new-chat-id" placeholder="ID клиента в ${platformLabel(currentDialogsAgent.platform || 'telegram')}" list="known-chats">
                 <datalist id="known-chats">${list.map(s => `<option value="${escapeHtml(s.chatId)}">`).join('')}</datalist>
                 <button class="agent-btn" id="new-chat-go" style="flex:0 0 auto; padding:0.55rem 1rem;">Открыть</button>
                 <button class="agent-btn" id="dialog-to-task" style="flex:0 0 auto; padding:0.55rem 1rem;" title="Создать задачу по этому клиенту">В задачу</button>
+                ${customerState ? `<button class="agent-btn" id="dialog-handoff" style="flex:0 0 auto; padding:0.55rem 1rem;">${customerState.handoff_status === 'human' ? 'Вернуть AI' : 'Передать человеку'}</button>` : ''}
                 <button class="agent-btn" id="dialogs-export" style="flex:0 0 auto; padding:0.55rem 1rem;" title="Скачать все диалоги в .txt">Экспорт</button>
             </div>
             <div class="dialogs-layout">
@@ -435,6 +453,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const exportBtn = document.getElementById('dialogs-export');
         if (exportBtn) exportBtn.addEventListener('click', () => exportDialogs());
+
+        const handoffBtn = document.getElementById('dialog-handoff');
+        if (handoffBtn && customerState) handoffBtn.addEventListener('click', async () => {
+            const toHuman = customerState.handoff_status !== 'human';
+            handoffBtn.disabled = true;
+            const { error } = await supabaseClient.from('customers').update({
+                handoff_status: toHuman ? 'human' : 'ai',
+                ai_enabled: !toHuman,
+                handoff_reason: toHuman ? 'Передано менеджером из панели' : null
+            }).eq('id', customerState.id);
+            if (error) alert('Не удалось изменить режим: ' + error.message);
+            renderDialogs();
+        });
 
         const toTaskBtn = document.getElementById('dialog-to-task');
         const copyThreadBtn = document.getElementById('copy-current-thread');
@@ -481,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!text) return;
             replyBtn.disabled = true;
             try {
-                const res = await fetch('/api/telegram/send', {
+                const res = await fetch('/api/messages/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: currentDialogsAgent.id, chatId: currentChatId, text: text })
@@ -586,6 +617,9 @@ document.addEventListener('DOMContentLoaded', () => {
         platformInput.value = 'telegram';
         document.querySelectorAll('.platform-btn').forEach(b => b.classList.toggle('active', b.dataset.platform === 'telegram'));
         hintEl.textContent = 'Токен бота от @BotFather в Telegram. После добавления нажмите «Подключить бота», чтобы активировать webhook.';
+        tokenInput.required = true;
+        tokenInput.disabled = false;
+        tokenInput.placeholder = '123456:ABC-DEF...';
         modal.classList.add('open');
         setTimeout(() => nameInput.focus(), 100);
     }
@@ -605,7 +639,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.platform-btn').forEach(b => b.classList.toggle('active', b === btn));
             hintEl.textContent = platform === 'telegram'
                 ? 'Токен бота от @BotFather в Telegram. После добавления нажмите «Подключить бота».'
-                : 'WhatsApp-интеграция скоро. Сейчас поддержан только Telegram.';
+                : 'Meta credentials задаются только на сервере через env. Здесь токен не нужен.';
+            tokenInput.required = platform === 'telegram';
+            tokenInput.disabled = platform === 'whatsapp';
+            tokenInput.placeholder = platform === 'telegram' ? '123456:ABC-DEF...' : 'Настраивается на сервере';
         });
     });
 
@@ -613,13 +650,16 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const name = nameInput.value.trim();
         const token = tokenInput.value.trim();
-        if (!name || !token) return;
+        const platform = platformInput.value;
+        if (!name || (platform === 'telegram' && !token)) return;
 
         const { error } = await supabaseClient.from(AGENTS_TABLE).insert({
             name: name,
-            platform: platformInput.value,
-            token: token,
-            status: 'active'
+            platform,
+            token: platform === 'telegram' ? token : null,
+            status: 'active',
+            agent_type: 'sales',
+            ai_enabled: true
         });
 
         if (error) {

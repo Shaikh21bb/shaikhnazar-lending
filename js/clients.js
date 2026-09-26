@@ -45,12 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function load() {
         if (window.__roleReady) await window.__roleReady;
-        const [{ data: chats, error: cErr }, { data: agents, error: aErr }] = await Promise.all([
+        let [{ data: chats, error: cErr }, { data: agents, error: aErr }] = await Promise.all([
             supabaseClient.from('agent_chats')
                 .select('agent_id,chat_id,text,role,created_at')
                 .order('created_at', { ascending: false })
                 .limit(600),
-            supabaseClient.from('agents').select('id,name')
+            supabaseClient.from('agents').select('id,name,platform')
         ]);
 
         if (window.__scope && window.__scope.isManager && window.__scope.agentId) {
@@ -64,6 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const agentName = {};
         (agents || []).forEach(a => agentName[a.id] = a.name);
+        const agentPlatform = {};
+        (agents || []).forEach(a => agentPlatform[a.id] = a.platform);
 
         const byChat = {};
         const msgsPerChat = {};
@@ -133,7 +135,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         listEl.querySelectorAll('.js-client-reply').forEach(btn => {
             btn.addEventListener('click', () => {
-                const agent = { id: btn.dataset.agent, name: agentName[btn.dataset.agent] || 'Агент' };
+                const agent = {
+                    id: btn.dataset.agent,
+                    name: agentName[btn.dataset.agent] || 'Агент',
+                    platform: agentPlatform[btn.dataset.agent] || 'telegram'
+                };
                 if (!(window.__scope && window.__scope.isManager)) switchTo('agents');
                 window.__openAgentDialog(agent, btn.dataset.chat);
             });

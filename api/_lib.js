@@ -1,7 +1,12 @@
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
+// Server routes should use the service role. SUPABASE_KEY remains as a
+// backwards-compatible fallback for existing deployments.
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || '';
 
 export async function db(path, options = {}) {
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+        throw new Error('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing');
+    }
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
         ...options,
         headers: {
@@ -13,6 +18,13 @@ export async function db(path, options = {}) {
     });
     const text = await res.text();
     return { res, body: text ? JSON.parse(text) : null };
+}
+
+export async function readJsonBody(req) {
+    if (req.body && typeof req.body === 'object') return req.body;
+    let raw = '';
+    for await (const chunk of req) raw += chunk;
+    return raw ? JSON.parse(raw) : {};
 }
 
 export async function telegram(method, token, payload = {}) {
