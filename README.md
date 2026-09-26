@@ -64,7 +64,9 @@ curl -X POST http://localhost:3000/api/sales/simulate \
 
 ## Follow-up 24/7
 
-`vercel.json` запускает `/api/followups/run` каждые пять минут. Задайте `CRON_SECRET`; Vercel передаст его endpoint как Bearer token. Если выбранный тариф хостинга не поддерживает такую частоту, вызывайте этот endpoint внешним scheduler с тем же заголовком:
+Supabase Cron вызывает `/api/followups/run` каждые пять минут. В Supabase Vault создайте два секрета: `sales_agent_followup_url` со значением `https://shaikh.digital/api/followups/run` и `sales_agent_cron_secret` со значением того же `CRON_SECRET`, который настроен в Vercel. Затем выполните `supabase-migration-9-sales-scheduler.sql`. Секреты не записывайте в Git.
+
+Vercel Hobby поддерживает расписания не чаще одного раза в сутки, поэтому частые follow-up вынесены в Supabase Cron. Endpoint принимает:
 
 ```text
 Authorization: Bearer <CRON_SECRET>
