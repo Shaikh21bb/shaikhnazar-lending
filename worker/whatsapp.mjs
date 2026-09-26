@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import makeWASocket, { Browsers, DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys';
+import makeWASocket, { Browsers, DisconnectReason, fetchLatestWaWebVersion, useMultiFileAuthState } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import QRCode from 'qrcode';
 
@@ -47,7 +47,7 @@ function scheduleReconnect(error) {
     connected = false;
     qrImage = null;
     state = 'offline';
-    lastError = error?.message || null;
+    lastError = error?.message || lastError;
     reportStatus();
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => connect().catch(scheduleReconnect), 5000);
@@ -107,7 +107,10 @@ async function connect() {
     qrImage = null;
     await reportStatus();
     const { state: auth, saveCreds } = await useMultiFileAuthState(sessionDir);
+    const latest = await fetchLatestWaWebVersion({ timeout: 10000 });
+    if (!latest.isLatest) throw new Error(`Could not get current WhatsApp Web version: ${latest.error?.message || 'unknown error'}`);
     const next = makeWASocket({
+        version: latest.version,
         auth,
         logger: pino({ level: 'silent' }),
         browser: Browsers.macOS('SHAIKH Sales Agent'),
@@ -116,9 +119,13 @@ async function connect() {
         printQRInTerminal: false
     });
     socket = next;
+    console.log('WhatsApp socket initialised; waiting for QR or connection.');
     next.ev.on('creds.update', saveCreds);
     next.ev.on('connection.update', async update => {
         if (next !== socket) return;
+        if (update.connection || update.qr) {
+            console.log(`WhatsApp connection update: ${update.connection || 'pending'}${update.qr ? ' (QR received)' : ''}`);
+        }
         if (update.qr) {
             qrImage = await QRCode.toDataURL(update.qr, { margin: 2, width: 320 });
             state = 'qr';
@@ -132,14 +139,18 @@ async function connect() {
             qrImage = null;
             lastError = null;
             await reportStatus();
-            console.log('WhatsApp connected. AI replies follow the dashboard AI ON/OFF setting.');
+            console.log('WhatsApp connected. Customer replies also require the separate server-side delivery switch.');
         }
         if (update.connection === 'close') {
             connected = false;
             qrImage = null;
-            const reason = update.lastDisconnect?.error?.output?.statusCode;
+            const disconnectError = update.lastDisconnect?.error;
+            const reason = disconnectError?.output?.statusCode;
             state = reason === DisconnectReason.loggedOut ? 'logged_out' : 'offline';
-            lastError = state === 'logged_out' ? 'WhatsApp logged out; a new QR pairing is required.' : null;
+            lastError = state === 'logged_out'
+                ? 'WhatsApp logged out; a new QR pairing is required.'
+                : String(disconnectError?.message || 'WhatsApp connection closed').slice(0, 500);
+            console.error(`WhatsApp connection closed (${reason || 'unknown'}): ${lastError}`);
             await reportStatus();
             if (state === 'logged_out') {
                 console.error(lastError, 'Back up and remove the old session directory manually before restarting.');
