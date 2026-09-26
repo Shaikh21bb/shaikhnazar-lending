@@ -1,5 +1,9 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-import { telegram } from '../_lib.js';
+import { db, telegram } from '../_lib.js';
+
+export function isQrWhatsApp() {
+    return process.env.WHATSAPP_DELIVERY_MODE === 'qr';
+}
 
 export function providerMessageId(channel, payload = {}) {
     if (channel === 'whatsapp') return payload.id || null;
@@ -7,13 +11,29 @@ export function providerMessageId(channel, payload = {}) {
     return payload.id || null;
 }
 
-export async function sendChannelMessage({ channel, agent, recipientId, text, template }) {
+export async function sendChannelMessage({ channel, agent, recipientId, text, template, taskId }) {
     const message = String(text || '').slice(0, 4000);
     if (channel === 'telegram') {
         const result = await telegram('sendMessage', agent.token, { chat_id: recipientId, text: message });
         return { ok: true, messageId: String(result.message_id || '') };
     }
     if (channel === 'whatsapp') {
+        if (isQrWhatsApp()) {
+            const queued = await db('whatsapp_outbox', {
+                method: 'POST',
+                headers: { Prefer: 'return=representation' },
+                body: JSON.stringify({
+                    agent_id: agent.id,
+                    recipient_id: String(recipientId),
+                    body: message,
+                    task_id: taskId || null
+                })
+            });
+            if (!queued.res.ok || !queued.body?.[0]) {
+                throw new Error(`WhatsApp QR message queue failed (${queued.res.status})`);
+            }
+            return { ok: true, queued: true, outboxId: queued.body[0].id, messageId: null };
+        }
         const token = process.env.WHATSAPP_ACCESS_TOKEN;
         const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
         const version = process.env.WHATSAPP_GRAPH_VERSION || 'v23.0';
@@ -60,7 +80,7 @@ export async function sendChannelMessage({ channel, agent, recipientId, text, te
 
 export function verifyWhatsAppSignature(rawBody, signature) {
     const secret = process.env.WHATSAPP_APP_SECRET;
-    if (!secret) return process.env.NODE_ENV !== 'production';
+    if (!secret) return false;
     if (!signature || !signature.startsWith('sha256=')) return false;
     const expected = Buffer.from(createHmac('sha256', secret).update(rawBody).digest('hex'));
     const received = Buffer.from(signature.slice(7));

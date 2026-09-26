@@ -40,17 +40,19 @@ export default async function handler(req, res) {
                 const agent = agentResult.body?.[0];
                 const customer = customerResult.body?.[0];
                 if (!agent || !customer) throw new Error('Agent or customer not found');
-                await runScheduledFollowup({ task, agent, customer });
-                await db(`tasks?id=eq.${encodeURIComponent(task.id)}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({
-                        status: 'done',
-                        sent_at: new Date().toISOString(),
-                        processing_at: null,
-                        last_error: null
-                    })
-                });
-                results.push({ id: task.id, ok: true });
+                const followup = await runScheduledFollowup({ task, agent, customer });
+                if (!followup.delivery?.queued) {
+                    await db(`tasks?id=eq.${encodeURIComponent(task.id)}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({
+                            status: 'done',
+                            sent_at: new Date().toISOString(),
+                            processing_at: null,
+                            last_error: null
+                        })
+                    });
+                }
+                results.push({ id: task.id, ok: true, queued: !!followup.delivery?.queued });
             } catch (error) {
                 await db(`tasks?id=eq.${encodeURIComponent(task.id)}`, {
                     method: 'PATCH',

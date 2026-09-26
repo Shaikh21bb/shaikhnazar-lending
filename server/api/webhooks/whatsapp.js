@@ -1,5 +1,5 @@
 import { db } from '../_lib.js';
-import { extractWhatsAppMessages, verifyWhatsAppSignature } from '../_agent/providers.js';
+import { extractWhatsAppMessages, isQrWhatsApp, verifyWhatsAppSignature } from '../_agent/providers.js';
 import { findSalesAgent, handleSalesInbound } from '../_agent/sales.js';
 
 export const config = { api: { bodyParser: false } };
@@ -12,6 +12,7 @@ async function rawBody(req) {
 }
 
 export default async function handler(req, res) {
+    if (isQrWhatsApp()) return res.status(503).json({ error: 'Cloud API webhook is disabled in QR mode' });
     if (req.method === 'GET') {
         const mode = req.query?.['hub.mode'];
         const token = req.query?.['hub.verify_token'];

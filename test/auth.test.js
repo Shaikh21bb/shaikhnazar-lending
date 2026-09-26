@@ -23,3 +23,18 @@ test('dashboard session is signed, readable, and rejects tampering', () => {
         else process.env.NODE_ENV = previousNodeEnv;
     }
 });
+
+test('hosted previews never use the public local development signing secret', () => {
+    const previousSecret = process.env.AUTH_SECRET;
+    const previousVercelEnv = process.env.VERCEL_ENV;
+    delete process.env.AUTH_SECRET;
+    process.env.VERCEL_ENV = 'preview';
+    try {
+        assert.throws(() => createSession({ id: 'user-1', login: 'admin' }), /AUTH_SECRET missing/);
+    } finally {
+        if (previousSecret === undefined) delete process.env.AUTH_SECRET;
+        else process.env.AUTH_SECRET = previousSecret;
+        if (previousVercelEnv === undefined) delete process.env.VERCEL_ENV;
+        else process.env.VERCEL_ENV = previousVercelEnv;
+    }
+});

@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDialogsAgent = null;
     let currentChatId = null;
     let dialogsMessages = [];
+    let whatsappPollTimer = null;
 
     document.querySelectorAll('.nav-item:not(.disabled)').forEach(item => {
         item.addEventListener('click', (e) => {
@@ -117,19 +118,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const projectKnowledgeInput = document.getElementById('project-knowledge');
     const projectIdInput = document.getElementById('project-id');
     const projectTitle = document.getElementById('project-modal-title');
+    const projectTemplateBtn = document.getElementById('project-template-btn');
+    let trainingAgentId = null;
 
-    function openProjectModal(project) {
+    const TRAINING_TEMPLATE = `О КОМПАНИИ И ПРОДУКТЕ
+Название компании:
+Что предлагаем:
+Кому подходит:
+Проверенные цены, условия и ссылки:
+
+СЦЕНАРИЙ ПЕРЕПИСКИ
+Если клиент поздоровался или написал неясно: «Здравствуйте! Что вас интересует?»
+Если клиент уже задал конкретный вопрос: сначала ответить на него, не повторять общее приветствие.
+Какие вопросы задать, чтобы понять потребность клиента:
+Как предложить следующий шаг:
+Когда передать разговор человеку:
+
+ЧАСТЫЕ ВОПРОСЫ И ОТВЕТЫ
+Вопрос:
+Ответ:`;
+
+    function openProjectModal(project, agent = null) {
+        trainingAgentId = agent?.id || null;
         projectForm.reset();
         projectIdInput.value = project ? project.id : '';
-        projectNameInput.value = project ? project.name : '';
+        projectNameInput.value = project ? project.name : (agent ? `${agent.name || 'Sales Agent'} — обучение` : '');
         projectDescInput.value = project ? (project.description || '') : '';
         projectKnowledgeInput.value = project ? (project.knowledge || '') : '';
-        projectTitle.textContent = project ? 'Редактировать проект' : 'Новый проект';
+        projectTitle.textContent = agent ? `Обучение · ${agent.name || 'Sales Agent'}` : (project ? 'Редактировать проект' : 'Новый проект');
         projectModal.classList.add('open');
         setTimeout(() => projectNameInput.focus(), 100);
     }
 
-    function closeProjectModal() { projectModal.classList.remove('open'); }
+    function closeProjectModal() {
+        projectModal.classList.remove('open');
+        trainingAgentId = null;
+    }
+
+    if (projectTemplateBtn) projectTemplateBtn.addEventListener('click', () => {
+        if (projectKnowledgeInput.value.trim() && !confirm('Добавить шаблон к уже написанному тексту?')) return;
+        projectKnowledgeInput.value = [projectKnowledgeInput.value.trim(), TRAINING_TEMPLATE].filter(Boolean).join('\n\n');
+        projectKnowledgeInput.focus();
+    });
 
     if (document.getElementById('project-add-btn')) {
         document.getElementById('project-add-btn').addEventListener('click', () => openProjectModal(null));
@@ -149,10 +179,18 @@ document.addEventListener('DOMContentLoaded', () => {
             knowledge: projectKnowledgeInput.value
         };
         const id = projectIdInput.value;
-        const { error } = id
-            ? await supabaseClient.from(PROJECTS_TABLE).update(payload).eq('id', id)
-            : await supabaseClient.from(PROJECTS_TABLE).insert(payload);
+        const { data, error } = id
+            ? await supabaseClient.from(PROJECTS_TABLE).update(payload).eq('id', id).select('id').single()
+            : await supabaseClient.from(PROJECTS_TABLE).insert(payload).select('id').single();
         if (error) { alert('Ошибка сохранения: ' + error.message); return; }
+        if (trainingAgentId) {
+            const { error: linkError } = await supabaseClient.from(AGENTS_TABLE)
+                .update({ project_id: data.id }).eq('id', trainingAgentId);
+            if (linkError) {
+                alert('База знаний сохранена, но не привязана к агенту: ' + linkError.message);
+                return;
+            }
+        }
         closeProjectModal();
         loadProjects();
     });
@@ -212,18 +250,28 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
 
             <div class="agent-card-actions" style="flex-wrap:wrap;">
+                <button class="island island-sm js-agent-train">Обучить</button>
                 <button class="island island-sm js-agent-dialogs">Диалоги</button>
                 ${isTelegram ? `<button class="island island-sm js-agent-broadcast">Рассылка</button>` : ''}
                 <button class="island island-sm js-agent-toggle">${isActive ? 'Выключить AI' : 'Включить AI'}</button>
                 ${isTelegram && !isConnected
                     ? `<button class="island island-sm js-agent-connect">Подключить бота</button>`
                     : (isTelegram ? `<button class="island island-sm js-agent-connect">Отключить</button>` : '')}
+                ${!isTelegram ? '<button class="island island-sm js-whatsapp-connect">Подключить WhatsApp</button>' : ''}
                 <button class="island island-sm island-danger js-agent-delete">Удалить</button>
             </div>
         `;
 
         card.querySelector('.js-agent-toggle').addEventListener('click', async () => {
             const next = !isActive;
+            if (next && !isTelegram && !agent.project_id) {
+                alert('Сначала нажмите «Обучить» и сохраните базу знаний для этого агента.');
+                return;
+            }
+            if (next && !isTelegram && !isConnected) {
+                alert('Сначала подключите WhatsApp и дождитесь статуса «Подключён».');
+                return;
+            }
             await supabaseClient.from(AGENTS_TABLE).update({
                 ai_enabled: next,
                 status: next ? 'active' : 'paused'
@@ -260,6 +308,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        card.querySelector('.js-whatsapp-connect')?.addEventListener('click', () => openWhatsAppConnection(agent));
+
         const projectSelect = card.querySelector('.agent-project-select');
         if (projectSelect) projectSelect.addEventListener('change', async () => {
             await supabaseClient.from(AGENTS_TABLE).update({ project_id: projectSelect.value || null }).eq('id', agent.id);
@@ -270,6 +320,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (langSelect) langSelect.addEventListener('change', async () => {
             await supabaseClient.from(AGENTS_TABLE).update({ language: langSelect.value }).eq('id', agent.id);
             loadAgents();
+        });
+
+        card.querySelector('.js-agent-train').addEventListener('click', () => {
+            openProjectModal(projectsCache.find(project => project.id === agent.project_id) || null, agent);
         });
 
         const dialogsBtn = card.querySelector('.js-agent-dialogs');
@@ -622,15 +676,68 @@ document.addEventListener('DOMContentLoaded', () => {
     const platformInput = document.getElementById('agent-platform');
     const nameInput = document.getElementById('agent-name');
     const tokenInput = document.getElementById('agent-token');
+    const tokenWrap = document.getElementById('agent-token-wrap');
     const hintEl = document.getElementById('agent-hint');
+
+    const whatsappModal = document.getElementById('whatsapp-modal');
+    function closeWhatsAppConnection() {
+        whatsappModal.classList.remove('open');
+        clearInterval(whatsappPollTimer);
+        whatsappPollTimer = null;
+        document.getElementById('whatsapp-qr-image').removeAttribute('src');
+    }
+    async function openWhatsAppConnection(agent) {
+        const status = document.getElementById('whatsapp-qr-status');
+        const image = document.getElementById('whatsapp-qr-image');
+        status.textContent = 'Проверяем подключение…';
+        image.style.display = 'none';
+        whatsappModal.classList.add('open');
+        clearInterval(whatsappPollTimer);
+        async function refresh() {
+            try {
+                const response = await fetch(`/api/whatsapp/bridge?agentId=${encodeURIComponent(agent.id)}`, { cache: 'no-store' });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Не удалось проверить подключение');
+                const labels = {
+                    connected: 'WhatsApp подключён. Включите AI после обучения агента.',
+                    qr: 'Отсканируйте QR с телефона. Он обновляется автоматически.',
+                    connecting: 'Сервис соединяется с WhatsApp…',
+                    offline: 'Сервис WhatsApp сейчас не запущен. Для работы 24/7 компьютер или сервер должен оставаться включённым.',
+                    logged_out: 'WhatsApp завершил сеанс. Перезапустите сервис после очистки старой локальной сессии.'
+                };
+                status.textContent = labels[data.state] || 'Ожидаем сервис WhatsApp…';
+                if (data.error) status.textContent += ` ${data.error}`;
+                image.style.display = data.qrImage ? 'block' : 'none';
+                if (data.qrImage && image.src !== data.qrImage) image.src = data.qrImage;
+                if (data.state === 'connected') loadAgents();
+            } catch (error) {
+                status.textContent = `Подключение пока недоступно: ${error.message}`;
+                image.style.display = 'none';
+            }
+        }
+        await refresh();
+        whatsappPollTimer = setInterval(refresh, 5000);
+    }
+    document.getElementById('whatsapp-modal-close')?.addEventListener('click', closeWhatsAppConnection);
+    whatsappModal?.addEventListener('click', event => {
+        if (event.target === whatsappModal) closeWhatsAppConnection();
+    });
+
+    function setPlatform(platform) {
+        platformInput.value = platform;
+        document.querySelectorAll('.platform-btn').forEach(b => b.classList.toggle('active', b.dataset.platform === platform));
+        const telegram = platform === 'telegram';
+        tokenWrap.style.display = telegram ? '' : 'none';
+        tokenInput.required = telegram;
+        tokenInput.disabled = !telegram;
+        hintEl.textContent = telegram
+            ? 'Токен бота от @BotFather в Telegram. После добавления нажмите «Подключить бота».'
+            : 'Для WhatsApp токен здесь не нужен. Сначала обучите агента, затем откройте «Подключить WhatsApp» и отсканируйте QR. Агент будет выключен до вашего решения включить AI.';
+    }
 
     function openModal() {
         form.reset();
-        platformInput.value = 'telegram';
-        document.querySelectorAll('.platform-btn').forEach(b => b.classList.toggle('active', b.dataset.platform === 'telegram'));
-        hintEl.textContent = 'Токен бота от @BotFather в Telegram. После добавления нажмите «Подключить бота», чтобы активировать webhook.';
-        tokenInput.required = true;
-        tokenInput.disabled = false;
+        setPlatform('telegram');
         tokenInput.placeholder = '123456:ABC-DEF...';
         modal.classList.add('open');
         setTimeout(() => nameInput.focus(), 100);
@@ -646,15 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.platform-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const platform = btn.dataset.platform;
-            platformInput.value = platform;
-            document.querySelectorAll('.platform-btn').forEach(b => b.classList.toggle('active', b === btn));
-            hintEl.textContent = platform === 'telegram'
-                ? 'Токен бота от @BotFather в Telegram. После добавления нажмите «Подключить бота».'
-                : 'Meta credentials задаются только на сервере через env. Здесь токен не нужен.';
-            tokenInput.required = platform === 'telegram';
-            tokenInput.disabled = platform === 'whatsapp';
-            tokenInput.placeholder = platform === 'telegram' ? '123456:ABC-DEF...' : 'Настраивается на сервере';
+            setPlatform(btn.dataset.platform);
         });
     });
 
@@ -669,9 +768,10 @@ document.addEventListener('DOMContentLoaded', () => {
             name: name,
             platform,
             token: platform === 'telegram' ? token : null,
-            status: 'active',
+            status: platform === 'whatsapp' ? 'paused' : 'active',
             agent_type: 'sales',
-            ai_enabled: true
+            ai_enabled: platform !== 'whatsapp',
+            connected: false
         });
 
         if (error) {

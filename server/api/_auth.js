@@ -5,7 +5,7 @@ const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 function authSecret() {
     if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
-    if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') return '';
+    if (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production') return '';
     return 'local-development-only-change-me';
 }
 

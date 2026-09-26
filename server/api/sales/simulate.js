@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     if (process.env.VERCEL_ENV === 'production' && process.env.SALES_AGENT_DEV_MODE !== 'true') {
         return res.status(404).json({ error: 'Not found' });
     }
-    if (process.env.VERCEL_ENV === 'production' && !requireDashboardSession(req, res)) return;
+    if (!requireDashboardSession(req, res)) return;
     try {
         const body = await readJsonBody(req);
         if (!body.message) return res.status(400).json({ error: 'message is required' });

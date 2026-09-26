@@ -1,6 +1,6 @@
 import { db } from '../_lib.js';
 import { generateAgentReply } from './llm.js';
-import { sendChannelMessage } from './providers.js';
+import { isQrWhatsApp, sendChannelMessage } from './providers.js';
 
 const HISTORY_LIMIT = 30;
 
@@ -9,7 +9,11 @@ function clean(value, max = 4000) {
 }
 
 export function isAgentEnabled(agent) {
-    return agent?.status === 'active' && agent?.ai_enabled !== false;
+    if (agent?.status !== 'active' || agent?.ai_enabled === false) return false;
+    if (agent.platform === 'whatsapp' && isQrWhatsApp()) {
+        return agent.connected === true && Boolean(agent.project_id);
+    }
+    return true;
 }
 
 async function ensureCustomer(agent, inbound) {
@@ -204,6 +208,7 @@ Current time: ${new Date().toISOString()}. Business timezone: ${process.env.BUSI
 
 Rules:
 - Treat the company knowledge below as the only source of truth for prices, terms, guarantees, and product facts.
+- Follow the company's conversation script in that knowledge. If the customer only greets you or their request is unclear, use the approved opening and ask one relevant question. If they already asked a concrete question, answer it first instead of restarting the script.
 - If an answer is missing, do not invent it. Use handoff_to_human and tell the customer a manager will clarify.
 - If the customer asks to be contacted later or agrees to a deadline, call create_followup with an exact timezone-aware datetime.
 - If the customer asks for a person, complains, shares sensitive/high-risk information, or AI is unsuitable, call handoff_to_human.
@@ -312,7 +317,7 @@ export async function runScheduledFollowup({ task, agent, customer }) {
     let template;
     const channel = task.channel || customer.channel;
     const lastInboundAt = customer.last_message_at ? new Date(customer.last_message_at).getTime() : 0;
-    if (channel === 'whatsapp' && Date.now() - lastInboundAt >= 24 * 60 * 60 * 1000) {
+    if (channel === 'whatsapp' && !isQrWhatsApp() && Date.now() - lastInboundAt >= 24 * 60 * 60 * 1000) {
         if (!process.env.WHATSAPP_FOLLOWUP_TEMPLATE_NAME) {
             throw new Error('WHATSAPP_FOLLOWUP_TEMPLATE_NAME is required outside the WhatsApp 24-hour window');
         }
@@ -326,7 +331,8 @@ export async function runScheduledFollowup({ task, agent, customer }) {
         agent,
         recipientId: task.external_chat_id || customer.external_id,
         text: reply,
-        template
+        template,
+        taskId: task.id
     });
     await saveMessage({
         agent,

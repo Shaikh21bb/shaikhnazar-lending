@@ -1,2 +1,5 @@
 .vercel
 .env*
+node_modules/
+.wa-session/
+worker/.wa-session/

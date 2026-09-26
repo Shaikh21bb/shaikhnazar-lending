@@ -15,6 +15,7 @@ import telegramConnect from '../server/api/telegram/connect.js';
 import telegramSend from '../server/api/telegram/send.js';
 import telegramTask from '../server/api/telegram/task.js';
 import whatsapp from '../server/api/webhooks/whatsapp.js';
+import whatsappBridge from '../server/api/whatsapp/bridge.js';
 
 // Hobby permits at most 12 Functions per deployment. Keep route handlers as
 // ordinary modules and expose one Function without changing public API URLs.
@@ -37,7 +38,8 @@ const routes = new Map([
     ['telegram/connect', telegramConnect],
     ['telegram/send', telegramSend],
     ['telegram/task', telegramTask],
-    ['webhooks/whatsapp', whatsapp]
+    ['webhooks/whatsapp', whatsapp],
+    ['whatsapp/bridge', whatsappBridge]
 ]);
 
 function routeFor(req) {

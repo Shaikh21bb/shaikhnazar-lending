@@ -211,7 +211,7 @@
                 <div class="results-header">
                     <div>
                         <h2 class="section-title"><span data-i18n="t.projects" data-i18n-ru="Обучение">Обучение</span></h2>
-                        <p class="section-subtitle" style="margin-bottom: 0;"><span data-i18n="t.projects-sub" data-i18n-ru="Проекты — база знаний, на которой обучаются агенты. Добавьте информацию о будущих проектах, и агенты будут отвечать клиентам на её основе.">Проекты — база знаний, на которой обучаются агенты. Добавьте информацию о будущих проектах, и агенты будут отвечать клиентам на её основе.</span></p>
+                        <p class="section-subtitle" style="margin-bottom: 0;">Здесь задайте факты о компании и сценарий переписки: как агент приветствует клиента, что спрашивает и когда передаёт разговор человеку.</p>
                     </div>
                     <button class="island island-sm" id="project-add-btn">
                         <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -358,13 +358,27 @@
                 <input type="hidden" id="agent-platform" value="telegram">
                 <label for="agent-name">Имя агента</label>
                 <input type="text" id="agent-name" placeholder="Например: AI-менеджер продаж" required>
-                <label for="agent-token">Токен / данные подключения</label>
-                <input type="text" id="agent-token" placeholder="123456:ABC-DEF..." required>
+                <div id="agent-token-wrap">
+                    <label for="agent-token">Токен Telegram-бота</label>
+                    <input type="text" id="agent-token" placeholder="123456:ABC-DEF..." required>
+                </div>
                 <p class="agent-hint" id="agent-hint">Токен бота от @BotFather в Telegram</p>
                 <div class="agent-modal-actions">
                     <button type="submit" class="agent-btn agent-btn-primary">Добавить</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- WhatsApp QR (shown only to an authenticated dashboard user) -->
+    <div id="whatsapp-modal" class="agent-modal">
+        <div class="agent-modal-card glass">
+            <button id="whatsapp-modal-close" class="agent-modal-close" aria-label="Закрыть">✕</button>
+            <h3>Подключить WhatsApp Business</h3>
+            <p class="agent-hint">QR появляется здесь, когда отдельный сервис WhatsApp запущен. На телефоне откройте WhatsApp Business → Связанные устройства → Привязать устройство.</p>
+            <div id="whatsapp-qr-status" class="agent-hint" role="status">Проверяем подключение…</div>
+            <img id="whatsapp-qr-image" alt="QR для подключения WhatsApp Business" style="display:none; width:100%; max-width:320px; margin:1rem auto; border-radius:12px;">
+            <p class="agent-hint">Это неофициальное подключение через WhatsApp Web. Оно требует постоянно работающего компьютера или сервера и может быть отключено WhatsApp. Не сканируйте QR, если не узнаёте устройство.</p>
         </div>
     </div>
 
@@ -378,9 +392,10 @@
                 <input type="text" id="project-name" placeholder="Например: Курс по трейдингу" required>
                 <label for="project-desc">Краткое описание</label>
                 <input type="text" id="project-desc" placeholder="Что это за проект, кому подходит">
-                <label for="project-knowledge">Обучение (база знаний)</label>
-                <textarea id="project-knowledge" rows="12" placeholder="Всё, что агент должен знать: продукт, цена, условия, скрипты продаж, ответы на частые вопросы..."></textarea>
-                <p class="agent-hint">Чем подробнее и структурированнее база — тем точнее отвечает агент.</p>
+                <label for="project-knowledge">Факты и правила переписки</label>
+                <textarea id="project-knowledge" rows="14" placeholder="Напишите, что продаёте, цены и условия, а также как агент должен вести диалог с клиентом."></textarea>
+                <button type="button" class="island island-sm" id="project-template-btn">Добавить шаблон обучения</button>
+                <p class="agent-hint">Например: «Когда запрос клиента неясен, напиши: Здравствуйте! Что вас интересует?» Не добавляйте непроверенные цены или обещания.</p>
                 <input type="hidden" id="project-id">
                 <div class="agent-modal-actions">
                     <button type="submit" class="agent-btn agent-btn-primary">Сохранить</button>
