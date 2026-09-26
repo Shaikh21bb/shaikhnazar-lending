@@ -53,3 +53,23 @@ test('one function rejects unknown routes and malformed JSON', async () => {
     await router(request({ method: 'POST', route: 'script', body: '{bad' }), malformed);
     assert.equal(malformed.statusCode, 400);
 });
+
+test('scheduled routes require a configured secret and matching authorization', async () => {
+    const previous = process.env.CRON_SECRET;
+    try {
+        for (const route of ['followups/run', 'tasks/remind', 'tasks/digest']) {
+            delete process.env.CRON_SECRET;
+            const missing = response();
+            await router(request({ route }), missing);
+            assert.equal(missing.statusCode, 503, route);
+
+            process.env.CRON_SECRET = 'test-cron-secret';
+            const unauthorized = response();
+            await router(request({ route }), unauthorized);
+            assert.equal(unauthorized.statusCode, 401, route);
+        }
+    } finally {
+        if (previous === undefined) delete process.env.CRON_SECRET;
+        else process.env.CRON_SECRET = previous;
+    }
+});

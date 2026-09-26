@@ -124,10 +124,11 @@ export async function runReminders(force = false) {
 }
 
 export default async function handler(req, res) {
-    // Защита: если CRON_SECRET задан (Vercel шлёт его в Authorization),
-    // требуем совпадения — иначе эндпоинт может дёргать кто угодно.
     const auth = req.headers.authorization || '';
-    if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!process.env.CRON_SECRET) {
+        return res.status(503).json({ error: 'CRON_SECRET missing' });
+    }
+    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 

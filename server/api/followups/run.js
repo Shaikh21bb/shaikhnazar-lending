@@ -15,10 +15,10 @@ async function claimTask(taskId) {
 
 export default async function handler(req, res) {
     const auth = req.headers.authorization || '';
-    if (!process.env.CRON_SECRET && (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production')) {
+    if (!process.env.CRON_SECRET) {
         return res.status(503).json({ error: 'CRON_SECRET missing' });
     }
-    if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     try {
