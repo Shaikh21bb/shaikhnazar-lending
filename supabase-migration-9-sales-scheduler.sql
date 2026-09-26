@@ -28,8 +28,10 @@ begin
       from vault.decrypted_secrets
      where name = 'sales_agent_cron_secret';
 
+    -- The job can be installed before production credentials exist. It stays
+    -- idle until both Vault secrets are configured.
     if endpoint is null or cron_secret is null then
-        raise exception 'Sales Agent scheduler Vault secrets are missing';
+        return null;
     end if;
     if endpoint !~ '^https://[^[:space:]]+/api/followups/run$' then
         raise exception 'Sales Agent follow-up URL must be an HTTPS endpoint';

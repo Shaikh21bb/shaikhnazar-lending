@@ -1,12 +1,6 @@
-import { db, telegram, escapeHtml } from './_lib.js';
+import { db, telegram, escapeHtml, readJsonBody } from './_lib.js';
 import { runReminders } from './tasks/remind.js';
 import { handleSalesInbound } from './_agent/sales.js';
-
-async function readBody(req) {
-    let raw = '';
-    for await (const chunk of req) raw += chunk;
-    return raw ? JSON.parse(raw) : {};
-}
 
 export default async function handler(req, res) {
     if (req.method === 'GET') {
@@ -28,7 +22,7 @@ export default async function handler(req, res) {
         if (!agents || agents.length === 0) return res.status(401).json({ error: 'Unknown bot' });
 
         const agent = agents[0];
-        const update = await readBody(req);
+        const update = await readJsonBody(req);
 
         // Нажатие кнопки в задаче
         if (update.callback_query) {

@@ -16,7 +16,7 @@
 
 ## Установка
 
-1. В Supabase SQL Editor выполните текущую полную схему `supabase-migration-7.sql`, затем `supabase-migration-8-sales-agent.sql`.
+1. Для новой базы выполните `supabase-migration-7.sql`, затем `supabase-migration-8-sales-agent.sql`. В существующем проекте Shaikh.digital миграция 8 уже применена; повторно запускать полную схему 7 не нужно.
 2. Скопируйте `.env.example` в `.env.local` и заполните Supabase и один LLM provider.
 3. Запустите проект через Vercel CLI или любой совместимый с Vercel Functions локальный runtime.
 4. В панели создайте один агент типа WhatsApp или Telegram и привяжите к нему проект с базой знаний.
@@ -64,7 +64,7 @@ curl -X POST http://localhost:3000/api/sales/simulate \
 
 ## Follow-up 24/7
 
-Supabase Cron вызывает `/api/followups/run` каждые пять минут. В Supabase Vault создайте два секрета: `sales_agent_followup_url` со значением `https://shaikh.digital/api/followups/run` и `sales_agent_cron_secret` со значением того же `CRON_SECRET`, который настроен в Vercel. Затем выполните `supabase-migration-9-sales-scheduler.sql`. Секреты не записывайте в Git.
+Миграция 9 устанавливает Supabase Cron, который проверяет наступившие follow-up каждые пять минут. Пока секреты не заданы, задание ничего не отправляет. Для включения в Supabase Vault создайте `sales_agent_followup_url` со значением `https://shaikh.digital/api/followups/run` и `sales_agent_cron_secret` со значением того же `CRON_SECRET`, который настроен в Vercel. Секреты не записывайте в Git.
 
 Vercel Hobby поддерживает расписания не чаще одного раза в сутки, поэтому частые follow-up вынесены в Supabase Cron. Endpoint принимает:
 

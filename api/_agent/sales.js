@@ -17,11 +17,11 @@ async function ensureCustomer(agent, inbound) {
         agent_id: agent.id,
         channel: inbound.channel,
         external_id: clean(inbound.externalId, 255),
-        name: clean(inbound.name, 255) || null,
-        phone: clean(inbound.phone, 64) || null,
         last_message_at: inbound.timestamp || new Date().toISOString(),
         updated_at: new Date().toISOString()
     };
+    if (clean(inbound.name, 255)) payload.name = clean(inbound.name, 255);
+    if (clean(inbound.phone, 64)) payload.phone = clean(inbound.phone, 64);
     const { res, body } = await db('customers?on_conflict=agent_id,channel,external_id', {
         method: 'POST',
         headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
@@ -67,9 +67,9 @@ async function saveMessage({ agent, customer, inbound, role, text, toolName, met
     if (!result.res.ok) throw new Error(`Message save failed (${result.res.status})`);
 }
 
-async function loadHistory(agentId, externalId) {
+async function loadHistory(agentId, channel, externalId) {
     const { res, body } = await db(
-        `agent_chats?select=role,text&agent_id=eq.${encodeURIComponent(agentId)}&chat_id=eq.${encodeURIComponent(externalId)}&order=created_at.desc&limit=${HISTORY_LIMIT}`
+        `agent_chats?select=role,text&agent_id=eq.${encodeURIComponent(agentId)}&channel=eq.${encodeURIComponent(channel)}&chat_id=eq.${encodeURIComponent(externalId)}&order=created_at.desc&limit=${HISTORY_LIMIT}`
     );
     if (!res.ok) return [];
     return (body || []).reverse().filter(item => item.role === 'user' || item.role === 'assistant');
@@ -227,7 +227,7 @@ export async function handleSalesInbound({ agent, inbound, deliver = true }) {
     }
 
     const [history, knowledge] = await Promise.all([
-        loadHistory(agent.id, inbound.externalId),
+        loadHistory(agent.id, inbound.channel, inbound.externalId),
         loadKnowledge(agent)
     ]);
     // The current user message is stored already; do not duplicate it in the model input.
@@ -299,7 +299,7 @@ export async function runScheduledFollowup({ task, agent, customer }) {
         throw new Error('Customer is assigned to a human');
     }
     const [history, knowledge] = await Promise.all([
-        loadHistory(agent.id, customer.external_id),
+        loadHistory(agent.id, customer.channel, customer.external_id),
         loadKnowledge(agent)
     ]);
     const reply = await generateAgentReply({
