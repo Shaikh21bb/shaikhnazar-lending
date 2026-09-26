@@ -1,4 +1,4 @@
-const VERSION = 'shaikh-sys-v5-sales-studio';
+const VERSION = 'shaikh-sys-v6-client-memory';
 const CORE = [
     '/',
     '/index.html',

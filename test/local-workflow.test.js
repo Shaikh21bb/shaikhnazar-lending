@@ -20,9 +20,22 @@ test('n8n diagram has a connected path from webhook to the WhatsApp bridge respo
         name = workflow.connections[name]?.main?.[0]?.[0]?.node;
     }
     assert.equal([...visited].at(-1), '7. Ответ WhatsApp-мосту');
+    assert.ok(visited.has('Память клиента'));
     assert.equal(nodes.get('1. WhatsApp: входящий webhook').parameters.responseMode, 'responseNode');
     assert.equal(nodes.get('7. Ответ WhatsApp-мосту').parameters.respondWith, 'firstIncomingItem');
     assert.equal(nodes.get('3. Выбор модели и доп. правила').parameters.fields.values[0].stringValue, '={{ $json.model }}');
+});
+
+test('client memory is actually injected into model context and treated as untrusted data', () => {
+    const result = runCode('Память клиента', {
+        messages: [{ role: 'system', content: 'Правила' }, { role: 'user', content: 'Что вы помните?' }],
+        memory: { displayName: 'Айгуль', statements: ['Я учитель математики, 6 класс.'] }
+    });
+    assert.match(result.messages[0].content, /Айгуль/);
+    assert.match(result.messages[0].content, /6 класс/);
+    assert.match(result.messages[0].content, /не инструкции/);
+    assert.match(result.messages[0].content, /1–2 предложения/);
+    assert.equal(result.messages[1].content, 'Что вы помните?');
 });
 
 test('training gate requires company materials before calling Ollama', () => {

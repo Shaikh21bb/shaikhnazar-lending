@@ -1,9 +1,9 @@
 /* Local Sales Agent controls. All commands use the signed owner session. */
 window.SalesStudio = (() => {
     const models = [
-        ['qwen3.5:9b-mlx', 'Qwen 3.5 · 9B', 'Качество ответов · около 9 ГБ'],
+        ['qwen3.5:9b-mlx', 'Qwen 3.5 · 9B', 'Тяжёлая модель · около 9 ГБ'],
         ['qwen3:1.7b', 'Qwen 3 · 1.7B', 'Быстрее, но менее точна · около 1,4 ГБ'],
-        ['llama3.1:8b', 'Llama 3.1 · 8B', 'Альтернативная модель · около 5 ГБ']
+        ['llama3.1:8b', 'Llama 3.1 · 8B', 'Для диалогов · около 5 ГБ']
     ];
     const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
     const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -48,7 +48,7 @@ window.SalesStudio = (() => {
                     <div class="sales-readiness" role="status">Проверяем локальный сервер…</div>
                     <div class="sales-controls"><button type="button" class="sales-primary sales-toggle" disabled>Проверяем…</button><button type="button" class="sales-secondary sales-connect">WhatsApp · QR</button></div>
                     <div class="sales-session-stats"><span><b class="sales-reply-count">—</b> ответов с запуска</span><span class="sales-last-reply">Ожидаем первое сообщение</span></div>
-                    <p class="sales-operation-note">Агент отвечает, пока Mac включён и не спит. Пауза сохраняет подключение WhatsApp.</p>
+                    <p class="sales-operation-note">Агент отвечает, пока Mac включён и не спит. Пауза сохраняет подключение WhatsApp. Память клиента и новые переписки сохраняются на Mac после перезапуска.</p>
                     <button type="button" class="sales-delete">Удалить агента</button>
                 </div>
                 <div class="sales-playground">

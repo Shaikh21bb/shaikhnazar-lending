@@ -5,6 +5,7 @@ import makeWASocket, { Browsers, DisconnectReason, fetchLatestWaWebVersion, useM
 import pino from 'pino';
 import QRCode from 'qrcode';
 import { LocalSalesAgent } from './local-sales.mjs';
+import { withChatPresence } from './conversation.mjs';
 
 const baseUrl = String(process.env.BRIDGE_BASE_URL || '').replace(/\/+$/, '');
 const secret = process.env.WHATSAPP_BRIDGE_SECRET || '';
@@ -241,11 +242,13 @@ async function connect() {
                         continue;
                     }
                     const context = await bridge({ action: 'local_context', agentId });
+                    if (!context.enabled) { runtime.lastResult = 'disabled'; continue; }
                     runtime.lastResult = 'generating';
-                    const result = await localAgent.reply({
+                    const result = await withChatPresence(next, message.key, from, () => localAgent.reply({
                         externalId: from,
                         messageId: message.key.id,
                         text,
+                        displayName: message.pushName || '',
                         context,
                         sendMessage: async (recipient, content) => {
                             const current = await bridge({ action: 'local_context', agentId });
@@ -257,7 +260,7 @@ async function connect() {
                             }
                             return sent;
                         }
-                    });
+                    }));
                     runtime.lastResult = result.replied ? 'replied' : (result.reason || 'skipped');
                     if (result.replied) {
                         runtime.replies++;

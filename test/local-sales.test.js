@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile, unlink } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LocalSalesAgent } from '../worker/local-sales.mjs';
+import { conversationalReply, rememberClient, withChatPresence } from '../worker/conversation.mjs';
 
 test('local Sales Agent requires explicit local switch and verified training', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'shaikh-local-sales-'));
@@ -129,4 +130,52 @@ test('pausing during generation prevents the pending WhatsApp send', async () =>
         assert.equal(result.reason, 'disabled');
         assert.equal(sent, false);
     } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('memory survives restart, stays isolated per client and archives the full new dialogue', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'shaikh-memory-'));
+    await writeFile(join(dir, 'sales-agent.enabled'), 'enabled');
+    const payloads = [];
+    const setup = { sessionDir: dir, webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local', fetcher: async (_url, options) => {
+        payloads.push(JSON.parse(options.body));
+        return new Response(JSON.stringify({ message: { content: 'Понял вас. Какие задания нужны?' } }));
+    } };
+    const context = { enabled: true, knowledge: 'Платформа для учителей' };
+    const sendMessage = async () => {};
+    try {
+        await new LocalSalesAgent(setup).reply({ externalId: 'client-a', messageId: 'a1', text: 'Меня зовут Айгуль, я учитель математики, 6 класс.', displayName: 'Айгуль', context, sendMessage });
+        const restarted = new LocalSalesAgent(setup);
+        await restarted.reply({ externalId: 'client-a', messageId: 'a2', text: 'Вы помните мой класс?', context, sendMessage });
+        await restarted.reply({ externalId: 'client-b', messageId: 'b1', text: 'Здравствуйте', context, sendMessage });
+        assert.equal(payloads[1].memory.displayName, 'Айгуль');
+        assert.match(payloads[1].memory.statements[0], /6 класс/);
+        assert.deepEqual(payloads[1].messages.slice(-3).map(x => x.role), ['user', 'assistant', 'user']);
+        assert.equal(JSON.stringify(payloads[2]).includes('Айгуль'), false);
+        const archives = await readdir(join(dir, 'sales-transcripts'));
+        const lines = (await Promise.all(archives.map(file => readFile(join(dir, 'sales-transcripts', file), 'utf8')))).flatMap(value => value.trim().split('\n'));
+        assert.equal(lines.length, 6);
+        assert.ok(lines.every(line => JSON.parse(line).at));
+    } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('short replies avoid walls of text while explicit detail requests allow more', () => {
+    const long = 'Первое предложение. Второе предложение. Третье предложение. Четвёртое предложение.';
+    assert.equal(conversationalReply(long, 'Что это?'), 'Первое предложение. Второе предложение.');
+    assert.equal(conversationalReply(long, 'Расскажите подробнее'), long);
+    assert.ok(conversationalReply('А'.repeat(1000)).length <= 421);
+    assert.throws(() => conversationalReply('<think>hidden'), /safe reply/);
+    assert.deepEqual(rememberClient({}, 'Привет').statements, []);
+    assert.match(rememberClient({}, '6 класс', '', 'Какой класс вы преподаёте?').statements[0], /6 класс/);
+});
+
+test('WhatsApp marks the specific message read and always stops typing, including on errors', async () => {
+    const calls = [];
+    const socket = {
+        readMessages: async keys => { calls.push(['read', keys]); },
+        sendPresenceUpdate: async value => { calls.push(value); }
+    };
+    const timers = { setInterval: () => 1, clearInterval: value => { calls.push(['cleared', value]); } };
+    const key = { id: 'm1', remoteJid: 'test' };
+    await assert.rejects(withChatPresence(socket, key, 'test', async () => { throw new Error('test error'); }, timers), /test error/);
+    assert.deepEqual(calls, [['read', [key]], 'composing', ['cleared', 1], 'paused']);
 });

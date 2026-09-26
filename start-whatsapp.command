@@ -52,6 +52,7 @@ fi
 export LOCAL_AGENT_MODEL="$model"
 
 docker compose -f compose.whatsapp.yaml up -d --build
-echo "WhatsApp, локальный n8n и Ollama запущены. Модель: $model. n8n: http://localhost:5678."
-echo "Автоответы требуют заполненного обучения, AI ON на сайте и локального переключателя enable-sales-agent.command."
+echo "WhatsApp, локальный n8n и Ollama запущены. n8n: http://localhost:5678."
+echo "Модель выбирается в карточке агента на сайте. Заполните обучение и нажмите «Включить ответы»."
+echo "Кнопка «Приостановить ответы» останавливает диалог без потери WhatsApp-связи и памяти."
 echo "Для выключения запустите stop-whatsapp.command."

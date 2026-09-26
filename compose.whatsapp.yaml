@@ -8,10 +8,13 @@ services:
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
-        if [ ! -f /home/node/.n8n/.shaikh-sales-workflow-v2-installed ]; then
+        if [ ! -f /home/node/.n8n/.shaikh-sales-workflow-v3-installed ]; then
+          if [ -f /home/node/.n8n/.shaikh-sales-workflow-v2-installed ]; then
+            n8n export:workflow --id=shaikhSalesLocalV1 --output=/home/node/.n8n/shaikh-sales-before-memory-v3.json
+          fi
           n8n import:workflow --input=/app/workflow.json &&
           n8n publish:workflow --id=shaikhSalesLocalV1 &&
-          touch /home/node/.n8n/.shaikh-sales-workflow-v2-installed
+          touch /home/node/.n8n/.shaikh-sales-workflow-v3-installed
         fi
     volumes:
       - n8n-data:/home/node/.n8n
