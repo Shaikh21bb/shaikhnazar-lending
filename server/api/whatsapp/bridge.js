@@ -155,6 +155,12 @@ export default async function handler(req, res) {
         }
         const agentId = String(body.agentId || '');
         if (!UUID.test(agentId)) return res.status(400).json({ error: 'Invalid agent id' });
+        // Pairing is independent of message delivery. Keep customer text out of the
+        // database and never hand queued messages to the worker until explicitly enabled.
+        if (process.env.WHATSAPP_MESSAGE_DELIVERY_ENABLED !== 'true') {
+            if (body.action === 'inbound') return res.status(200).json({ ok: true, ignored: true });
+            if (body.action === 'poll') return res.status(200).json({ ok: true, jobs: [] });
+        }
         const agent = await findSalesAgent({ id: agentId, platform: 'whatsapp' });
         if (!agent) return res.status(404).json({ error: 'WhatsApp Sales Agent not found' });
         if (body.action === 'status') {

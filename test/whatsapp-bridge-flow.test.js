@@ -45,8 +45,43 @@ test('QR worker selects its configured Sales Agent when multiple exist', async (
     }
 });
 
+test('QR pairing cannot read, store or send customer messages before delivery is enabled', async () => {
+    const originalFetch = globalThis.fetch;
+    const previous = process.env.WHATSAPP_MESSAGE_DELIVERY_ENABLED;
+    delete process.env.WHATSAPP_MESSAGE_DELIVERY_ENABLED;
+    globalThis.fetch = async () => { throw new Error('Database must not be contacted'); };
+    try {
+        const inbound = response();
+        await bridge({
+            method: 'POST',
+            headers: { 'x-whatsapp-bridge-secret': 'test-bridge-secret' },
+            body: { action: 'inbound', agentId, from: '77771234567@s.whatsapp.net', text: 'Private customer message', messageId: 'msg-1' }
+        }, inbound);
+        assert.deepEqual(inbound.body, { ok: true, ignored: true });
+
+        const poll = response();
+        await bridge({
+            method: 'POST',
+            headers: { 'x-whatsapp-bridge-secret': 'test-bridge-secret' },
+            body: { action: 'poll', agentId }
+        }, poll);
+        assert.deepEqual(poll.body, { ok: true, jobs: [] });
+
+        await assert.rejects(sendChannelMessage({
+            channel: 'whatsapp', agent: { id: agentId },
+            recipientId: '77771234567@s.whatsapp.net', text: 'Do not send'
+        }), /delivery is disabled/);
+    } finally {
+        globalThis.fetch = originalFetch;
+        if (previous === undefined) delete process.env.WHATSAPP_MESSAGE_DELIVERY_ENABLED;
+        else process.env.WHATSAPP_MESSAGE_DELIVERY_ENABLED = previous;
+    }
+});
+
 test('QR bridge queues, claims and acknowledges a message without a Meta token', async () => {
     const originalFetch = globalThis.fetch;
+    const previous = process.env.WHATSAPP_MESSAGE_DELIVERY_ENABLED;
+    process.env.WHATSAPP_MESSAGE_DELIVERY_ENABLED = 'true';
     const paths = [];
     globalThis.fetch = async (url, options = {}) => {
         const parsed = new URL(url);
@@ -87,5 +122,7 @@ test('QR bridge queues, claims and acknowledges a message without a Meta token',
         assert.ok(paths.some(item => item.path === '/rest/v1/whatsapp_outbox' && item.method === 'POST'));
     } finally {
         globalThis.fetch = originalFetch;
+        if (previous === undefined) delete process.env.WHATSAPP_MESSAGE_DELIVERY_ENABLED;
+        else process.env.WHATSAPP_MESSAGE_DELIVERY_ENABLED = previous;
     }
 });

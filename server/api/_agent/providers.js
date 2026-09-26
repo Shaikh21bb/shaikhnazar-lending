@@ -19,6 +19,9 @@ export async function sendChannelMessage({ channel, agent, recipientId, text, te
     }
     if (channel === 'whatsapp') {
         if (isQrWhatsApp()) {
+            if (process.env.WHATSAPP_MESSAGE_DELIVERY_ENABLED !== 'true') {
+                throw new Error('WhatsApp QR message delivery is disabled');
+            }
             const queued = await db('whatsapp_outbox', {
                 method: 'POST',
                 headers: { Prefer: 'return=representation' },
