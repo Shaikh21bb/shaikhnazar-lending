@@ -15,9 +15,13 @@ export default async function handler(req, res) {
         const { res: dbRes, body } = await db(
             `managers_auth?select=id,login,password&login=eq.${encodeURIComponent(String(login).trim())}&limit=1`
         );
+        if (!dbRes.ok) {
+            console.error('Login lookup failed:', dbRes.status);
+            return res.status(503).json({ error: 'Authentication unavailable' });
+        }
         const user = body?.[0];
         const checked = user ? await verifyPassword(password, user.password) : { valid: false };
-        if (!dbRes.ok || !checked.valid) {
+        if (!checked.valid) {
             return res.status(401).json({ error: 'Invalid login or password' });
         }
         if (checked.legacy) {
