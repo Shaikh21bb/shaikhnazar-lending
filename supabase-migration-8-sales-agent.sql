@@ -31,7 +31,8 @@ CREATE INDEX IF NOT EXISTS idx_customers_agent_activity
 
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS customers_public ON customers;
-CREATE POLICY customers_public ON customers FOR ALL USING (true) WITH CHECK (true);
+-- Customer records contain contact details and handoff state. They are only
+-- accessed by the server with its service role; no browser RLS policy is added.
 
 -- Keep the existing UI/history table and enrich it instead of replacing it.
 ALTER TABLE agent_chats ADD COLUMN IF NOT EXISTS customer_id uuid REFERENCES customers(id) ON DELETE SET NULL;

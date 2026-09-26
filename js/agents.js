@@ -405,13 +405,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentChatId) {
             const currentMessages = sessions[currentChatId]?.messages || [];
             const channel = currentMessages[0]?.channel || currentDialogsAgent.platform || 'telegram';
-            const { data: customers } = await supabaseClient.from('customers')
-                .select('id,handoff_status,ai_enabled')
-                .eq('agent_id', currentDialogsAgent.id)
-                .eq('channel', channel)
-                .eq('external_id', currentChatId)
-                .limit(1);
-            customerState = customers && customers[0] ? customers[0] : null;
+            try {
+                const url = new URL('/api/customers/state', location.origin);
+                url.searchParams.set('agentId', currentDialogsAgent.id);
+                url.searchParams.set('channel', channel);
+                url.searchParams.set('chatId', currentChatId);
+                const response = await fetch(url);
+                if (response.ok) customerState = (await response.json()).customer;
+            } catch (error) {
+                console.error('Customer state unavailable:', error);
+            }
         }
 
         body.innerHTML = `
@@ -458,12 +461,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (handoffBtn && customerState) handoffBtn.addEventListener('click', async () => {
             const toHuman = customerState.handoff_status !== 'human';
             handoffBtn.disabled = true;
-            const { error } = await supabaseClient.from('customers').update({
-                handoff_status: toHuman ? 'human' : 'ai',
-                ai_enabled: !toHuman,
-                handoff_reason: toHuman ? 'Передано менеджером из панели' : null
-            }).eq('id', customerState.id);
-            if (error) alert('Не удалось изменить режим: ' + error.message);
+            try {
+                const response = await fetch('/api/customers/state', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agentId: currentDialogsAgent.id,
+                        channel: currentDialogsAgent.platform || 'telegram',
+                        chatId: currentChatId,
+                        handoffStatus: toHuman ? 'human' : 'ai'
+                    })
+                });
+                if (!response.ok) throw new Error((await response.json()).error || 'Ошибка');
+            } catch (error) {
+                alert('Не удалось изменить режим: ' + error.message);
+            }
             renderDialogs();
         });
 
