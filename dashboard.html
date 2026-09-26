@@ -541,7 +541,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem('auth_token');
-            const email = localStorage.getItem('auth_email');
 
             if (!token) {
                 window.location.href = 'login.html';
@@ -550,8 +549,9 @@
                 try {
                     const session = await fetch('/api/auth/session');
                     if (!session.ok) throw new Error('Session expired');
+                    const signedUser = (await session.json()).user;
                     const userEmailEl = document.getElementById('user-email');
-                    if (userEmailEl) userEmailEl.textContent = email || 'User';
+                    if (userEmailEl) userEmailEl.textContent = signedUser?.login || 'User';
                 } catch (_) {
                     localStorage.removeItem('auth_token');
                     localStorage.removeItem('auth_email');

@@ -8,10 +8,10 @@ test('legacy manager account can log in without a role database column', async (
     const { default: handler } = await import('../server/api/auth/login.js');
 
     const previousFetch = globalThis.fetch;
-    let requestedUrl = '';
-    globalThis.fetch = async url => {
-        requestedUrl = String(url);
-        return new Response(JSON.stringify([{ id: 'manager-1', login: 'owner', password: 'test-password' }]), {
+    const requests = [];
+    globalThis.fetch = async (url, options) => {
+        requests.push({ url: String(url), options });
+        return new Response(JSON.stringify(options?.method === 'PATCH' ? [] : [{ id: 'manager-1', login: 'owner', password: 'test-password' }]), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
@@ -29,8 +29,10 @@ test('legacy manager account can log in without a role database column', async (
         assert.equal(response.statusCode, 200);
         assert.equal(response.body.role, 'manager');
         assert.match(headers['Set-Cookie'], /HttpOnly/);
-        assert.match(requestedUrl, /select=id,login,password/);
-        assert.doesNotMatch(requestedUrl, /,role/);
+        assert.match(requests[0].url, /select=id,login,password/);
+        assert.doesNotMatch(requests[0].url, /,role/);
+        assert.equal(requests[1].options.method, 'PATCH');
+        assert.match(JSON.parse(requests[1].options.body).password, /^scrypt\$/);
     } finally {
         globalThis.fetch = previousFetch;
     }

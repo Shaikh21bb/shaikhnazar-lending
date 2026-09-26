@@ -178,7 +178,31 @@
         .manager-pass {
             font-size: 0.9rem;
             color: var(--text-secondary);
-            font-family: monospace;
+        }
+
+        .password-reset {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.8rem;
+        }
+
+        .password-reset input {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.6rem;
+            border-radius: 6px;
+            min-width: 250px;
+        }
+
+        .reset-btn {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.6rem;
+            border-radius: 6px;
+            cursor: pointer;
         }
 
         .delete-btn {
@@ -262,12 +286,11 @@
 </head>
 <body>
 
-    <!-- Master Password Overlay -->
+    <!-- Signed owner session gate -->
     <div id="master-overlay">
         <div class="master-form">
-            <h2>Доступ владельца</h2>
-            <input type="password" id="master-pass" placeholder="••••••••" autocomplete="off">
-            <p id="master-err" style="color:var(--danger-color); font-size:0.9rem; display:none; margin-top:1rem;">Неверный пароль</p>
+            <h2>Проверка доступа владельца...</h2>
+            <a href="login.html" style="color:var(--text-primary)">Перейти ко входу</a>
         </div>
     </div>
 
@@ -285,12 +308,12 @@
                 <label for="new-login">Логин менеджера</label>
                 <input type="text" id="new-login" placeholder="manager1" required autocomplete="off">
                 <span style="font-size:0.72rem; color:var(--text-secondary); line-height:1.4; text-transform:none; letter-spacing:0;">
-                    Чтобы менеджер видел <b>только свои задачи и клиентов</b>, укажите логин = имя менеджера из панели «Менеджеры» (например: Айгерим). Логин <b>admin</b> даёт полный доступ.
+                    Для доступа менеджера укажите логин, совпадающий с его именем в панели «Менеджеры». Аккаунты владельца создаются отдельно.
                 </span>
             </div>
             <div class="input-group">
                 <label for="new-pass">Пароль</label>
-                <input type="text" id="new-pass" placeholder="123456" required autocomplete="off">
+                <input type="password" id="new-pass" placeholder="Не менее 12 символов" minlength="12" maxlength="128" required autocomplete="new-password">
             </div>
             <button type="submit" class="create-btn" id="create-btn">Создать</button>
         </form>

@@ -1,4 +1,5 @@
 import analyze from '../server/api/analyze.js';
+import adminAccounts from '../server/api/admin/accounts.js';
 import login from '../server/api/auth/login.js';
 import logout from '../server/api/auth/logout.js';
 import session from '../server/api/auth/session.js';
@@ -22,6 +23,7 @@ import whatsappBridge from '../server/api/whatsapp/bridge.js';
 export const config = { api: { bodyParser: false } };
 
 const routes = new Map([
+    ['admin/accounts', adminAccounts],
     ['analyze', analyze],
     ['auth/login', login],
     ['auth/logout', logout],

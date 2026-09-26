@@ -3,18 +3,16 @@ document.addEventListener('DOMContentLoaded', () => {
     window.__deny = false;
 
     window.__roleReady = (async () => {
-        const token = localStorage.getItem('auth_token') || '';
-        const email = localStorage.getItem('auth_email') || '';
-        if (!token) return;
-
-        let login = email;
+        let user;
         try {
-            const { data } = await supabaseClient.from('managers_auth').select('login').eq('id', token).limit(1);
-            if (data && data[0]) login = data[0].login;
-        } catch (e) { console.error('Role lookup error:', e.message); }
+            const response = await fetch('/api/auth/session', { cache: 'no-store' });
+            if (!response.ok) return;
+            user = (await response.json()).user;
+        } catch (e) { console.error('Session lookup error:', e.message); return; }
+        const login = user?.login || '';
 
-        // Админ — полный доступ
-        if (String(login).trim().toLowerCase() === 'admin') return;
+        // The signed server session, not localStorage, decides owner access.
+        if (user?.role === 'owner') return;
 
         // Менеджер — по совпадению логина с именем менеджера
         try {
