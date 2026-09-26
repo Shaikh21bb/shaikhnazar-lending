@@ -106,7 +106,7 @@ window.SalesStudio = (() => {
             q('.sales-local-chip').textContent = provider === 'openrouter' ? 'В облаке' : 'На вашем Mac';
             q('.sales-model-help').textContent = provider === 'openrouter'
                 ? (selected?.free ? 'Бесплатно в пределах лимитов OpenRouter; скорость зависит от доступной модели.'
-                    : `Платная модель: ~ $${Number(selected?.inputPerMillion || 0).toFixed(2)} / 1 млн входных токенов. Оплачивается вашим ключом.`)
+                    : `Платно: ~$${Number(selected?.inputPerMillion || 0).toFixed(2)} за 1 млн входных и ~$${Number(selected?.outputPerMillion || 0).toFixed(2)} за 1 млн выходных токенов. Оплачивается вашим ключом.`)
                 : `${models.find(model => model[0] === data.model)?.[2] || ''} · без API-платежей`;
             q('.sales-key-settings').hidden = provider !== 'openrouter';
             q('.sales-key-state').textContent = data.keyConfigured ? 'Ключ проверен и сохранён. Его значение здесь не показывается.' : 'Добавьте свой ключ OpenRouter для ответов в облаке.';

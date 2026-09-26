@@ -83,9 +83,27 @@ export async function openRouterModels(fetcher = fetch) {
             free: Number(item.pricing?.prompt) === 0 && Number(item.pricing?.completion) === 0,
             inputPerMillion: Number(item.pricing?.prompt) * 1e6,
             outputPerMillion: Number(item.pricing?.completion) * 1e6 }))
-        .filter(item => Number.isFinite(item.inputPerMillion) && Number.isFinite(item.outputPerMillion))
-        .sort((a, b) => Number(b.free) - Number(a.free) || a.inputPerMillion - b.inputPerMillion || a.name.localeCompare(b.name));
-    return [{ id: 'openrouter/free', name: 'Бесплатная модель · авто', free: true }, ...models];
+        .filter(item => Number.isFinite(item.inputPerMillion) && Number.isFinite(item.outputPerMillion));
+    const byId = new Map(models.map(item => [item.id, item]));
+    // A concise, changing-with-the-catalogue set of ordinary chat models.
+    // Batch, image/audio, safety and coding models do not belong in a Sales Agent picker.
+    const preferred = [
+        'inclusionai/ling-3.0-flash-fin:free',
+        'nvidia/nemotron-3.5-lightning:free',
+        'google/gemma-4-26b-a4b-it:free',
+        'qwen/qwen3.8-27b:free',
+        'google/gemini-2.5-flash-lite',
+        'qwen/qwen3.5-flash-02-23',
+        'deepseek/deepseek-v4-flash',
+        'openai/gpt-6-luna'
+    ];
+    const chosen = preferred.map(id => byId.get(id)).filter(Boolean);
+    const used = new Set(chosen.map(item => item.id));
+    const general = item => !/(batch|audio|image|vision|\bvl\b|omni|safety|code|router|lyria|medical|sante|inkling)/i.test(`${item.id} ${item.name}`);
+    const freeExtras = models.filter(item => item.free && !used.has(item.id) && general(item)).slice(0, 3);
+    const paidExtras = models.filter(item => !item.free && !used.has(item.id) && general(item))
+        .sort((a, b) => a.inputPerMillion - b.inputPerMillion).slice(0, 2);
+    return [{ id: 'openrouter/free', name: 'Бесплатная модель · авто', free: true }, ...chosen, ...freeExtras, ...paidExtras];
 }
 
 export async function generateOpenRouter(agentId, model, messages, fetcher = fetch) {
