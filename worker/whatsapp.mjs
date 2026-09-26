@@ -14,7 +14,11 @@ const localAgent = process.env.LOCAL_AGENT_WEBHOOK_URL
     ? new LocalSalesAgent({
         sessionDir,
         webhookUrl: process.env.LOCAL_AGENT_WEBHOOK_URL,
-        model: process.env.LOCAL_AGENT_MODEL || 'qwen3.5:9b-mlx'
+        model: process.env.LOCAL_AGENT_MODEL || 'qwen3.5:9b-mlx',
+        cloudGenerate: async ({ messages, testId }) => {
+            const result = await bridge({ action: 'generate_cloud', agentId, messages, testId });
+            return result.answer;
+        }
     })
     : null;
 
@@ -30,7 +34,7 @@ async function bridge(payload) {
             'x-whatsapp-bridge-secret': secret
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(30000)
+        signal: AbortSignal.timeout(payload.action === 'generate_cloud' ? 55000 : 30000)
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(`Bridge HTTP ${response.status}: ${data.error || 'request failed'}`);
@@ -71,7 +75,7 @@ async function checkLocalServices() {
 async function runLocalTest(job) {
     runtime.testing = true;
     try {
-        const answer = await localAgent.generate({ text: job.input.text, history: job.input.history, context: job.context });
+        const answer = await localAgent.generate({ text: job.input.text, history: job.input.history, context: job.context, testId: job.id });
         await bridge({ action: 'local_test_done', agentId, id: job.id, answer });
         console.log('[Sales Agent] dashboard test completed');
     } catch (error) {

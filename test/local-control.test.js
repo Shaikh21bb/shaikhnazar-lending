@@ -16,7 +16,7 @@ test('owner controls and demo requests reject guests and manager sessions before
     const original = globalThis.fetch;
     globalThis.fetch = async () => { throw new Error('Must not access database'); };
     try {
-        for (const action of ['configure', 'test_create']) {
+        for (const action of ['configure', 'test_create', 'provider_key_set', 'provider_key_delete']) {
             const guest = response();
             await bridge({ method: 'POST', headers: {}, body: { action, agentId: agent.id } }, guest);
             assert.equal(guest.statusCode, 401);
@@ -101,5 +101,26 @@ test('a paused agent can run an isolated bounded demo using its selected model',
         assert.deepEqual(job.input.history, [{ role: 'user', content: 'Earlier' }]);
         assert.ok(Date.parse(job.expires_at) > Date.now());
         assert.ok(Date.parse(job.expires_at) <= Date.now() + 180000);
+    } finally { globalThis.fetch = original; }
+});
+
+test('cloud selection needs its own key but not Ollama or n8n', async () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = async url => {
+        const path = String(url);
+        if (path.includes('/projects?')) return new Response(JSON.stringify([{ knowledge: 'Approved facts' }]));
+        if (path.includes('/agent_provider_keys?')) return new Response(JSON.stringify([{ agent_id: agent.id }]));
+        return new Response(JSON.stringify([{ state: 'connected', last_seen_at: new Date().toISOString(),
+            config: { provider: 'openrouter', cloudModel: 'openrouter/free' },
+            runtime: { mode: 'local', enabled: true, ollama: false, workflow: false } }]));
+    };
+    try {
+        const status = await dashboardLocalStatus(agent);
+        assert.equal(status.provider, 'openrouter');
+        assert.equal(status.model, 'openrouter/free');
+        assert.equal(status.checks.ollama, true);
+        assert.equal(status.checks.workflow, true);
+        assert.equal(status.ready, true);
+        assert.equal(status.keyConfigured, true);
     } finally { globalThis.fetch = original; }
 });

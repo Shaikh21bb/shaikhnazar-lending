@@ -11,7 +11,7 @@ export function rememberClient(previous = {}, text = '', displayName = '', previ
 
 export function conversationalReply(answer, question = '') {
     const text = String(answer).replace(/^<think>[\s\S]*?<\/think>\s*/i, '').trim();
-    if (!text || text.includes('<think>')) throw new Error('Local model returned no safe reply');
+    if (!text || text.includes('<think>')) throw new Error('AI-модель не вернула безопасный ответ');
     const detailed = /подроб|деталь|по шаг|полный список|все возможности|толық|егжей/iu.test(question);
     const limit = detailed ? 1100 : 420;
     const sentences = text.split(/(?<=[.!?])\s+(?=[А-ЯЁA-Z0-9«])/u).slice(0, detailed ? 6 : 2).join(' ');

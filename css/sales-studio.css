@@ -22,6 +22,15 @@
 .sales-field { display:block; font-size:11px; font-weight:600; color:#b1bac2; margin-bottom:18px; text-transform:none; letter-spacing:0; }
 .sales-field select { display:block; width:100%; height:43px; margin:8px 0 0; padding:0 12px; color:#e7eced; font:500 13px 'Manrope',sans-serif; background:#20242b; border:1px solid #343b45; border-radius:10px; outline:none; }
 .sales-field select:focus { border-color:#9ae5bd; box-shadow:0 0 0 3px #9ae5bd12; }
+.sales-field input { display:block; width:100%; box-sizing:border-box; height:43px; margin:8px 0 0; padding:0 12px; color:#e7eced; font:500 13px 'Manrope',sans-serif; background:#20242b; border:1px solid #343b45; border-radius:10px; outline:none; }
+.sales-field input:focus { border-color:#9ae5bd; box-shadow:0 0 0 3px #9ae5bd12; }
+.sales-key-settings { border:1px solid #35453d; border-radius:12px; background:#1b262011; padding:14px; margin:-2px 0 18px; }
+.sales-key-settings[hidden], .sales-key-remove[hidden] { display:none; }
+.sales-key-settings .sales-field { margin-bottom:10px; }
+.sales-key-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.sales-key-remove { border:0; background:none; color:#df9a96; font:500 11px 'Manrope',sans-serif; cursor:pointer; }
+.sales-key-state,.sales-key-note { display:block; margin-top:8px; color:#9db0a6; font-size:10px; line-height:1.5; }
+.sales-key-note { color:#8e999f; }
 .sales-field small { display:block; font-size:10px; line-height:1.6; font-weight:400; color:#8e999f; margin-top:6px; }
 .sales-local-chip { float:right; font-size:9px; color:#8dd8b3; border:1px solid #4c7c622f; padding:2px 6px; border-radius:5px; }
 .sales-field-row { display:grid; grid-template-columns:1.4fr 1fr; gap:12px; }

@@ -76,6 +76,29 @@ test('local Sales Agent rejects a webhook outside its private Docker network', (
     }), /inside the Docker n8n network/);
 });
 
+test('cloud mode bypasses slow n8n and keeps customer conversation history', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'shaikh-cloud-sales-'));
+    await writeFile(join(dir, 'sales-agent.enabled'), 'enabled');
+    const requests = [];
+    const sent = [];
+    const agent = new LocalSalesAgent({
+        sessionDir: dir,
+        webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local',
+        fetcher: async () => { throw new Error('Cloud mode must not call n8n'); },
+        cloudGenerate: async ({ messages }) => { requests.push(messages); return requests.length === 1 ? 'Здравствуйте! Чем помочь?' : 'Да, мы уже обсуждали ваш вопрос.'; }
+    });
+    const base = { externalId: 'buyer@s.whatsapp.net', displayName: 'Buyer',
+        context: { enabled: true, provider: 'openrouter', model: 'openrouter/free', knowledge: 'Shyraq.ai — платформа для учителей.' },
+        sendMessage: async (_recipient, value) => { sent.push(value.text); } };
+    try {
+        await agent.reply({ ...base, messageId: 'cloud-1', text: 'Здравствуйте' });
+        await agent.reply({ ...base, messageId: 'cloud-2', text: 'Помните, о чём говорили?' });
+        assert.equal(requests.length, 2);
+        assert.deepEqual(requests[1].slice(-3).map(message => message.role), ['user', 'assistant', 'user']);
+        assert.equal(sent.length, 2);
+    } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
 test('dashboard control changes apply once and do not undo a later local pause', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'shaikh-local-control-'));
     const agent = new LocalSalesAgent({ sessionDir: dir, webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local' });
@@ -163,7 +186,7 @@ test('short replies avoid walls of text while explicit detail requests allow mor
     assert.equal(conversationalReply(long, 'Что это?'), 'Первое предложение. Второе предложение.');
     assert.equal(conversationalReply(long, 'Расскажите подробнее'), long);
     assert.ok(conversationalReply('А'.repeat(1000)).length <= 421);
-    assert.throws(() => conversationalReply('<think>hidden'), /safe reply/);
+    assert.throws(() => conversationalReply('<think>hidden'), /безопасный ответ/);
     assert.deepEqual(rememberClient({}, 'Привет').statements, []);
     assert.match(rememberClient({}, '6 класс', '', 'Какой класс вы преподаёте?').statements[0], /6 класс/);
 });

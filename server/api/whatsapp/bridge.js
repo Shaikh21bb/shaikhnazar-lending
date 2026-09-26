@@ -2,8 +2,9 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { db, readJsonBody } from '../_lib.js';
 import { requireDashboardSession } from '../_auth.js';
 import { findSalesAgent, getLocalSalesContext, handleSalesInbound } from '../_agent/sales.js';
-import { sanitizeRuntime, loadLocalState, localModel, dashboardLocalStatus, configureLocalAgent,
+import { sanitizeRuntime, loadLocalState, selectedProvider, selectedModel, dashboardLocalStatus, configureLocalAgent,
     createLocalTest, localTestResult, claimLocalTest, finishLocalTest } from './local-control.js';
+import { saveProviderKey, deleteProviderKey, openRouterModels, generateOpenRouter } from './provider.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const JID = /^\d{6,20}@(s\.whatsapp\.net|lid)$/;
@@ -124,6 +125,7 @@ export default async function handler(req, res) {
         const agentId = String(req.query?.agentId || '');
         if (!UUID.test(agentId)) return res.status(400).json({ error: 'Invalid agent id' });
         try {
+            if (req.query?.models === 'openrouter') return res.status(200).json({ models: await openRouterModels() });
             if (req.query?.testId) return res.status(200).json(await localTestResult(agentId, String(req.query.testId)));
             const agent = await findSalesAgent({ id: agentId, platform: 'whatsapp' });
             if (!agent) return res.status(404).json({ error: 'Agent not found' });
@@ -136,7 +138,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     try {
         const body = await readJsonBody(req);
-        if (['configure', 'test_create'].includes(body.action)) {
+        if (['configure', 'test_create', 'provider_key_set', 'provider_key_delete'].includes(body.action)) {
             const session = requireDashboardSession(req, res);
             if (!session) return;
             if (session.role !== 'owner') return res.status(403).json({ error: 'Owner access required' });
@@ -145,6 +147,8 @@ export default async function handler(req, res) {
             if (!UUID.test(String(body.agentId || ''))) return res.status(400).json({ error: 'Invalid agent id' });
             const agent = await findSalesAgent({ id: body.agentId, platform: 'whatsapp' });
             if (!agent) return res.status(404).json({ error: 'Agent not found' });
+            if (body.action === 'provider_key_set') return res.status(200).json(await saveProviderKey(agent.id, body.key));
+            if (body.action === 'provider_key_delete') return res.status(200).json(await deleteProviderKey(agent.id));
             return res.status(200).json(body.action === 'configure'
                 ? await configureLocalAgent(agent, body) : await createLocalTest(agent, body));
         }
@@ -176,7 +180,21 @@ export default async function handler(req, res) {
                 return res.status(200).json({ enabled: false });
             }
             const [context, local] = await Promise.all([getLocalSalesContext(agent), loadLocalState(agent.id)]);
-            return res.status(200).json(context.enabled ? { ...context, model: localModel(local) } : context);
+            return res.status(200).json(context.enabled ? { ...context, provider: selectedProvider(local), model: selectedModel(local) } : context);
+        }
+        if (body.action === 'generate_cloud') {
+            if (process.env.WHATSAPP_LOCAL_AGENT_ENABLED !== 'true') return res.status(503).json({ error: 'Local agent is not configured' });
+            const local = await loadLocalState(agentId);
+            if (selectedProvider(local) !== 'openrouter') return res.status(409).json({ error: 'OpenRouter is not selected' });
+            const testId = String(body.testId || '');
+            if (testId) {
+                if (!UUID.test(testId)) return res.status(400).json({ error: 'Invalid test ID' });
+                const test = await db(`local_agent_tests?select=id&agent_id=eq.${agentId}&id=eq.${testId}&state=eq.processing&limit=1`);
+                if (!test.res.ok || !test.body?.length) return res.status(403).json({ error: 'Test is not active' });
+            }
+            const context = await getLocalSalesContext(agent, { preview: Boolean(testId) });
+            if (!context.enabled) return res.status(409).json({ error: 'Agent is paused or not trained' });
+            return res.status(200).json({ answer: await generateOpenRouter(agentId, selectedModel(local), body.messages) });
         }
         if (body.action === 'status') {
             await saveStatus(agentId, body);
