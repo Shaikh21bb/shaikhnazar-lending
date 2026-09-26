@@ -22,6 +22,7 @@ export async function db(path, options = {}) {
 
 export async function readJsonBody(req) {
     if (req.body && typeof req.body === 'object') return req.body;
+    if (typeof req.rawBody === 'string') return req.rawBody ? JSON.parse(req.rawBody) : {};
     let raw = '';
     for await (const chunk of req) raw += chunk;
     return raw ? JSON.parse(raw) : {};

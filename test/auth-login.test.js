@@ -5,7 +5,7 @@ test('legacy manager account can log in without a role database column', async (
     process.env.SUPABASE_URL = 'https://test.supabase.co';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key';
     process.env.AUTH_SECRET = 'unit-test-secret-long-enough-for-this-test';
-    const { default: handler } = await import('../api/auth/login.js');
+    const { default: handler } = await import('../server/api/auth/login.js');
 
     const previousFetch = globalThis.fetch;
     let requestedUrl = '';

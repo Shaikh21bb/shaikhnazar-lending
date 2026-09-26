@@ -12,7 +12,7 @@ function filesIn(directory) {
     return result;
 }
 
-const files = [...filesIn('api'), ...filesIn('js'), ...filesIn('scripts')]
+const files = [...filesIn('api'), ...filesIn('server'), ...filesIn('js'), ...filesIn('scripts')]
     .filter(path => !path.endsWith('check-js.mjs'));
 let failed = false;
 for (const file of files) {
@@ -24,4 +24,3 @@ for (const file of files) {
 }
 if (failed) process.exit(1);
 console.log(`Syntax OK: ${files.length} JavaScript files`);
-

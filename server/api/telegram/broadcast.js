@@ -1,10 +1,4 @@
-import { db, telegram } from '../_lib.js';
-
-async function readBody(req) {
-    let raw = '';
-    for await (const chunk of req) raw += chunk;
-    return raw ? JSON.parse(raw) : {};
-}
+import { db, telegram, readJsonBody } from '../_lib.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -14,7 +8,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { id, text } = await readBody(req);
+        const { id, text } = await readJsonBody(req);
         if (!id) return res.status(400).json({ error: 'Missing agent id' });
         if (!text || !text.trim()) return res.status(400).json({ error: 'Missing text' });
 

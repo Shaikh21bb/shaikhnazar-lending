@@ -1,4 +1,4 @@
-import { db, telegram, escapeHtml } from '../_lib.js';
+import { db, telegram, escapeHtml, readJsonBody } from '../_lib.js';
 
 const STATUS_LABEL = { pending: '⏳ Запланировано', confirmed: '✅ Подтверждено', done: '🎉 Выполнено' };
 
@@ -14,11 +14,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { taskId } = await new Promise(resolve => {
-            let raw = '';
-            req.on('data', c => raw += c);
-            req.on('end', () => resolve(raw ? JSON.parse(raw) : {}));
-        });
+        const { taskId } = await readJsonBody(req);
 
         if (!taskId) return res.status(400).json({ error: 'Missing taskId' });
 

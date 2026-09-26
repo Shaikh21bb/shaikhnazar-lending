@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateAgentReply } from '../api/_agent/llm.js';
+import { generateAgentReply } from '../server/api/_agent/llm.js';
 
 test('OpenAI Responses tool calls are executed and returned to the model', async () => {
     const previousFetch = global.fetch;
@@ -69,4 +69,3 @@ test('OpenAI Responses tool calls are executed and returned to the model', async
         else process.env.OPENAI_MODEL = previousModel;
     }
 });
-

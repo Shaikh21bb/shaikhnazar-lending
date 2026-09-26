@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { db, telegram, escapeHtml } from '../_lib.js';
+import { db, telegram, escapeHtml, readJsonBody } from '../_lib.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -7,11 +7,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { id, action } = await new Promise(resolve => {
-            let raw = '';
-            req.on('data', c => raw += c);
-            req.on('end', () => resolve(raw ? JSON.parse(raw) : {}));
-        });
+        const { id, action } = await readJsonBody(req);
 
         if (!id) return res.status(400).json({ error: 'Missing agent id' });
 

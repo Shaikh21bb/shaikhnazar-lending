@@ -5,6 +5,7 @@ import { findSalesAgent, handleSalesInbound } from '../_agent/sales.js';
 export const config = { api: { bodyParser: false } };
 
 async function rawBody(req) {
+    if (typeof req.rawBody === 'string') return req.rawBody;
     let raw = '';
     for await (const chunk of req) raw += chunk;
     return raw;

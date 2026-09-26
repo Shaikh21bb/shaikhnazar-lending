@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { extractWhatsAppMessages, verifyWhatsAppSignature } from '../api/_agent/providers.js';
-import { isAgentEnabled, SALES_TOOLS } from '../api/_agent/sales.js';
+import { extractWhatsAppMessages, verifyWhatsAppSignature } from '../server/api/_agent/providers.js';
+import { isAgentEnabled, SALES_TOOLS } from '../server/api/_agent/sales.js';
 
 test('extractWhatsAppMessages keeps supported text messages and customer identity', () => {
     const messages = extractWhatsAppMessages({
@@ -47,4 +47,3 @@ test('Sales Agent exposes follow-up and human handoff tools', () => {
     assert.deepEqual(SALES_TOOLS.map(tool => tool.name), ['create_followup', 'handoff_to_human']);
     for (const tool of SALES_TOOLS) assert.equal(tool.parameters.additionalProperties, false);
 });
-

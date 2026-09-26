@@ -1,4 +1,4 @@
-import { gemini, escapeHtml } from './_lib.js';
+import { gemini, escapeHtml, readJsonBody } from './_lib.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -6,11 +6,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { offer, audience, context, language } = await new Promise(resolve => {
-            let raw = '';
-            req.on('data', c => raw += c);
-            req.on('end', () => resolve(raw ? JSON.parse(raw) : {}));
-        });
+        const { offer, audience, context, language } = await readJsonBody(req);
 
         if (!offer) {
             return res.status(400).json({ error: 'Missing offer' });

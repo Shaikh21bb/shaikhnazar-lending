@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSession, readSession, sessionCookie } from '../api/_auth.js';
+import { createSession, readSession, sessionCookie } from '../server/api/_auth.js';
 
 test('dashboard session is signed, readable, and rejects tampering', () => {
     const previousSecret = process.env.AUTH_SECRET;
@@ -23,4 +23,3 @@ test('dashboard session is signed, readable, and rejects tampering', () => {
         else process.env.NODE_ENV = previousNodeEnv;
     }
 });
-
