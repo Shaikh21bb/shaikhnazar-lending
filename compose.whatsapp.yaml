@@ -8,10 +8,10 @@ services:
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
-        if [ ! -f /home/node/.n8n/.shaikh-sales-workflow-installed ]; then
+        if [ ! -f /home/node/.n8n/.shaikh-sales-workflow-v2-installed ]; then
           n8n import:workflow --input=/app/workflow.json &&
           n8n publish:workflow --id=shaikhSalesLocalV1 &&
-          touch /home/node/.n8n/.shaikh-sales-workflow-installed
+          touch /home/node/.n8n/.shaikh-sales-workflow-v2-installed
         fi
     volumes:
       - n8n-data:/home/node/.n8n

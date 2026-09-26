@@ -93,7 +93,12 @@ export class LocalSalesAgent {
         const response = await this.fetcher(this.webhookUrl, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ model: this.model, messages, stream: false, think: false,
+            body: JSON.stringify({ model: this.model, context: {
+                enabled: context.enabled,
+                name: context.name,
+                language: context.language,
+                knowledge: String(context.knowledge).slice(0, 24000)
+            }, messages, stream: false, think: false,
                 options: { temperature: 0.1, num_predict: 220, num_ctx: 16384 } }),
             signal: AbortSignal.timeout(120000)
         });
