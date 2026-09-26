@@ -1,4 +1,5 @@
 import { db, telegram, readJsonBody } from '../_lib.js';
+import { requireDashboardSession } from '../_auth.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -6,6 +7,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
+    if (!requireDashboardSession(req, res)) return;
 
     try {
         const { id, text } = await readJsonBody(req);

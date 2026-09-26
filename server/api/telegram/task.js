@@ -1,4 +1,5 @@
 import { db, telegram, escapeHtml, readJsonBody } from '../_lib.js';
+import { requireDashboardSession } from '../_auth.js';
 
 const STATUS_LABEL = { pending: '⏳ Запланировано', confirmed: '✅ Подтверждено', done: '🎉 Выполнено' };
 
@@ -12,6 +13,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
+    if (!requireDashboardSession(req, res)) return;
 
     try {
         const { taskId } = await readJsonBody(req);

@@ -1,10 +1,12 @@
 import { randomUUID } from 'crypto';
 import { db, telegram, escapeHtml, readJsonBody } from '../_lib.js';
+import { requireDashboardSession } from '../_auth.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
+    if (!requireDashboardSession(req, res)) return;
 
     try {
         const { id, action } = await readJsonBody(req);

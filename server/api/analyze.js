@@ -1,7 +1,10 @@
+import { requireDashboardSession } from './_auth.js';
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
+    if (!requireDashboardSession(req, res)) return;
 
     try {
         const { leads, pdfText, managersCount, strictness, productContext } = req.body;
