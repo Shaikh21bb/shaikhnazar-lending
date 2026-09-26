@@ -27,8 +27,8 @@ async function bridge(payload) {
     return data;
 }
 
-const bootstrap = await bridge({ action: 'bootstrap' });
-const agentId = process.env.BRIDGE_AGENT_ID || bootstrap.agentId;
+const bootstrap = await bridge({ action: 'bootstrap', agentId: process.env.BRIDGE_AGENT_ID || undefined });
+const agentId = bootstrap.agentId;
 await mkdir(sessionDir, { recursive: true, mode: 0o700 });
 console.log(`WhatsApp Sales Agent: ${bootstrap.name || agentId}`);
 console.log(`Session stored locally in ${sessionDir}; keep this directory private and backed up.`);
@@ -40,6 +40,18 @@ let qrImage = null;
 let lastError = null;
 let polling = false;
 let reconnectTimer;
+
+function scheduleReconnect(error) {
+    if (error) console.error('WhatsApp connection failed:', error.message);
+    if (state === 'logged_out') return;
+    connected = false;
+    qrImage = null;
+    state = 'offline';
+    lastError = error?.message || null;
+    reportStatus();
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => connect().catch(scheduleReconnect), 5000);
+}
 
 async function reportStatus() {
     try {
@@ -133,8 +145,7 @@ async function connect() {
                 console.error(lastError, 'Back up and remove the old session directory manually before restarting.');
                 return;
             }
-            clearTimeout(reconnectTimer);
-            reconnectTimer = setTimeout(() => connect().catch(error => console.error('Reconnect failed:', error.message)), 5000);
+            scheduleReconnect();
         }
     });
     next.ev.on('messages.upsert', async event => {
@@ -160,7 +171,4 @@ async function connect() {
 
 setInterval(reportStatus, 15000);
 setInterval(pollOutbox, 3000);
-connect().catch(error => {
-    console.error('WhatsApp bridge failed to start:', error.message);
-    process.exitCode = 1;
-});
+connect().catch(scheduleReconnect);

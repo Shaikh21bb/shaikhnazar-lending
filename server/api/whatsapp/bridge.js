@@ -114,7 +114,9 @@ export default async function handler(req, res) {
         return res.status(503).json({ error: 'QR bridge is not configured' });
     }
     if (req.method === 'GET') {
-        if (!requireDashboardSession(req, res)) return;
+        const session = requireDashboardSession(req, res);
+        if (!session) return;
+        if (session.role !== 'owner') return res.status(403).json({ error: 'Owner access required' });
         const agentId = String(req.query?.agentId || '');
         if (!UUID.test(agentId)) return res.status(400).json({ error: 'Invalid agent id' });
         try {
@@ -141,10 +143,13 @@ export default async function handler(req, res) {
     try {
         const body = await readJsonBody(req);
         if (body.action === 'bootstrap') {
-            const result = await db('agents?select=id,name&agent_type=eq.sales&platform=eq.whatsapp&order=created_at.asc&limit=2');
+            const requestedId = String(body.agentId || '');
+            if (requestedId && !UUID.test(requestedId)) return res.status(400).json({ error: 'Invalid agent id' });
+            const filter = requestedId ? `&id=eq.${encodeURIComponent(requestedId)}` : '';
+            const result = await db(`agents?select=id,name&agent_type=eq.sales&platform=eq.whatsapp${filter}&order=created_at.asc&limit=2`);
             if (!result.res.ok) throw new Error(`Agent lookup failed (${result.res.status})`);
             if (result.body?.length !== 1) {
-                return res.status(409).json({ error: 'Exactly one WhatsApp Sales Agent is required' });
+                return res.status(409).json({ error: requestedId ? 'Selected WhatsApp Sales Agent not found' : 'Select one WhatsApp Sales Agent with BRIDGE_AGENT_ID' });
             }
             return res.status(200).json({ ok: true, agentId: result.body[0].id, name: result.body[0].name });
         }

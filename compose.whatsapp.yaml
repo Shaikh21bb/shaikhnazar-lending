@@ -1,0 +1,22 @@
+services:
+  whatsapp-bridge:
+    build:
+      context: ./worker
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env.worker.local
+    environment:
+      WHATSAPP_SESSION_DIR: /app/session
+    volumes:
+      - whatsapp-session:/app/session
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  whatsapp-session:

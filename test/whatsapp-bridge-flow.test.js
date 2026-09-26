@@ -19,6 +19,32 @@ function response() {
     };
 }
 
+test('QR worker selects its configured Sales Agent when multiple exist', async () => {
+    const originalFetch = globalThis.fetch;
+    let requestedPath = '';
+    globalThis.fetch = async url => {
+        requestedPath = new URL(url).search;
+        return new Response(JSON.stringify([{ id: agentId, name: 'Selected Agent' }]), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+        });
+    };
+    try {
+        const selected = response();
+        await bridge({
+            method: 'POST',
+            headers: { 'x-whatsapp-bridge-secret': 'test-bridge-secret' },
+            body: { action: 'bootstrap', agentId }
+        }, selected);
+        assert.equal(selected.statusCode, 200);
+        assert.equal(selected.body.agentId, agentId);
+        assert.match(requestedPath, /id=eq\./);
+        assert.ok(requestedPath.includes(agentId));
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+});
+
 test('QR bridge queues, claims and acknowledges a message without a Meta token', async () => {
     const originalFetch = globalThis.fetch;
     const paths = [];

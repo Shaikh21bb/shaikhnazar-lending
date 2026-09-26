@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import bridge from '../server/api/whatsapp/bridge.js';
 import { isAgentEnabled } from '../server/api/_agent/sales.js';
+import { createSession } from '../server/api/_auth.js';
 
 function response() {
     return {
@@ -46,6 +47,15 @@ test('QR bridge requires a worker secret and protects the QR from guests', async
         const guest = response();
         await bridge({ method: 'GET', headers: {}, query: { agentId: '00000000-0000-0000-0000-000000000000' } }, guest);
         assert.equal(guest.statusCode, 401);
+
+        const manager = response();
+        const managerSession = createSession({ id: 'manager-id', login: 'manager', role: 'manager' });
+        await bridge({
+            method: 'GET',
+            headers: { cookie: `shaikh_session=${encodeURIComponent(managerSession)}` },
+            query: { agentId: '00000000-0000-0000-0000-000000000000' }
+        }, manager);
+        assert.equal(manager.statusCode, 403);
 
         const malformed = response();
         await bridge({ method: 'POST', headers: { 'x-whatsapp-bridge-secret': 'test-bridge-secret' }, body: { agentId: 'bad' } }, malformed);
