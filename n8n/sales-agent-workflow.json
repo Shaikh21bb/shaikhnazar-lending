@@ -1,0 +1,54 @@
+{
+  "id": "shaikhSalesLocalV1",
+  "name": "SHAIKH Sales Agent — локальный Ollama",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none"
+  },
+  "nodes": [
+    {
+      "id": "shaikh-local-webhook",
+      "name": "WhatsApp входящий webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [260, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shaikh-sales-local",
+        "responseMode": "lastNode",
+        "options": {
+          "responseData": "firstEntryJson"
+        }
+      },
+      "webhookId": "6aa21738-b512-4bb0-9c60-f2bd78f2ea21"
+    },
+    {
+      "id": "shaikh-local-ollama",
+      "name": "Локальная модель Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [540, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 120000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "WhatsApp входящий webhook": {
+      "main": [[{"node": "Локальная модель Ollama", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

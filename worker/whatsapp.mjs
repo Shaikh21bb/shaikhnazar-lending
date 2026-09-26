@@ -3,10 +3,18 @@ import { resolve } from 'node:path';
 import makeWASocket, { Browsers, DisconnectReason, fetchLatestWaWebVersion, useMultiFileAuthState } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import QRCode from 'qrcode';
+import { LocalSalesAgent } from './local-sales.mjs';
 
 const baseUrl = String(process.env.BRIDGE_BASE_URL || '').replace(/\/+$/, '');
 const secret = process.env.WHATSAPP_BRIDGE_SECRET || '';
 const sessionDir = resolve(process.env.WHATSAPP_SESSION_DIR || '.wa-session');
+const localAgent = process.env.LOCAL_AGENT_WEBHOOK_URL
+    ? new LocalSalesAgent({
+        sessionDir,
+        webhookUrl: process.env.LOCAL_AGENT_WEBHOOK_URL,
+        model: process.env.LOCAL_AGENT_MODEL || 'qwen3:1.7b'
+    })
+    : null;
 
 if (!baseUrl.startsWith('https://') || secret.length < 32) {
     throw new Error('BRIDGE_BASE_URL (HTTPS) and WHATSAPP_BRIDGE_SECRET (32+ chars) are required');
@@ -40,8 +48,10 @@ let qrImage = null;
 let lastError = null;
 let polling = false;
 let reconnectTimer;
+let stopping = false;
 
 function scheduleReconnect(error) {
+    if (stopping) return;
     if (error) console.error('WhatsApp connection failed:', error.message);
     if (state === 'logged_out') return;
     connected = false;
@@ -62,6 +72,7 @@ async function reportStatus() {
 }
 
 async function pollOutbox() {
+    if (localAgent) return;
     if (!connected || polling) return;
     polling = true;
     try {
@@ -139,7 +150,9 @@ async function connect() {
             qrImage = null;
             lastError = null;
             await reportStatus();
-            console.log('WhatsApp connected. Customer replies also require the separate server-side delivery switch.');
+            console.log(localAgent
+                ? 'WhatsApp connected. Local n8n replies require training, AI ON, and the local enable switch.'
+                : 'WhatsApp connected. Customer replies also require the separate server-side delivery switch.');
         }
         if (update.connection === 'close') {
             connected = false;
@@ -166,6 +179,18 @@ async function connect() {
             const text = inboundText(message).trim();
             if (message.key?.fromMe || !/^\d{6,20}@(s\.whatsapp\.net|lid)$/.test(from) || !text || !message.key?.id) continue;
             try {
+                if (localAgent) {
+                    if (!await localAgent.isEnabled()) continue;
+                    const context = await bridge({ action: 'local_context', agentId });
+                    await localAgent.reply({
+                        externalId: from,
+                        messageId: message.key.id,
+                        text,
+                        context,
+                        sendMessage: (recipient, content) => next.sendMessage(recipient, content)
+                    });
+                    continue;
+                }
                 await bridge({
                     action: 'inbound', agentId, from,
                     text: text.slice(0, 4000),
@@ -174,7 +199,7 @@ async function connect() {
                 });
                 await pollOutbox();
             } catch (error) {
-                console.error('Inbound message could not reach Sales Agent:', error.message);
+                console.error('Sales Agent could not process inbound message:', error.message);
             }
         }
     });
@@ -182,4 +207,13 @@ async function connect() {
 
 setInterval(reportStatus, 15000);
 setInterval(pollOutbox, 3000);
+process.once('SIGTERM', async () => {
+    stopping = true;
+    clearTimeout(reconnectTimer);
+    connected = false;
+    qrImage = null;
+    state = 'offline';
+    await reportStatus();
+    process.exit(0);
+});
 connect().catch(scheduleReconnect);

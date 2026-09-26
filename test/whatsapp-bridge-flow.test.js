@@ -78,6 +78,52 @@ test('QR pairing cannot read, store or send customer messages before delivery is
     }
 });
 
+test('local n8n context is released only for the configured, active, trained Sales Agent', async () => {
+    const originalFetch = globalThis.fetch;
+    const previous = process.env.WHATSAPP_LOCAL_AGENT_ENABLED;
+    const paths = [];
+    globalThis.fetch = async url => {
+        const path = new URL(url).pathname + new URL(url).search;
+        paths.push(path);
+        const data = path.startsWith('/rest/v1/agents?select=*')
+            ? [{ id: agentId, name: 'Шаихназар', platform: 'whatsapp', agent_type: 'sales', status: 'active', ai_enabled: true, connected: true, project_id: 'project-1' }]
+            : path.startsWith('/rest/v1/projects?select=')
+                ? [{ name: 'Компания', description: 'Описание', knowledge: 'Одобренный сценарий' }]
+                : [];
+        return new Response(JSON.stringify(data), { status: 200, headers: { 'content-type': 'application/json' } });
+    };
+    const request = { method: 'POST', headers: { 'x-whatsapp-bridge-secret': 'test-bridge-secret' }, body: { action: 'local_context', agentId } };
+    try {
+        delete process.env.WHATSAPP_LOCAL_AGENT_ENABLED;
+        const blocked = response();
+        await bridge(request, blocked);
+        assert.deepEqual(blocked.body, { enabled: false });
+        assert.equal(paths.some(path => path.startsWith('/rest/v1/projects?')), false);
+
+        process.env.WHATSAPP_LOCAL_AGENT_ENABLED = 'true';
+        const enabled = response();
+        await bridge(request, enabled);
+        assert.equal(enabled.body.enabled, true);
+        assert.match(enabled.body.knowledge, /Одобренный сценарий/);
+        assert.equal(enabled.body.name, 'Шаихназар');
+
+        globalThis.fetch = async url => {
+            const path = new URL(url).pathname + new URL(url).search;
+            const data = path.startsWith('/rest/v1/agents?select=*')
+                ? [{ id: agentId, name: 'Шаихназар', platform: 'whatsapp', agent_type: 'sales', status: 'active', ai_enabled: true, connected: true, project_id: 'project-1' }]
+                : [{ name: 'Компания', description: 'Описание', knowledge: '' }];
+            return new Response(JSON.stringify(data), { status: 200, headers: { 'content-type': 'application/json' } });
+        };
+        const untrained = response();
+        await bridge(request, untrained);
+        assert.deepEqual(untrained.body, { enabled: false });
+    } finally {
+        globalThis.fetch = originalFetch;
+        if (previous === undefined) delete process.env.WHATSAPP_LOCAL_AGENT_ENABLED;
+        else process.env.WHATSAPP_LOCAL_AGENT_ENABLED = previous;
+    }
+});
+
 test('QR bridge queues, claims and acknowledges a message without a Meta token', async () => {
     const originalFetch = globalThis.fetch;
     const previous = process.env.WHATSAPP_MESSAGE_DELIVERY_ENABLED;

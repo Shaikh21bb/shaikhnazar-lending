@@ -89,6 +89,23 @@ async function loadKnowledge(agent) {
     return [project.name, project.description, project.knowledge].filter(Boolean).join('\n\n').slice(0, 24000);
 }
 
+export async function getLocalSalesContext(agent) {
+    if (!isAgentEnabled(agent)) return { enabled: false };
+    const { res, body } = await db(
+        `projects?select=name,description,knowledge&id=eq.${encodeURIComponent(agent.project_id)}&limit=1`
+    );
+    if (!res.ok || !body?.[0]?.knowledge?.trim()) return { enabled: false };
+    const project = body[0];
+    const knowledge = [project.name, project.description, project.knowledge]
+        .filter(Boolean).join('\n\n').slice(0, 24000);
+    return {
+        enabled: true,
+        name: clean(agent.name, 255) || 'Sales Agent',
+        language: agent.language === 'kk' ? 'kk' : 'ru',
+        knowledge
+    };
+}
+
 async function assignedManager(agentId) {
     const { res, body } = await db(
         `managers?select=id,name,chat_id,agent_id&agent_id=eq.${encodeURIComponent(agentId)}&order=created_at.asc&limit=1`

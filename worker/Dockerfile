@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 
-COPY --chown=node:node whatsapp.mjs ./
+COPY --chown=node:node whatsapp.mjs local-sales.mjs toggle.mjs ./
 RUN install -d -o node -g node /app/session
 
 USER node

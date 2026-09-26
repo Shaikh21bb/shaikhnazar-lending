@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { db, readJsonBody } from '../_lib.js';
 import { requireDashboardSession } from '../_auth.js';
-import { findSalesAgent, handleSalesInbound } from '../_agent/sales.js';
+import { findSalesAgent, getLocalSalesContext, handleSalesInbound } from '../_agent/sales.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const JID = /^\d{6,20}@(s\.whatsapp\.net|lid)$/;
@@ -163,6 +163,12 @@ export default async function handler(req, res) {
         }
         const agent = await findSalesAgent({ id: agentId, platform: 'whatsapp' });
         if (!agent) return res.status(404).json({ error: 'WhatsApp Sales Agent not found' });
+        if (body.action === 'local_context') {
+            if (process.env.WHATSAPP_LOCAL_AGENT_ENABLED !== 'true') {
+                return res.status(200).json({ enabled: false });
+            }
+            return res.status(200).json(await getLocalSalesContext(agent));
+        }
         if (body.action === 'status') {
             await saveStatus(agentId, body);
             return res.status(200).json({ ok: true });

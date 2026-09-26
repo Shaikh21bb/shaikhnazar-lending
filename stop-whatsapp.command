@@ -3,9 +3,12 @@ set -e
 cd -- "$(dirname "$0")"
 
 if ! docker info >/dev/null 2>&1; then
-  echo "Docker Desktop уже выключен. WhatsApp QR-мост не работает."
-  exit 0
+  echo "Docker Desktop уже выключен."
+else
+  docker compose -f compose.whatsapp.yaml stop whatsapp-bridge n8n
 fi
-
-docker compose -f compose.whatsapp.yaml stop
-echo "WhatsApp QR-мост остановлен. Связанный WhatsApp сохранён в Docker volume."
+if [[ -f .ollama-started-by-sales-agent ]]; then
+  brew services stop ollama
+  rm .ollama-started-by-sales-agent
+fi
+echo "Локальный Sales Agent остановлен. Связанный WhatsApp и история сохранены в Docker volume."
