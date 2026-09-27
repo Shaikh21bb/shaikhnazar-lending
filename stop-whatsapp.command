@@ -5,7 +5,7 @@ cd -- "$(dirname "$0")"
 if ! docker info >/dev/null 2>&1; then
   echo "Docker Desktop уже выключен."
 else
-  docker compose -f compose.whatsapp.yaml stop whatsapp-bridge n8n
+  docker compose -f compose.whatsapp.yaml stop whatsapp-bridge
 fi
 if [[ -f .ollama-started-by-sales-agent ]]; then
   brew services stop ollama

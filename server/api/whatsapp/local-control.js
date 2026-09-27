@@ -16,12 +16,12 @@ export function sanitizeRuntime(input = {}) {
         model: LOCAL_MODELS.includes(input.model) ? input.model : defaultModel,
         models: Array.isArray(input.models) ? input.models.filter(name => LOCAL_MODELS.includes(name)) : [],
         ollama: input.ollama === true,
-        workflow: input.workflow === true,
         testing: input.testing === true,
         received: Math.max(0, Math.min(Number(input.received) || 0, 1e9)),
         replies: Math.max(0, Math.min(Number(input.replies) || 0, 1e9)),
         lastInboundAt: timestamp(input.lastInboundAt),
         lastReplyAt: timestamp(input.lastReplyAt),
+        lastLatencyMs: Math.max(0, Math.min(Number(input.lastLatencyMs) || 0, 180000)),
         lastResult: String(input.lastResult || '').slice(0, 80),
         lastError: String(input.lastError || '').slice(0, 300)
     };
@@ -60,7 +60,6 @@ export async function dashboardLocalStatus(agent) {
         mac: fresh && row?.runtime?.mode === 'local',
         whatsapp: fresh && row.state === 'connected',
         ollama: provider === 'openrouter' ? keyConfigured : fresh && runtime.ollama && runtime.models.includes(model),
-        workflow: provider === 'openrouter' ? true : fresh && runtime.workflow,
         training: trainingReady,
         replies: aiEnabled && runtime.enabled
     };
@@ -130,7 +129,7 @@ export async function createLocalTest(agent, body) {
     const text = String(body.text || '').trim().slice(0, 4000);
     if (!text) throw failure('Напишите тестовое сообщение.');
     const status = await dashboardLocalStatus(agent);
-    if (!status.checks.mac || !status.checks.ollama || !status.checks.workflow) throw failure(status.provider === 'openrouter'
+    if (!status.checks.mac || !status.checks.ollama) throw failure(status.provider === 'openrouter'
         ? 'Запустите WhatsApp-сервер на Mac и добавьте действительный API-ключ OpenRouter.'
         : 'Запустите локальный сервер на Mac и дождитесь готовности модели.', 409);
     if (!status.checks.training) throw failure('Добавьте материалы в «Обучить».', 409);

@@ -11,7 +11,6 @@ test('local Sales Agent requires explicit local switch and verified training', a
     let calls = 0;
     const agent = new LocalSalesAgent({
         sessionDir: dir,
-        webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local',
         fetcher: async () => { calls++; return new Response(JSON.stringify({ message: { content: 'Здравствуйте!' } })); }
     });
     const inbound = {
@@ -29,15 +28,15 @@ test('local Sales Agent requires explicit local switch and verified training', a
     }
 });
 
-test('local Sales Agent uses n8n, stores history locally and never resends a duplicate', async () => {
+test('local Sales Agent calls Ollama directly, stores history and never resends a duplicate', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'shaikh-local-sales-'));
     await writeFile(join(dir, 'sales-agent.enabled'), 'enabled');
     const payloads = [];
     const sent = [];
     const agent = new LocalSalesAgent({
         sessionDir: dir,
-        webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local',
-        fetcher: async (_url, options) => {
+        fetcher: async (url, options) => {
+            assert.equal(url, 'http://host.docker.internal:11434/api/chat');
             payloads.push(JSON.parse(options.body));
             return new Response(JSON.stringify({ message: { content: 'Здравствуйте! Что вас интересует?' } }), {
                 status: 200, headers: { 'content-type': 'application/json' }
@@ -56,9 +55,9 @@ test('local Sales Agent uses n8n, stores history locally and never resends a dup
         assert.equal(payloads.length, 2);
         assert.equal(payloads[0].stream, false);
         assert.equal(payloads[0].model, 'qwen3.5:9b-mlx');
-        assert.equal(payloads[0].context.knowledge, 'Продаём консультацию.');
         assert.equal(payloads[0].messages[0].role, 'system');
         assert.match(payloads[0].messages[0].content, /Продаём консультацию/);
+        assert.equal(payloads[0].options.num_ctx, 8192);
         assert.deepEqual(payloads[1].messages.slice(-3).map(x => x.role), ['user', 'assistant', 'user']);
         assert.equal(sent.length, 2);
         const historyDir = join(dir, 'sales-history');
@@ -70,21 +69,38 @@ test('local Sales Agent uses n8n, stores history locally and never resends a dup
     }
 });
 
-test('local Sales Agent rejects a webhook outside its private Docker network', () => {
+test('local Sales Agent rejects an Ollama endpoint outside the private host', () => {
     assert.throws(() => new LocalSalesAgent({
-        sessionDir: '/tmp', webhookUrl: 'https://example.com/webhook/shaikh-sales-local'
-    }), /inside the Docker n8n network/);
+        sessionDir: '/tmp', ollamaUrl: 'https://example.com/api/chat'
+    }), /private Ollama API/);
 });
 
-test('cloud mode bypasses slow n8n and keeps customer conversation history', async () => {
+test('one slow client does not queue all other customers behind it', async () => {
+    let firstStarted;
+    let finishFirst;
+    const started = new Promise(resolve => { firstStarted = resolve; });
+    const blocked = new Promise(resolve => { finishFirst = resolve; });
+    const agent = new LocalSalesAgent({ sessionDir: '/tmp', fetcher: async (_url, options) => {
+        const text = JSON.parse(options.body).messages.at(-1).content;
+        if (text === 'Первый') { firstStarted(); await blocked; }
+        return new Response(JSON.stringify({ message: { content: `Ответ: ${text}` } }));
+    } });
+    const context = { enabled: true, knowledge: 'Проверенные факты' };
+    const first = agent.generate({ text: 'Первый', context });
+    await started;
+    assert.equal(await agent.generate({ text: 'Второй', context }), 'Ответ: Второй');
+    finishFirst();
+    assert.equal(await first, 'Ответ: Первый');
+});
+
+test('cloud mode bypasses local Ollama and keeps customer conversation history', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'shaikh-cloud-sales-'));
     await writeFile(join(dir, 'sales-agent.enabled'), 'enabled');
     const requests = [];
     const sent = [];
     const agent = new LocalSalesAgent({
         sessionDir: dir,
-        webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local',
-        fetcher: async () => { throw new Error('Cloud mode must not call n8n'); },
+        fetcher: async () => { throw new Error('Cloud mode must not call Ollama'); },
         cloudGenerate: async ({ messages }) => { requests.push(messages); return requests.length === 1 ? 'Здравствуйте! Чем помочь?' : 'Да, мы уже обсуждали ваш вопрос.'; }
     });
     const base = { externalId: 'buyer@s.whatsapp.net', displayName: 'Buyer',
@@ -101,7 +117,7 @@ test('cloud mode bypasses slow n8n and keeps customer conversation history', asy
 
 test('dashboard control changes apply once and do not undo a later local pause', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'shaikh-local-control-'));
-    const agent = new LocalSalesAgent({ sessionDir: dir, webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local' });
+    const agent = new LocalSalesAgent({ sessionDir: dir });
     try {
         const config = { enableRevision: 'change-1', autoReplies: true, model: 'qwen3:1.7b' };
         await agent.applyControl(config);
@@ -121,7 +137,7 @@ test('test generation works while paused, uses the selected model and never send
     const dir = await mkdtemp(join(tmpdir(), 'shaikh-local-demo-'));
     let payload;
     const agent = new LocalSalesAgent({
-        sessionDir: dir, webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local',
+        sessionDir: dir,
         fetcher: async (_url, options) => {
             payload = JSON.parse(options.body);
             return new Response(JSON.stringify({ message: { content: 'Тестовый ответ' } }));
@@ -141,7 +157,7 @@ test('pausing during generation prevents the pending WhatsApp send', async () =>
     await writeFile(join(dir, 'sales-agent.enabled'), 'enabled');
     let sent = false;
     const agent = new LocalSalesAgent({
-        sessionDir: dir, webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local',
+        sessionDir: dir,
         fetcher: async () => {
             await unlink(join(dir, 'sales-agent.enabled'));
             return new Response(JSON.stringify({ message: { content: 'Не отправлять' } }));
@@ -159,7 +175,7 @@ test('memory survives restart, stays isolated per client and archives the full n
     const dir = await mkdtemp(join(tmpdir(), 'shaikh-memory-'));
     await writeFile(join(dir, 'sales-agent.enabled'), 'enabled');
     const payloads = [];
-    const setup = { sessionDir: dir, webhookUrl: 'http://n8n:5678/webhook/shaikh-sales-local', fetcher: async (_url, options) => {
+    const setup = { sessionDir: dir, fetcher: async (_url, options) => {
         payloads.push(JSON.parse(options.body));
         return new Response(JSON.stringify({ message: { content: 'Понял вас. Какие задания нужны?' } }));
     } };
@@ -170,8 +186,8 @@ test('memory survives restart, stays isolated per client and archives the full n
         const restarted = new LocalSalesAgent(setup);
         await restarted.reply({ externalId: 'client-a', messageId: 'a2', text: 'Вы помните мой класс?', context, sendMessage });
         await restarted.reply({ externalId: 'client-b', messageId: 'b1', text: 'Здравствуйте', context, sendMessage });
-        assert.equal(payloads[1].memory.displayName, 'Айгуль');
-        assert.match(payloads[1].memory.statements[0], /6 класс/);
+        assert.match(payloads[1].messages[0].content, /Айгуль/);
+        assert.match(payloads[1].messages[0].content, /6 класс/);
         assert.deepEqual(payloads[1].messages.slice(-3).map(x => x.role), ['user', 'assistant', 'user']);
         assert.equal(JSON.stringify(payloads[2]).includes('Айгуль'), false);
         const archives = await readdir(join(dir, 'sales-transcripts'));

@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://lvaluizbvqnvlxwvrmrm.supabase.co">
     <link rel="stylesheet" href="./css/app.css">
-    <link rel="stylesheet" href="./css/sales-studio.css?v=studio-1">
+    <link rel="stylesheet" href="./css/sales-studio.css?v=mvp-3">
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="#0A0A0C">
     <link rel="icon" href="/icons/icon-192.png" type="image/png">
@@ -205,6 +205,11 @@
                     </button>
                 </div>
                 <div id="agents-grid" class="agents-grid"></div>
+                <details class="other-agents" id="other-agents" hidden>
+                    <summary>Другие агенты <span id="other-agents-count"></span></summary>
+                    <p>Сохранены для будущих сценариев. Сейчас основной MVP — один WhatsApp Sales Agent.</p>
+                    <div id="other-agents-grid" class="agents-grid"></div>
+                </details>
             </section>
 
             <!-- Training Projects -->
@@ -530,8 +535,8 @@
     <script src="./js/supabase.js"></script>
 
     <script src="./js/shyraq.js"></script>
-    <script src="./js/sales-studio.js?v=studio-2"></script>
-    <script src="./js/agents.js?v=studio-1"></script>
+    <script src="./js/sales-studio.js?v=mvp-3"></script>
+    <script src="./js/agents.js?v=mvp-3"></script>
     <script src="./js/role.js"></script>
     <script src="./js/tasks.js"></script>
     <script src="./js/scripts.js"></script>

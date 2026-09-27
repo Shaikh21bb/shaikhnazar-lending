@@ -10,15 +10,6 @@ if [[ ! -f .env.worker.local ]]; then
   echo "Не найдены локальные настройки .env.worker.local. QR-мост не запущен."
   exit 1
 fi
-if [[ ! -f .env.n8n.local ]]; then
-  if ! command -v openssl >/dev/null 2>&1; then
-    echo "Не найден openssl для создания локального ключа n8n."
-    exit 1
-  fi
-  umask 077
-  print -r -- "N8N_ENCRYPTION_KEY=$(openssl rand -hex 32)" > .env.n8n.local
-  echo "Создан локальный ключ n8n. Храните .env.n8n.local только на этом Mac."
-fi
 if ! command -v ollama >/dev/null 2>&1; then
   echo "Ollama не установлен. Установите его с https://ollama.com/download/mac."
   exit 1
@@ -52,7 +43,7 @@ fi
 export LOCAL_AGENT_MODEL="$model"
 
 docker compose -f compose.whatsapp.yaml up -d --build
-echo "WhatsApp, локальный n8n и Ollama запущены. n8n: http://localhost:5678."
+echo "WhatsApp-мост и Ollama запущены. n8n больше не нужен для ответов."
 echo "Модель выбирается в карточке агента на сайте. Заполните обучение и нажмите «Включить ответы»."
 echo "Кнопка «Приостановить ответы» останавливает диалог без потери WhatsApp-связи и памяти."
 echo "Для выключения запустите stop-whatsapp.command."

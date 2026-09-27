@@ -137,7 +137,6 @@ window.SalesStudio = (() => {
             if (!checks.mac) reason = 'Локальный сервер не на связи. Запустите start-whatsapp.command на Mac.';
             else if (!checks.whatsapp) reason = 'Подключите номер через WhatsApp · QR.';
             else if (!checks.ollama) reason = data.provider === 'openrouter' ? 'Добавьте действительный API-ключ OpenRouter.' : 'Ollama недоступна или выбранная модель не установлена на Mac.';
-            else if (!checks.workflow) reason = 'Сценарий n8n недоступен. Перезапустите локальный сервер.';
             else if (!checks.training) reason = 'Добавьте информацию о продукте через «Обучить агента».';
             else if (!checks.replies) reason = 'Ответы выключены. Нажмите «Включить ответы», чтобы агент начал общаться с клиентами.';
             else if (data.runtime.lastResult === 'error') reason = `Последний ответ не отправлен: ${data.runtime.lastError || 'проверьте локальный сервер'}`;
@@ -146,7 +145,7 @@ window.SalesStudio = (() => {
             q('.sales-readiness').textContent = reason;
             q('.sales-readiness').dataset.ready = String(data.ready && data.runtime.lastResult !== 'error');
             q('.sales-reply-count').textContent = data.runtime.replies;
-            q('.sales-last-reply').textContent = data.runtime.lastReplyAt ? `Последний ответ: ${new Date(data.runtime.lastReplyAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'Ожидаем первое сообщение';
+            q('.sales-last-reply').textContent = data.runtime.lastReplyAt ? `Последний ответ: ${new Date(data.runtime.lastReplyAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${data.runtime.lastLatencyMs ? ` · ${(data.runtime.lastLatencyMs / 1000).toFixed(1)} с` : ''}` : 'Ожидаем первое сообщение';
         }
 
         async function refresh() {

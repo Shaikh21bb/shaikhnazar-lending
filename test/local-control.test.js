@@ -34,7 +34,7 @@ test('stale connected badge cannot report ready or enqueue a demo on an offline 
         if (options.method) writes++;
         const rows = String(url).includes('/projects?') ? [{ knowledge: 'Approved facts' }] : [{
             state: 'connected', last_seen_at: new Date(Date.now() - 60000).toISOString(), config: {},
-            runtime: { mode: 'local', enabled: true, ollama: true, workflow: true, models: ['qwen3.5:9b-mlx'] }
+            runtime: { mode: 'local', enabled: true, ollama: true, models: ['qwen3.5:9b-mlx'] }
         }];
         return new Response(JSON.stringify(rows));
     };
@@ -48,8 +48,10 @@ test('stale connected badge cannot report ready or enqueue a demo on an offline 
 });
 
 test('runtime published to the UI contains only allowed status fields', () => {
-    const result = sanitizeRuntime({ enabled: true, models: ['qwen3:1.7b', 'unapproved'], secret: 'must-not-leak', messages: ['private'], qrImage: 'secret-qr' });
+    const result = sanitizeRuntime({ enabled: true, models: ['qwen3:1.7b', 'unapproved'], lastLatencyMs: 14200,
+        secret: 'must-not-leak', messages: ['private'], qrImage: 'secret-qr' });
     assert.deepEqual(result.models, ['qwen3:1.7b']);
+    assert.equal(result.lastLatencyMs, 14200);
     assert.equal(result.secret, undefined);
     assert.equal(result.messages, undefined);
     assert.equal(result.qrImage, undefined);
@@ -90,7 +92,7 @@ test('a paused agent can run an isolated bounded demo using its selected model',
         }
         return new Response(JSON.stringify(String(url).includes('/projects?') ? [{ knowledge: 'Approved facts' }] : [{
             state: 'connected', last_seen_at: new Date().toISOString(), config: { model: 'llama3.1:8b' },
-            runtime: { mode: 'local', enabled: false, ollama: true, workflow: true, models: ['llama3.1:8b'] }
+            runtime: { mode: 'local', enabled: false, ollama: true, models: ['llama3.1:8b'] }
         }]));
     };
     try {
@@ -104,7 +106,7 @@ test('a paused agent can run an isolated bounded demo using its selected model',
     } finally { globalThis.fetch = original; }
 });
 
-test('cloud selection needs its own key but not Ollama or n8n', async () => {
+test('cloud selection needs its own key but not local Ollama', async () => {
     const original = globalThis.fetch;
     globalThis.fetch = async url => {
         const path = String(url);
@@ -112,14 +114,14 @@ test('cloud selection needs its own key but not Ollama or n8n', async () => {
         if (path.includes('/agent_provider_keys?')) return new Response(JSON.stringify([{ agent_id: agent.id }]));
         return new Response(JSON.stringify([{ state: 'connected', last_seen_at: new Date().toISOString(),
             config: { provider: 'openrouter', cloudModel: 'openrouter/free' },
-            runtime: { mode: 'local', enabled: true, ollama: false, workflow: false } }]));
+            runtime: { mode: 'local', enabled: true, ollama: false } }]));
     };
     try {
         const status = await dashboardLocalStatus(agent);
         assert.equal(status.provider, 'openrouter');
         assert.equal(status.model, 'openrouter/free');
         assert.equal(status.checks.ollama, true);
-        assert.equal(status.checks.workflow, true);
+        assert.equal(status.checks.mac, true);
         assert.equal(status.ready, true);
         assert.equal(status.keyConfigured, true);
     } finally { globalThis.fetch = original; }

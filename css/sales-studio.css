@@ -77,3 +77,7 @@
 .sales-test-status { min-height:25px; font-size:9px; color:#80948a; line-height:1.6; margin-top:9px; }
 @media (max-width:800px) { .sales-studio-body{grid-template-columns:1fr}.sales-playground{border-left:0;border-top:1px solid #2a3036;min-height:430px}.sales-studio-header{padding:21px 19px 17px}.sales-health{padding:0 19px 18px;gap:13px}.sales-settings{padding:22px 19px}.sales-playground{padding:22px 19px}.sales-identity h3{font-size:20px}.sales-live-badge{font-size:9px;padding:6px 8px} }
 @media (max-width:420px) { .sales-studio-header{flex-wrap:wrap}.sales-live-badge{margin-left:68px}.sales-field-row{grid-template-columns:1fr}.sales-session-stats{flex-direction:column;gap:8px}.sales-controls{flex-wrap:wrap} }
+.other-agents { margin-top: 2rem; border-top: 1px solid rgba(255,255,255,.12); padding-top: 1.25rem; }
+.other-agents summary { cursor: pointer; color: #b5b3c9; font-weight: 600; }
+.other-agents p { color: #858397; font-size: .9rem; }
+.other-agents .agents-grid { margin-top: 1rem; }

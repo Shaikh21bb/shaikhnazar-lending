@@ -210,12 +210,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         allAgents = (data || []).sort((a, b) => Number(b.platform === 'whatsapp' && b.connected) - Number(a.platform === 'whatsapp' && a.connected));
         window.__agentsForProject = (projectId) => allAgents.filter(a => a.project_id === projectId).length;
-        if (allAgents.length === 0) {
-            grid.innerHTML = '<div class="agents-empty glass">Агентов пока нет. Нажмите «Добавить агента», чтобы подключить первого бота для Telegram.</div>';
-            return;
-        }
+        const otherGrid = document.getElementById('other-agents-grid');
+        const otherSection = document.getElementById('other-agents');
+        const primary = allAgents.find(agent => agent.platform === 'whatsapp' && agent.connected)
+            || allAgents.find(agent => agent.platform === 'whatsapp');
+        const others = allAgents.filter(agent => agent !== primary);
         grid.innerHTML = '';
-        allAgents.forEach(agent => grid.appendChild(buildAgentCard(agent)));
+        if (primary) grid.appendChild(buildAgentCard(primary));
+        else grid.innerHTML = '<div class="agents-empty glass">Создайте WhatsApp Sales Agent, чтобы настроить первый рабочий сценарий продаж.</div>';
+        if (otherGrid && otherSection) {
+            otherGrid.innerHTML = '';
+            others.forEach(agent => otherGrid.appendChild(buildAgentCard(agent)));
+            otherSection.hidden = others.length === 0;
+            document.getElementById('other-agents-count').textContent = `(${others.length})`;
+        }
     }
 
     function buildAgentCard(agent) {

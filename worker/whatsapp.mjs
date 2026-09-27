@@ -10,10 +10,9 @@ import { withChatPresence } from './conversation.mjs';
 const baseUrl = String(process.env.BRIDGE_BASE_URL || '').replace(/\/+$/, '');
 const secret = process.env.WHATSAPP_BRIDGE_SECRET || '';
 const sessionDir = resolve(process.env.WHATSAPP_SESSION_DIR || '.wa-session');
-const localAgent = process.env.LOCAL_AGENT_WEBHOOK_URL
+const localAgent = process.env.LOCAL_AGENT_ENABLED === 'true' || process.env.LOCAL_AGENT_WEBHOOK_URL
     ? new LocalSalesAgent({
         sessionDir,
-        webhookUrl: process.env.LOCAL_AGENT_WEBHOOK_URL,
         model: process.env.LOCAL_AGENT_MODEL || 'qwen3.5:9b-mlx',
         cloudGenerate: async ({ messages, testId }) => {
             const result = await bridge({ action: 'generate_cloud', agentId, messages, testId });
@@ -57,19 +56,19 @@ let reconnectTimer;
 let stopping = false;
 let reporting = false;
 const retryMessages = new Map();
-const runtime = { mode: 'local', received: 0, replies: 0, testing: false, ollama: false, workflow: false, models: [] };
+const runtime = { mode: 'local', received: 0, replies: 0, testing: false, ollama: false, models: [] };
 
 async function checkLocalServices() {
-    const [ollama, workflow] = await Promise.allSettled([
-        fetch('http://host.docker.internal:11434/api/tags', { signal: AbortSignal.timeout(4000) }).then(async r => {
-            if (!r.ok) throw new Error('Ollama unavailable');
-            return r.json();
-        }),
-        fetch('http://n8n:5678/healthz', { signal: AbortSignal.timeout(4000) }).then(r => r.ok)
-    ]);
-    runtime.ollama = ollama.status === 'fulfilled';
-    runtime.models = runtime.ollama ? (ollama.value.models || []).map(model => model.name) : [];
-    runtime.workflow = workflow.status === 'fulfilled' && workflow.value;
+    try {
+        const response = await fetch('http://host.docker.internal:11434/api/tags', { signal: AbortSignal.timeout(4000) });
+        if (!response.ok) throw new Error('Ollama unavailable');
+        const data = await response.json();
+        runtime.ollama = true;
+        runtime.models = (data.models || []).map(model => model.name);
+    } catch {
+        runtime.ollama = false;
+        runtime.models = [];
+    }
 }
 
 async function runLocalTest(job) {
@@ -202,7 +201,7 @@ async function connect() {
             lastError = null;
             await reportStatus();
             console.log(localAgent
-                ? 'WhatsApp connected. Local n8n replies require training, AI ON, and the local enable switch.'
+                ? 'WhatsApp connected. Local replies require training, AI ON, and the local enable switch.'
                 : 'WhatsApp connected. Customer replies also require the separate server-side delivery switch.');
         }
         if (update.connection === 'close') {
@@ -238,6 +237,7 @@ async function connect() {
             }
             runtime.received++;
             runtime.lastInboundAt = new Date().toISOString();
+            const startedAt = Date.now();
             try {
                 if (localAgent) {
                     if (!await localAgent.isEnabled()) {
@@ -269,6 +269,7 @@ async function connect() {
                     if (result.replied) {
                         runtime.replies++;
                         runtime.lastReplyAt = new Date().toISOString();
+                        runtime.lastLatencyMs = Date.now() - startedAt;
                         runtime.lastError = null;
                     }
                     console.log(`[Sales Agent] inbound result: ${runtime.lastResult}`);
@@ -285,6 +286,7 @@ async function connect() {
             } catch (error) {
                 runtime.lastResult = 'error';
                 runtime.lastError = String(error.message).slice(0, 300);
+                runtime.lastLatencyMs = Date.now() - startedAt;
                 console.error('Sales Agent could not process inbound message:', error.message);
                 void reportStatus();
             }

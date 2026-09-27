@@ -1,68 +1,14 @@
 services:
-  n8n-init:
-    build:
-      context: ./n8n
-    image: shaikhnazar-n8n-init:2.40.7
-    env_file:
-      - .env.n8n.local
-    entrypoint: ["/bin/sh", "-ec"]
-    command:
-      - |
-        if [ ! -f /home/node/.n8n/.shaikh-sales-workflow-v3-installed ]; then
-          if [ -f /home/node/.n8n/.shaikh-sales-workflow-v2-installed ]; then
-            n8n export:workflow --id=shaikhSalesLocalV1 --output=/home/node/.n8n/shaikh-sales-before-memory-v3.json
-          fi
-          n8n import:workflow --input=/app/workflow.json &&
-          n8n publish:workflow --id=shaikhSalesLocalV1 &&
-          touch /home/node/.n8n/.shaikh-sales-workflow-v3-installed
-        fi
-    volumes:
-      - n8n-data:/home/node/.n8n
-    restart: "no"
-
-  n8n:
-    image: n8nio/n8n:2.40.7
-    restart: unless-stopped
-    depends_on:
-      n8n-init:
-        condition: service_completed_successfully
-    env_file:
-      - .env.n8n.local
-    environment:
-      N8N_HOST: localhost
-      N8N_PORT: "5678"
-      N8N_PROTOCOL: http
-      N8N_EDITOR_BASE_URL: http://localhost:5678/
-      WEBHOOK_URL: http://localhost:5678/
-      N8N_SECURE_COOKIE: "false"
-      N8N_DIAGNOSTICS_ENABLED: "false"
-      N8N_SSRF_PROTECTION_ENABLED: "true"
-      N8N_SSRF_ALLOWED_HOSTNAMES: host.docker.internal
-      EXECUTIONS_DATA_SAVE_ON_SUCCESS: none
-      EXECUTIONS_DATA_SAVE_ON_ERROR: none
-    ports:
-      - "127.0.0.1:5678:5678"
-    volumes:
-      - n8n-data:/home/node/.n8n
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5678/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
-
   whatsapp-bridge:
     build:
       context: ./worker
     restart: unless-stopped
-    depends_on:
-      n8n:
-        condition: service_healthy
     init: true
     env_file:
       - .env.worker.local
     environment:
       WHATSAPP_SESSION_DIR: /app/session
-      LOCAL_AGENT_WEBHOOK_URL: http://n8n:5678/webhook/shaikh-sales-local
+      LOCAL_AGENT_ENABLED: "true"
       LOCAL_AGENT_MODEL: ${LOCAL_AGENT_MODEL:-qwen3.5:9b-mlx}
     volumes:
       - whatsapp-session:/app/session
@@ -76,4 +22,3 @@ services:
 
 volumes:
   whatsapp-session:
-  n8n-data:
