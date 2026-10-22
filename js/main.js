@@ -13,13 +13,9 @@ const UI_TRANSLATIONS = {
         'hero.lead': 'Сайты, AI-инструменты и внутренние платформы — от идеи и интерфейса до работающего релиза.',
         'hero.primary': 'Смотреть проекты',
         'hero.secondary': 'Обсудить задачу',
-        'hero.note': 'Живые продукты, демо и закрытые системы',
+        'hero.note': 'Только работающие продукты и платформы',
         'projects.title': 'Избранные проекты',
-        'projects.intro': 'То, что уже можно открыть, посмотреть или протестировать. Статус каждого проекта указан честно.',
-        'filters.all': 'Все',
-        'filters.live': 'Запущенные',
-        'filters.demo': 'Демо',
-        'filters.platform': 'Платформы',
+        'projects.intro': 'Реальные продукты с работающими интерфейсами. Откройте карточку, чтобы увидеть мою роль, ключевые функции и результат.',
         'capabilities.title': 'Что я создаю',
         'capabilities.intro': 'Не набор технологий ради технологий, а понятный цифровой инструмент под задачу бизнеса.',
         'capabilities.web.title': 'Сайты и продукты',
@@ -53,15 +49,18 @@ const UI_TRANSLATIONS = {
         'footer.top': 'Наверх ↑',
         'dialog.format': 'Формат',
         'dialog.focus': 'Фокус',
+        'dialog.contribution': 'Моя работа',
+        'dialog.result': 'Результат',
+        'dialog.features': 'Что внутри',
         'dialog.more': 'Подробнее',
         'dialog.open': 'Открыть проект',
         'dialog.login': 'Клиентский вход',
         'dialog.close': 'Закрыть',
         'status.live': 'Рабочая версия',
-        'status.demo': 'Демо',
+        'status.local': 'Рабочее приложение',
         'status.private': 'Закрытый пилот',
         'meta.title': 'SHAIKH — сайты, AI-системы и цифровые продукты',
-        'meta.description': 'Портфолио SHAIKH: работающие сайты, AI-инструменты, демо и внутренние платформы для бизнеса.',
+        'meta.description': 'Портфолио SHAIKH: работающие сайты, AI-инструменты и цифровые платформы для бизнеса и образования.',
         'menu.open': 'Открыть меню',
         'menu.close': 'Закрыть меню'
     },
@@ -79,13 +78,9 @@ const UI_TRANSLATIONS = {
         'hero.lead': 'Сайттар, AI-құралдар және ішкі платформалар — идея мен интерфейстен жұмыс істейтін релизге дейін.',
         'hero.primary': 'Жобаларды көру',
         'hero.secondary': 'Міндетті талқылау',
-        'hero.note': 'Жұмыс өнімдері, демолар және жабық жүйелер',
+        'hero.note': 'Тек жұмыс істейтін өнімдер мен платформалар',
         'projects.title': 'Таңдаулы жобалар',
-        'projects.intro': 'Қазірдің өзінде ашуға, көруге немесе сынауға болатын жобалар. Әр жобаның мәртебесі нақты көрсетілген.',
-        'filters.all': 'Барлығы',
-        'filters.live': 'Іске қосылған',
-        'filters.demo': 'Демо',
-        'filters.platform': 'Платформалар',
+        'projects.intro': 'Жұмыс істейтін интерфейстері бар нақты өнімдер. Менің рөлімді, негізгі функциялар мен нәтижені көру үшін карточканы ашыңыз.',
         'capabilities.title': 'Мен не жасаймын',
         'capabilities.intro': 'Технология үшін технология емес, бизнес міндетіне арналған түсінікті цифрлық құрал.',
         'capabilities.web.title': 'Сайттар мен өнімдер',
@@ -119,15 +114,18 @@ const UI_TRANSLATIONS = {
         'footer.top': 'Жоғары ↑',
         'dialog.format': 'Формат',
         'dialog.focus': 'Фокус',
+        'dialog.contribution': 'Менің жұмысым',
+        'dialog.result': 'Нәтиже',
+        'dialog.features': 'Ішінде не бар',
         'dialog.more': 'Толығырақ',
         'dialog.open': 'Жобаны ашу',
         'dialog.login': 'Клиенттік кіру',
         'dialog.close': 'Жабу',
         'status.live': 'Жұмыс нұсқасы',
-        'status.demo': 'Демо',
+        'status.local': 'Жұмыс істейтін қолданба',
         'status.private': 'Жабық пилот',
         'meta.title': 'SHAIKH — сайттар, AI-жүйелер және цифрлық өнімдер',
-        'meta.description': 'SHAIKH портфолиосы: жұмыс істейтін сайттар, AI-құралдар, демолар және бизнеске арналған ішкі платформалар.',
+        'meta.description': 'SHAIKH портфолиосы: бизнес пен білімге арналған жұмыс істейтін сайттар, AI-құралдар және цифрлық платформалар.',
         'menu.open': 'Мәзірді ашу',
         'menu.close': 'Мәзірді жабу'
     }
@@ -141,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileMenu = document.getElementById('mobile-menu');
     const siteHeader = document.getElementById('site-header');
     let currentLang = localStorage.getItem('shaikh-portfolio-lang') === 'kk' ? 'kk' : 'ru';
-    let currentFilter = 'all';
     let currentProjectId = null;
     let revealObserver;
 
@@ -151,44 +148,16 @@ document.addEventListener('DOMContentLoaded', () => {
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     })[char]);
 
-    function workspaceVisual() {
-        return `
-            <div class="workspace-card-visual" aria-hidden="true">
-                <div class="mock-rail"></div>
-                <div class="mock-panel">
-                    <span class="mock-title"></span>
-                    <div class="mock-metrics"><i></i><i></i><i></i></div>
-                    <span class="mock-graph"></span>
-                </div>
-            </div>`;
-    }
-
-    function projectCover(project) {
-        return `
-            <div class="project-cover cover-${escapeHtml(project.visualTheme || 'default')}" role="img" aria-label="${escapeHtml(localized(project.imageAlt))}">
-                <span class="cover-grid" aria-hidden="true"></span>
-                <div class="cover-copy">
-                    <small>${escapeHtml(localized(project.category))}</small>
-                    <strong>${escapeHtml(project.title)}</strong>
-                    <span>${escapeHtml(localized(project.coverLabel))}</span>
-                </div>
-                <div class="cover-window" aria-hidden="true">
-                    <i></i><i></i><i></i>
-                    <b></b><b></b><b></b>
-                </div>
-            </div>`;
-    }
-
     function visualFor(project) {
-        if (project.visual === 'workspace') return workspaceVisual();
-        if (project.visual === 'cover') return projectCover(project);
-        return `<img src="${escapeHtml(project.image)}" alt="${escapeHtml(localized(project.imageAlt))}" loading="lazy" decoding="async">`;
+        const source = project.imageMobile
+            ? `<source media="(max-width: 800px)" srcset="${escapeHtml(project.imageMobile)}">`
+            : '';
+        return `<picture>${source}<img src="${escapeHtml(project.image)}" alt="${escapeHtml(localized(project.imageAlt))}" loading="lazy" decoding="async"></picture>`;
     }
 
     function renderProjects() {
         if (!projectGrid) return;
-        const visibleProjects = projects.filter((project) => currentFilter === 'all' || project.filter === currentFilter);
-        projectGrid.innerHTML = visibleProjects.map((project) => `
+        projectGrid.innerHTML = projects.map((project) => `
             <article class="project-card reveal" data-project-id="${escapeHtml(project.id)}">
                 <div class="project-media">
                     ${visualFor(project)}
@@ -198,6 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="project-overline"><span>${escapeHtml(localized(project.category))}</span><span>${escapeHtml(project.year)}</span></div>
                     <h3>${escapeHtml(project.title)}</h3>
                     <p>${escapeHtml(localized(project.summary))}</p>
+                    <span class="project-result">${escapeHtml(localized(project.result))}</span>
                     <div class="tag-list project-tags">${project.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join('')}</div>
                     <button class="project-action" type="button" data-project-open="${escapeHtml(project.id)}">${escapeHtml(tr('dialog.more'))} ↗</button>
                 </div>
@@ -217,6 +187,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('dialog-summary').textContent = localized(project.summary);
         document.getElementById('dialog-format').textContent = localized(project.format);
         document.getElementById('dialog-focus').textContent = localized(project.focus);
+        document.getElementById('dialog-contribution').textContent = localized(project.contribution);
+        document.getElementById('dialog-result').textContent = localized(project.result);
+        const features = localized(project.features);
+        document.getElementById('dialog-features').innerHTML = Array.isArray(features)
+            ? features.map((feature) => `<li>${escapeHtml(feature)}</li>`).join('')
+            : '';
+        const availability = document.getElementById('dialog-availability');
+        availability.textContent = localized(project.availability);
+        availability.hidden = !project.availability;
         document.getElementById('dialog-tags').innerHTML = project.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join('');
         const actionLabel = project.status === 'private' ? tr('dialog.login') : tr('dialog.open');
         document.getElementById('dialog-actions').innerHTML = project.link
@@ -286,18 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click', () => applyLanguage(button.dataset.lang));
     });
 
-    document.querySelectorAll('[data-filter]').forEach((button) => {
-        button.addEventListener('click', () => {
-            currentFilter = button.dataset.filter;
-            document.querySelectorAll('[data-filter]').forEach((item) => {
-                const active = item === button;
-                item.classList.toggle('active', active);
-                item.setAttribute('aria-pressed', String(active));
-            });
-            renderProjects();
-        });
-    });
-
     menuButton.addEventListener('click', () => setMenu(!menuButton.classList.contains('active')));
     mobileMenu.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setMenu(false)));
     window.addEventListener('resize', () => {
@@ -320,7 +287,4 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
-    }
 });

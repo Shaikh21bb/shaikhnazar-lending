@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>SHAIKH — сайты, AI-системы и цифровые продукты</title>
-    <meta name="description" content="Портфолио SHAIKH: работающие сайты, AI-инструменты, демо и внутренние платформы для бизнеса.">
+    <meta name="description" content="Портфолио SHAIKH: работающие сайты, AI-инструменты и цифровые платформы для бизнеса и образования.">
     <link rel="canonical" href="https://shaikh.digital/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="SHAIKH">
@@ -17,7 +17,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/style.css">
-    <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="#080806">
     <link rel="icon" href="/icons/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -96,13 +95,13 @@
                 <div class="hero-showcase reveal" aria-label="Превью избранных проектов">
                     <div class="showcase-frame showcase-main">
                         <div class="frame-topbar"><span></span><span></span><span></span><b>urpaq.ai</b></div>
-                        <img src="./images/project1.jpg" alt="Интерфейс образовательной платформы Urpaq.ai" fetchpriority="high">
+                        <picture><source media="(max-width: 800px)" srcset="./images/portfolio/urpaq-mobile.jpg"><img src="./images/project1.jpg" alt="Интерфейс образовательной платформы Urpaq.ai" fetchpriority="high"></picture>
                     </div>
                     <div class="showcase-frame showcase-float">
-                        <div class="frame-topbar"><span></span><span></span><span></span><b>pyrascope</b></div>
-                        <img src="./images/project2.jpg" alt="Интерфейс аналитического демо Pyrascope">
+                        <div class="frame-topbar"><span></span><span></span><span></span><b>binom.ai</b></div>
+                        <picture><source media="(max-width: 800px)" srcset="./images/portfolio/binom-ai-mobile.jpg"><img src="./images/portfolio/binom-ai.jpg" alt="Интерфейс рабочей платформы BINOM AI"></picture>
                     </div>
-                    <div class="showcase-note"><span class="note-index">01—03</span><span data-i18n="hero.note">Живые продукты, демо и закрытые системы</span></div>
+                    <div class="showcase-note"><span class="note-index">01—06</span><span data-i18n="hero.note">Только работающие продукты и платформы</span></div>
                 </div>
             </div>
             <div class="container hero-strip" aria-label="Ключевые направления">
@@ -114,13 +113,7 @@
             <div class="container">
                 <div class="section-heading reveal">
                     <div><p class="section-kicker">01 / PORTFOLIO</p><h2 data-i18n="projects.title">Избранные проекты</h2></div>
-                    <p data-i18n="projects.intro">То, что уже можно открыть, посмотреть или протестировать. Статус каждого проекта указан честно.</p>
-                </div>
-                <div class="project-filters reveal" role="group" aria-label="Фильтр проектов">
-                    <button type="button" class="filter-button active" data-filter="all" aria-pressed="true" data-i18n="filters.all">Все</button>
-                    <button type="button" class="filter-button" data-filter="live" aria-pressed="false" data-i18n="filters.live">Запущенные</button>
-                    <button type="button" class="filter-button" data-filter="demo" aria-pressed="false" data-i18n="filters.demo">Демо</button>
-                    <button type="button" class="filter-button" data-filter="platform" aria-pressed="false" data-i18n="filters.platform">Платформы</button>
+                    <p data-i18n="projects.intro">Реальные продукты с работающими интерфейсами. Откройте карточку, чтобы увидеть мою роль, ключевые функции и результат.</p>
                 </div>
                 <div class="project-grid" id="project-grid" aria-live="polite"></div>
                 <noscript><p class="noscript-note">Для просмотра интерактивного портфолио включите JavaScript.</p></noscript>
@@ -205,7 +198,14 @@
             <div class="dialog-content">
                 <div class="dialog-meta"><span id="dialog-status"></span><span id="dialog-year"></span></div>
                 <h2 id="dialog-title"></h2><p id="dialog-summary"></p>
-                <dl class="dialog-details"><div><dt data-i18n="dialog.format">Формат</dt><dd id="dialog-format"></dd></div><div><dt data-i18n="dialog.focus">Фокус</dt><dd id="dialog-focus"></dd></div></dl>
+                <dl class="dialog-details">
+                    <div><dt data-i18n="dialog.format">Формат</dt><dd id="dialog-format"></dd></div>
+                    <div><dt data-i18n="dialog.focus">Фокус</dt><dd id="dialog-focus"></dd></div>
+                    <div><dt data-i18n="dialog.contribution">Моя работа</dt><dd id="dialog-contribution"></dd></div>
+                    <div><dt data-i18n="dialog.result">Результат</dt><dd id="dialog-result"></dd></div>
+                </dl>
+                <div class="dialog-feature-block"><h3 data-i18n="dialog.features">Что внутри</h3><ul id="dialog-features"></ul></div>
+                <p class="dialog-availability" id="dialog-availability" hidden></p>
                 <div class="tag-list dialog-tags" id="dialog-tags"></div><div class="dialog-actions" id="dialog-actions"></div>
             </div>
         </div>

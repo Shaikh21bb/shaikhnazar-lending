@@ -1,7 +1,6 @@
 /*
- * Portfolio content lives here so a new project can be added without editing
- * the page layout. Copy one object, give it a unique id, and fill both ru/kk.
- * Use status: live, demo, or private. Never publish unverified results.
+ * Only finished, working products belong in this portfolio.
+ * Keep claims specific and never add a public link until its user path works.
  */
 window.PORTFOLIO_PROJECTS = [
     {
@@ -9,25 +8,37 @@ window.PORTFOLIO_PROJECTS = [
         title: 'Urpaq.ai',
         year: '2026',
         status: 'live',
-        filter: 'live',
         category: {
-            ru: 'EdTech · Web product',
-            kk: 'EdTech · Веб-өнім'
+            ru: 'EdTech · AI-платформа',
+            kk: 'EdTech · AI-платформа'
         },
         summary: {
-            ru: 'Образовательная платформа с AI-инструментами для подготовки учебных материалов и работы с уроками.',
-            kk: 'Оқу материалдарын дайындауға және сабақтармен жұмыс істеуге арналған AI-құралдары бар білім беру платформасы.'
+            ru: 'Платформа для учителей и учеников: уроки, задания, тесты, отчёты и игровые сценарии в одном продукте.',
+            kk: 'Мұғалімдер мен оқушыларға арналған платформа: сабақтар, тапсырмалар, тесттер, есептер және ойын сценарийлері бір өнімде.'
         },
         format: {
-            ru: 'Рабочая веб-версия',
-            kk: 'Жұмыс істейтін веб-нұсқа'
+            ru: 'Публичный веб-продукт',
+            kk: 'Ашық веб-өнім'
         },
         focus: {
-            ru: 'Продукт, интерфейс, AI-сценарии',
-            kk: 'Өнім, интерфейс, AI-сценарийлер'
+            ru: 'Учебный процесс и AI-инструменты',
+            kk: 'Оқу процесі және AI-құралдар'
         },
-        tags: ['EdTech', 'Product design', 'AI', 'Web'],
+        contribution: {
+            ru: 'Продуктовая структура, UX/UI, frontend и развитие платформы',
+            kk: 'Өнім құрылымы, UX/UI, frontend және платформаны дамыту'
+        },
+        result: {
+            ru: 'Рабочая версия доступна онлайн',
+            kk: 'Жұмыс нұсқасы онлайн қолжетімді'
+        },
+        features: {
+            ru: ['Кабинеты учителя и ученика', 'Уроки, задания и тесты', 'Отчёты и игровые механики'],
+            kk: ['Мұғалім және оқушы кабинеттері', 'Сабақтар, тапсырмалар және тесттер', 'Есептер және ойын механикалары']
+        },
+        tags: ['EdTech', 'AI', 'Web app', 'RU / KZ'],
         image: './images/project1.jpg',
+        imageMobile: './images/portfolio/urpaq-mobile.jpg',
         imageAlt: {
             ru: 'Главный экран образовательной платформы Urpaq.ai',
             kk: 'Urpaq.ai білім беру платформасының басты беті'
@@ -40,33 +51,40 @@ window.PORTFOLIO_PROJECTS = [
         title: 'BINOM AI',
         year: '2026',
         status: 'live',
-        filter: 'live',
         category: {
-            ru: 'Procurement · AI platform',
-            kk: 'Сатып алу · AI-платформа'
+            ru: 'B2B · Закупки',
+            kk: 'B2B · Сатып алу'
         },
         summary: {
-            ru: 'Веб-платформа для подготовки тендерных документов и работы с закупочными материалами. Публичная версия и backend доступны.',
-            kk: 'Тендерлік құжаттарды дайындауға және сатып алу материалдарымен жұмыс істеуге арналған веб-платформа. Ашық нұсқасы мен backend қолжетімді.'
+            ru: 'Рабочее пространство для разбора тендерной документации, подготовки заявок и экспорта документов.',
+            kk: 'Тендерлік құжаттаманы талдауға, өтінімдерді дайындауға және құжаттарды экспорттауға арналған жұмыс кеңістігі.'
         },
         format: {
-            ru: 'Рабочая веб-версия',
-            kk: 'Жұмыс істейтін веб-нұсқа'
+            ru: 'Публичная B2B-платформа',
+            kk: 'Ашық B2B-платформа'
         },
         focus: {
-            ru: 'Документы, workflow, AI-инструменты',
-            kk: 'Құжаттар, workflow, AI-құралдар'
+            ru: 'Документы, закупки и AI-workflow',
+            kk: 'Құжаттар, сатып алу және AI-workflow'
         },
-        tags: ['B2B', 'Procurement', 'AI', 'Web app'],
-        visual: 'cover',
-        visualTheme: 'binom',
-        coverLabel: {
-            ru: 'Тендерные документы и рабочие процессы',
-            kk: 'Тендерлік құжаттар және жұмыс процестері'
+        contribution: {
+            ru: 'Архитектура продукта, интерфейс и рабочие сценарии',
+            kk: 'Өнім архитектурасы, интерфейс және жұмыс сценарийлері'
         },
+        result: {
+            ru: 'Frontend и backend запущены',
+            kk: 'Frontend және backend іске қосылған'
+        },
+        features: {
+            ru: ['Разбор PDF и DOCX', 'Проверка требований и рисков', 'Подготовка и экспорт документов'],
+            kk: ['PDF және DOCX талдауы', 'Талаптар мен тәуекелдерді тексеру', 'Құжаттарды дайындау және экспорттау']
+        },
+        tags: ['B2B', 'Procurement', 'AI', 'Documents'],
+        image: './images/portfolio/binom-ai.jpg',
+        imageMobile: './images/portfolio/binom-ai-mobile.jpg',
         imageAlt: {
-            ru: 'Стилизованная обложка проекта BINOM AI',
-            kk: 'BINOM AI жобасының стильденген мұқабасы'
+            ru: 'Главная страница платформы BINOM AI',
+            kk: 'BINOM AI платформасының басты беті'
         },
         link: 'https://binom-ai-vprod.vercel.app/',
         external: true
@@ -76,102 +94,130 @@ window.PORTFOLIO_PROJECTS = [
         title: 'FOREST ID',
         year: '2026',
         status: 'live',
-        filter: 'live',
         category: {
-            ru: 'EcoTech · Digital registry',
+            ru: 'EcoTech · Цифровой реестр',
             kk: 'EcoTech · Цифрлық тізілім'
         },
         summary: {
-            ru: 'Казахоязычный каталог цифровых паспортов деревьев с QR-сценариями и формой для полевых исследований.',
-            kk: 'Ағаштардың цифрлық паспорттары, QR-сценарийлері және далалық зерттеу формасы бар қазақша каталог.'
+            ru: 'Казахоязычный каталог цифровых паспортов деревьев: полевые заявки, проверка данных, фотографии и QR-коды.',
+            kk: 'Ағаштардың цифрлық паспорттарының қазақша каталогы: далалық өтінімдер, деректерді тексеру, фотосуреттер және QR-кодтар.'
         },
         format: {
-            ru: 'Рабочий веб-каталог',
-            kk: 'Жұмыс істейтін веб-каталог'
+            ru: 'Публичный каталог и форма исследования',
+            kk: 'Ашық каталог және зерттеу формасы'
         },
         focus: {
-            ru: 'Каталог, QR, сбор данных',
-            kk: 'Каталог, QR, деректер жинау'
+            ru: 'Сбор, проверка и публикация данных',
+            kk: 'Деректерді жинау, тексеру және жариялау'
+        },
+        contribution: {
+            ru: 'Пользовательский путь, каталог, QR и автоматизация публикации',
+            kk: 'Пайдаланушы жолы, каталог, QR және жариялауды автоматтандыру'
+        },
+        result: {
+            ru: 'Каталог и production API работают',
+            kk: 'Каталог және production API жұмыс істейді'
+        },
+        features: {
+            ru: ['Полевые заявки с фото', 'Модерация преподавателем', 'Публичные паспорта и QR-коды'],
+            kk: ['Фотосуреті бар далалық өтінімдер', 'Оқытушы модерациясы', 'Ашық паспорттар және QR-кодтар']
         },
         tags: ['EcoTech', 'QR', 'Catalog', 'Kazakh'],
-        visual: 'cover',
-        visualTheme: 'forest',
-        coverLabel: {
-            ru: 'Цифровые паспорта городских деревьев',
-            kk: 'Қала ағаштарының цифрлық паспорттары'
-        },
+        image: './images/portfolio/forest-id.jpg',
+        imageMobile: './images/portfolio/forest-id-mobile.jpg',
         imageAlt: {
-            ru: 'Стилизованная обложка проекта FOREST ID',
-            kk: 'FOREST ID жобасының стильденген мұқабасы'
+            ru: 'Главная страница цифрового каталога FOREST ID',
+            kk: 'FOREST ID цифрлық каталогының басты беті'
         },
         link: 'https://shaikh21bb.github.io/forest-id/',
         external: true
     },
     {
-        id: 'pyrascope',
-        title: 'Pyrascope',
+        id: 'flame-task',
+        title: 'Flame Task',
         year: '2026',
-        status: 'demo',
-        filter: 'demo',
+        status: 'local',
         category: {
-            ru: 'Analytics · UI concept',
-            kk: 'Analytics · UI тұжырымдамасы'
+            ru: 'Productivity · Local-first',
+            kk: 'Productivity · Local-first'
         },
         summary: {
-            ru: 'Демо интерфейса для мониторинга финансовых рисков и связанных Telegram-каналов. Данные на экране демонстрационные.',
-            kk: 'Қаржылық тәуекелдер мен байланысты Telegram-арналарды бақылауға арналған интерфейс демосы. Экрандағы деректер демонстрациялық.'
+            ru: 'Локальная система управления проектами, задачами и целями на Java/Spring Boot с ролями и защищённым доступом.',
+            kk: 'Java/Spring Boot негізіндегі рөлдері және қорғалған қолжетімділігі бар жобалар, тапсырмалар мен мақсаттарды басқарудың жергілікті жүйесі.'
         },
         format: {
-            ru: 'Концепт интерфейса',
-            kk: 'Интерфейс тұжырымдамасы'
+            ru: 'Рабочее локальное приложение',
+            kk: 'Жұмыс істейтін жергілікті қолданба'
         },
         focus: {
-            ru: 'Dashboard, визуализация, UX',
-            kk: 'Dashboard, визуализация, UX'
+            ru: 'Проекты, задачи и карта целей',
+            kk: 'Жобалар, тапсырмалар және мақсаттар картасы'
         },
-        tags: ['Dashboard', 'Analytics', 'Research', 'UI'],
-        image: './images/project2.jpg',
+        contribution: {
+            ru: 'Full-stack разработка, безопасность, UX и тесты',
+            kk: 'Full-stack әзірлеу, қауіпсіздік, UX және тесттер'
+        },
+        result: {
+            ru: 'MVP реализован и проверен локально',
+            kk: 'MVP жергілікті түрде жасалып, тексерілді'
+        },
+        features: {
+            ru: ['Регистрация и роли пользователей', 'CRUD проектов и задач', 'Дедлайны, фильтры и карта целей'],
+            kk: ['Тіркелу және пайдаланушы рөлдері', 'Жобалар мен тапсырмалардың CRUD жүйесі', 'Мерзімдер, сүзгілер және мақсаттар картасы']
+        },
+        tags: ['Java 21', 'Spring Boot', 'PostgreSQL', 'Local-first'],
+        image: './images/portfolio/flame-task.jpg',
+        imageMobile: './images/portfolio/flame-task-mobile.jpg',
         imageAlt: {
-            ru: 'Демо панели мониторинга Pyrascope',
-            kk: 'Pyrascope мониторинг панелінің демосы'
+            ru: 'Рабочий экран управления проектами Flame Task',
+            kk: 'Flame Task жобаларын басқару жұмыс экраны'
         },
-        link: 'https://shaikh21bb.github.io/pyrascope/',
-        external: true
+        availability: {
+            ru: 'Проект работает локально; публичный доступ пока не открыт.',
+            kk: 'Жоба жергілікті түрде жұмыс істейді; ашық қолжетімділік әзірге жоқ.'
+        }
     },
     {
-        id: 'jadyra',
-        title: 'Jadyra',
+        id: 'shyraq-academy',
+        title: 'Shyraq Academy',
         year: '2026',
-        status: 'demo',
-        filter: 'demo',
+        status: 'live',
         category: {
-            ru: 'Beauty · Commercial landing',
-            kk: 'Beauty · Коммерциялық лендинг'
+            ru: 'EdTech · Внутренняя академия',
+            kk: 'EdTech · Ішкі академия'
         },
         summary: {
-            ru: 'Адаптивный лендинг салона с услугами, адресом и быстрым переходом в WhatsApp. Внутренняя форма записи работает как демо.',
-            kk: 'Қызметтер, мекенжай және WhatsApp-қа жылдам өтуі бар салонның бейімделгіш лендингі. Ішкі жазылу формасы демо ретінде жұмыс істейді.'
+            ru: 'Обучающая платформа команды: видеокурсы, этапы продаж, база возражений, материалы и итоговое тестирование.',
+            kk: 'Команданың оқу платформасы: бейнекурстар, сату кезеңдері, қарсылықтар базасы, материалдар және қорытынды тест.'
         },
         format: {
-            ru: 'Публичное демо',
-            kk: 'Ашық демо'
+            ru: 'Публичная обучающая платформа',
+            kk: 'Ашық оқу платформасы'
         },
         focus: {
-            ru: 'Лендинг, мобильный UX, лиды',
-            kk: 'Лендинг, мобильді UX, өтінімдер'
+            ru: 'Онбординг и обучение команды',
+            kk: 'Команданы бейімдеу және оқыту'
         },
-        tags: ['Landing', 'Small business', 'Mobile', 'WhatsApp'],
-        visual: 'cover',
-        visualTheme: 'jadyra',
-        coverLabel: {
-            ru: 'Сайт услуг с быстрым выходом на связь',
-            kk: 'Жылдам байланысы бар қызметтер сайты'
+        contribution: {
+            ru: 'Структура обучения, интерфейс и интерактивные модули',
+            kk: 'Оқу құрылымы, интерфейс және интерактивті модульдер'
         },
+        result: {
+            ru: 'Курсы и материалы доступны онлайн',
+            kk: 'Курстар мен материалдар онлайн қолжетімді'
+        },
+        features: {
+            ru: ['Видеоуроки и прогресс', 'Воронка продаж и база ответов', 'Материалы и тест из 10 вопросов'],
+            kk: ['Бейнесабақтар және прогресс', 'Сату воронкасы және жауаптар базасы', 'Материалдар және 10 сұрақтық тест']
+        },
+        tags: ['Learning', 'Sales', 'Knowledge base', 'Kazakh'],
+        image: './images/portfolio/shyraq-academy.jpg',
+        imageMobile: './images/portfolio/shyraq-academy-mobile.jpg',
         imageAlt: {
-            ru: 'Стилизованная обложка лендинга Jadyra',
-            kk: 'Jadyra лендингінің стильденген мұқабасы'
+            ru: 'Главная страница обучающей платформы Shyraq Academy',
+            kk: 'Shyraq Academy оқу платформасының басты беті'
         },
-        link: 'https://jadyra-salon.vercel.app/',
+        link: 'https://shyraqacademi.vercel.app/',
         external: true
     },
     {
@@ -179,66 +225,42 @@ window.PORTFOLIO_PROJECTS = [
         title: 'Enactus Sherkhan',
         year: '2026',
         status: 'live',
-        filter: 'live',
         category: {
-            ru: 'Community · Bilingual website',
-            kk: 'Қауымдастық · Екі тілді сайт'
+            ru: 'Community · RU/KZ сайт',
+            kk: 'Community · RU/KZ сайт'
         },
         summary: {
-            ru: 'Двуязычный сайт студенческой команды с проектами, участниками, формой вступления и быстрым контактом через WhatsApp.',
-            kk: 'Жобалар, команда мүшелері, қосылу формасы және WhatsApp арқылы жылдам байланысы бар студенттік команданың екі тілді сайты.'
+            ru: 'Двуязычный сайт студенческой команды: проекты, участники, форма вступления и быстрый контакт через WhatsApp.',
+            kk: 'Студенттік команданың екі тілді сайты: жобалар, қатысушылар, қосылу формасы және WhatsApp арқылы жылдам байланыс.'
         },
         format: {
-            ru: 'Рабочий публичный сайт',
-            kk: 'Жұмыс істейтін ашық сайт'
+            ru: 'Публичный сайт сообщества',
+            kk: 'Қауымдастықтың ашық сайты'
         },
         focus: {
-            ru: 'RU/KZ, структура, вовлечение',
-            kk: 'RU/KZ, құрылым, қатысу'
+            ru: 'История команды и набор участников',
+            kk: 'Команда тарихы және қатысушыларды қабылдау'
         },
-        tags: ['Community', 'RU/KZ', 'Responsive', 'WhatsApp'],
-        visual: 'cover',
-        visualTheme: 'sherkhan',
-        coverLabel: {
-            ru: 'Проекты, команда и набор участников',
-            kk: 'Жобалар, команда және қатысушыларды қабылдау'
+        contribution: {
+            ru: 'Структура, визуальный стиль, адаптив и RU/KZ',
+            kk: 'Құрылым, визуалды стиль, бейімделу және RU/KZ'
         },
+        result: {
+            ru: 'Сайт опубликован и доступен онлайн',
+            kk: 'Сайт жарияланған және онлайн қолжетімді'
+        },
+        features: {
+            ru: ['Два языка интерфейса', 'Проекты и состав команды', 'Форма вступления и WhatsApp'],
+            kk: ['Интерфейстің екі тілі', 'Жобалар және команда құрамы', 'Қосылу формасы және WhatsApp']
+        },
+        tags: ['Community', 'RU / KZ', 'Responsive', 'WhatsApp'],
+        image: './images/portfolio/enactus-sherkhan.jpg',
+        imageMobile: './images/portfolio/enactus-sherkhan-mobile.jpg',
         imageAlt: {
-            ru: 'Стилизованная обложка сайта Enactus Sherkhan',
-            kk: 'Enactus Sherkhan сайтының стильденген мұқабасы'
+            ru: 'Главная страница сайта Enactus Sherkhan',
+            kk: 'Enactus Sherkhan сайтының басты беті'
         },
         link: 'https://enactus-sherkhan.vercel.app/',
         external: true
-    },
-    {
-        id: 'shaikh-workspace',
-        title: 'SHAIKH Workspace',
-        year: '2026',
-        status: 'private',
-        filter: 'platform',
-        category: {
-            ru: 'Sales operations · Platform',
-            kk: 'Sales operations · Платформа'
-        },
-        summary: {
-            ru: 'Закрытая рабочая платформа для анализа заявок, настройки AI-сценариев, задач и статистики. Доступ выдаётся по приглашению.',
-            kk: 'Өтінімдерді талдауға, AI-сценарийлерді, тапсырмалар мен статистиканы баптауға арналған жабық жұмыс платформасы. Қолжетімділік шақыру арқылы беріледі.'
-        },
-        format: {
-            ru: 'Закрытый пилот',
-            kk: 'Жабық пилот'
-        },
-        focus: {
-            ru: 'Панель управления и автоматизация',
-            kk: 'Басқару панелі және автоматтандыру'
-        },
-        tags: ['CRM', 'AI tools', 'Tasks', 'Dashboard'],
-        visual: 'workspace',
-        imageAlt: {
-            ru: 'Схематичное превью закрытой платформы SHAIKH Workspace',
-            kk: 'SHAIKH Workspace жабық платформасының сызбалық көрінісі'
-        },
-        link: './login.html',
-        external: false
     }
 ];

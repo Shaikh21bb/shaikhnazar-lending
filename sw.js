@@ -1,7 +1,5 @@
-const VERSION = 'shaikh-sys-v8-portfolio';
+const VERSION = 'shaikh-sys-v9-dashboard-only';
 const CORE = [
-    '/',
-    '/index.html',
     '/login.html',
     '/dashboard.html',
     '/admin.html',
@@ -11,9 +9,6 @@ const CORE = [
     '/icons/apple-touch-icon.png',
     '/css/app.css',
     '/css/sales-studio.css',
-    '/css/style.css',
-    '/js/portfolio-data.js',
-    '/js/main.js',
     '/js/lang.js',
     '/js/supabase.js',
     '/js/shyraq.js',
@@ -49,6 +44,15 @@ self.addEventListener('fetch', (e) => {
     const url = new URL(e.request.url);
     if (e.request.method !== 'GET' || url.origin !== location.origin) return;
     if (url.pathname.startsWith('/api/')) return;
+
+    const portfolioAsset = url.pathname === '/' ||
+        url.pathname === '/index.html' ||
+        url.pathname === '/css/style.css' ||
+        url.pathname === '/js/main.js' ||
+        url.pathname === '/js/portfolio-data.js' ||
+        url.pathname === '/images/project1.jpg' ||
+        url.pathname.startsWith('/images/portfolio/');
+    if (portfolioAsset) return;
 
     if (e.request.mode === 'navigate') {
         e.respondWith(
