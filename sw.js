@@ -1,4 +1,4 @@
-const VERSION = 'shaikh-sys-v6-client-memory';
+const VERSION = 'shaikh-sys-v8-portfolio';
 const CORE = [
     '/',
     '/index.html',
@@ -12,6 +12,7 @@ const CORE = [
     '/css/app.css',
     '/css/sales-studio.css',
     '/css/style.css',
+    '/js/portfolio-data.js',
     '/js/main.js',
     '/js/lang.js',
     '/js/supabase.js',

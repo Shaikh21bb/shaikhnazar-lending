@@ -1,364 +1,326 @@
-/* =============================================
-   main.js — shaikh_lending
-   All interactive logic for the landing page
-============================================= */
+const UI_TRANSLATIONS = {
+    ru: {
+        'a11y.skip': 'Перейти к содержанию',
+        'nav.projects': 'Проекты',
+        'nav.capabilities': 'Направления',
+        'nav.approach': 'Подход',
+        'nav.contact': 'Контакты',
+        'nav.clients': 'Клиентам',
+        'nav.clientPlatform': 'Клиентская платформа',
+        'hero.eyebrow': 'Открыт к новым проектам · Казахстан',
+        'hero.title1': 'Создаю цифровые',
+        'hero.title2': 'продукты, которые работают.',
+        'hero.lead': 'Сайты, AI-инструменты и внутренние платформы — от идеи и интерфейса до работающего релиза.',
+        'hero.primary': 'Смотреть проекты',
+        'hero.secondary': 'Обсудить задачу',
+        'hero.note': 'Живые продукты, демо и закрытые системы',
+        'projects.title': 'Избранные проекты',
+        'projects.intro': 'То, что уже можно открыть, посмотреть или протестировать. Статус каждого проекта указан честно.',
+        'filters.all': 'Все',
+        'filters.live': 'Запущенные',
+        'filters.demo': 'Демо',
+        'filters.platform': 'Платформы',
+        'capabilities.title': 'Что я создаю',
+        'capabilities.intro': 'Не набор технологий ради технологий, а понятный цифровой инструмент под задачу бизнеса.',
+        'capabilities.web.title': 'Сайты и продукты',
+        'capabilities.web.text': 'Лендинги, продуктовые страницы и интерфейсы, которые ясно объясняют ценность и ведут к действию.',
+        'capabilities.ai.title': 'AI и автоматизация',
+        'capabilities.ai.text': 'Ассистенты, анализ данных и сценарии обработки заявок с проверяемой логикой и передачей человеку.',
+        'capabilities.platform.title': 'Рабочие платформы',
+        'capabilities.platform.text': 'Закрытые кабинеты, CRM-сценарии, аналитика, задачи и инструменты для ежедневной работы команды.',
+        'platform.title': 'Портфолио снаружи. Рабочая платформа внутри.',
+        'platform.text': 'Клиенты получают отдельный вход в закрытое пространство: проекты, AI-инструменты, заявки, задачи и статистика остаются частью одной системы.',
+        'platform.point1': 'Закрытый доступ по приглашению',
+        'platform.point2': 'Единое рабочее пространство',
+        'platform.point3': 'Интерфейс на русском и казахском',
+        'platform.cta': 'Войти в платформу',
+        'platform.disclaimer': 'Доступ выдаётся подключённым клиентам. Открытой регистрации нет.',
+        'platform.previewTitle': 'Обзор проекта',
+        'approach.title': 'От задачи до работающего релиза',
+        'approach.intro': 'Сначала определяем, что должно измениться для пользователя или бизнеса. Затем собираем, проверяем и запускаем.',
+        'approach.step1.title': 'Разобраться',
+        'approach.step1.text': 'Цель, аудитория, ограничения и критерий готовности.',
+        'approach.step2.title': 'Спроектировать',
+        'approach.step2.text': 'Структура, сценарий и быстрый прототип до большой разработки.',
+        'approach.step3.title': 'Собрать',
+        'approach.step3.text': 'Интерфейс, логика, интеграции и адаптация под устройства.',
+        'approach.step4.title': 'Проверить и запустить',
+        'approach.step4.text': 'Тесты, реальный пользовательский путь и понятная передача результата.',
+        'contact.title': 'Есть задача? Давайте превратим её в работающий продукт.',
+        'contact.text': 'Напишите, чем занимается ваш бизнес, что хотите улучшить и какой результат считаете успешным.',
+        'contact.note': 'Отвечу лично и сначала уточню задачу.',
+        'footer.tagline': 'Digital products & AI systems',
+        'footer.top': 'Наверх ↑',
+        'dialog.format': 'Формат',
+        'dialog.focus': 'Фокус',
+        'dialog.more': 'Подробнее',
+        'dialog.open': 'Открыть проект',
+        'dialog.login': 'Клиентский вход',
+        'dialog.close': 'Закрыть',
+        'status.live': 'Рабочая версия',
+        'status.demo': 'Демо',
+        'status.private': 'Закрытый пилот',
+        'meta.title': 'SHAIKH — сайты, AI-системы и цифровые продукты',
+        'meta.description': 'Портфолио SHAIKH: работающие сайты, AI-инструменты, демо и внутренние платформы для бизнеса.',
+        'menu.open': 'Открыть меню',
+        'menu.close': 'Закрыть меню'
+    },
+    kk: {
+        'a11y.skip': 'Негізгі мазмұнға өту',
+        'nav.projects': 'Жобалар',
+        'nav.capabilities': 'Бағыттар',
+        'nav.approach': 'Жұмыс тәсілі',
+        'nav.contact': 'Байланыс',
+        'nav.clients': 'Клиенттерге',
+        'nav.clientPlatform': 'Клиент платформасы',
+        'hero.eyebrow': 'Жаңа жобаларға ашық · Қазақстан',
+        'hero.title1': 'Жұмыс істейтін',
+        'hero.title2': 'цифрлық өнімдер жасаймын.',
+        'hero.lead': 'Сайттар, AI-құралдар және ішкі платформалар — идея мен интерфейстен жұмыс істейтін релизге дейін.',
+        'hero.primary': 'Жобаларды көру',
+        'hero.secondary': 'Міндетті талқылау',
+        'hero.note': 'Жұмыс өнімдері, демолар және жабық жүйелер',
+        'projects.title': 'Таңдаулы жобалар',
+        'projects.intro': 'Қазірдің өзінде ашуға, көруге немесе сынауға болатын жобалар. Әр жобаның мәртебесі нақты көрсетілген.',
+        'filters.all': 'Барлығы',
+        'filters.live': 'Іске қосылған',
+        'filters.demo': 'Демо',
+        'filters.platform': 'Платформалар',
+        'capabilities.title': 'Мен не жасаймын',
+        'capabilities.intro': 'Технология үшін технология емес, бизнес міндетіне арналған түсінікті цифрлық құрал.',
+        'capabilities.web.title': 'Сайттар мен өнімдер',
+        'capabilities.web.text': 'Құндылықты анық түсіндіретін және әрекетке жетелейтін лендингтер, өнім беттері мен интерфейстер.',
+        'capabilities.ai.title': 'AI және автоматтандыру',
+        'capabilities.ai.text': 'Тексерілетін логикасы және адамға беру мүмкіндігі бар ассистенттер, деректерді талдау және өтінім сценарийлері.',
+        'capabilities.platform.title': 'Жұмыс платформалары',
+        'capabilities.platform.text': 'Жабық кабинеттер, CRM-сценарийлер, аналитика, тапсырмалар және команданың күнделікті жұмысына арналған құралдар.',
+        'platform.title': 'Сыртында портфолио. Ішінде жұмыс платформасы.',
+        'platform.text': 'Клиенттер жабық кеңістікке бөлек кіреді: жобалар, AI-құралдар, өтінімдер, тапсырмалар және статистика бір жүйеде қалады.',
+        'platform.point1': 'Шақыру арқылы жабық қолжетімділік',
+        'platform.point2': 'Бірыңғай жұмыс кеңістігі',
+        'platform.point3': 'Орыс және қазақ тілдеріндегі интерфейс',
+        'platform.cta': 'Платформаға кіру',
+        'platform.disclaimer': 'Қолжетімділік қосылған клиенттерге беріледі. Ашық тіркелу жоқ.',
+        'platform.previewTitle': 'Жоба шолуы',
+        'approach.title': 'Міндеттен жұмыс істейтін релизге дейін',
+        'approach.intro': 'Алдымен пайдаланушы немесе бизнес үшін не өзгеруі керегін анықтаймыз. Содан кейін жинап, тексеріп, іске қосамыз.',
+        'approach.step1.title': 'Түсіну',
+        'approach.step1.text': 'Мақсат, аудитория, шектеулер және дайындық өлшемі.',
+        'approach.step2.title': 'Жобалау',
+        'approach.step2.text': 'Құрылым, сценарий және үлкен әзірлеуге дейінгі жылдам прототип.',
+        'approach.step3.title': 'Жинау',
+        'approach.step3.text': 'Интерфейс, логика, интеграциялар және құрылғыларға бейімдеу.',
+        'approach.step4.title': 'Тексеру және іске қосу',
+        'approach.step4.text': 'Тесттер, нақты пайдаланушы жолы және нәтижені түсінікті тапсыру.',
+        'contact.title': 'Бизнес міндетіңіз бар ма? Оны жұмыс істейтін өнімге айналдырайық.',
+        'contact.text': 'Бизнесіңіз немен айналысатынын, нені жақсартқыңыз келетінін және қандай нәтижені сәтті деп санайтыныңызды жазыңыз.',
+        'contact.note': 'Өзім жауап беріп, алдымен міндетті нақтылаймын.',
+        'footer.tagline': 'Digital products & AI systems',
+        'footer.top': 'Жоғары ↑',
+        'dialog.format': 'Формат',
+        'dialog.focus': 'Фокус',
+        'dialog.more': 'Толығырақ',
+        'dialog.open': 'Жобаны ашу',
+        'dialog.login': 'Клиенттік кіру',
+        'dialog.close': 'Жабу',
+        'status.live': 'Жұмыс нұсқасы',
+        'status.demo': 'Демо',
+        'status.private': 'Жабық пилот',
+        'meta.title': 'SHAIKH — сайттар, AI-жүйелер және цифрлық өнімдер',
+        'meta.description': 'SHAIKH портфолиосы: жұмыс істейтін сайттар, AI-құралдар, демолар және бизнеске арналған ішкі платформалар.',
+        'menu.open': 'Мәзірді ашу',
+        'menu.close': 'Мәзірді жабу'
+    }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
+    const projects = Array.isArray(window.PORTFOLIO_PROJECTS) ? window.PORTFOLIO_PROJECTS : [];
+    const projectGrid = document.getElementById('project-grid');
+    const dialog = document.getElementById('project-dialog');
+    const menuButton = document.getElementById('menu-toggle');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const siteHeader = document.getElementById('site-header');
+    let currentLang = localStorage.getItem('shaikh-portfolio-lang') === 'kk' ? 'kk' : 'ru';
+    let currentFilter = 'all';
+    let currentProjectId = null;
+    let revealObserver;
 
-    /* =============================================
-       TRANSLATIONS (i18n)
-    ============================================= */
-    const translations = {
-        ru: {
-            'nav.contact': 'Связаться',
-            'hero.title2': 'На автопилоте.',
-            'hero.subtitle': 'SHAIKH Industries — премиальные сайты и AI-системы. Эстетика, лишенная визуального шума. Инженерия, работающая безупречно.',
-            'hero.cta': 'Обсудить проект',
-            'hero.cta2': 'Портфолио',
-            'services.title': 'Услуги',
-            'services.card1.title': 'Лендинг',
-            'services.card1.desc': 'Продающий дизайн. Высокая конверсия. Быстрый запуск.',
-            'services.card2.title': 'AI Автоматизация',
-            'services.card2.desc': 'Чат-боты и автоворонки. Ваш бизнес работает 24/7.',
-            'services.card3.title': 'CRM Системы',
-            'services.card3.desc': 'Порядок в клиентах. Ни одной потерянной заявки.',
-            'services.card4.title': 'Под ключ',
-            'services.card4.desc': 'От идеи до прибыли. Техническая часть — на нас.',
-            'why.years': '2+ года',
-            'why.yearsDesc': 'в digital-разработке',
-            'why.desc': 'Симбиоз дизайна и технологий. Строю системы, которые приносят деньги.',
-            'why.stat1': 'Клиентов',
-            'why.stat2': 'Проектов',
-            'why.stat3': 'Часов AI',
-            'why.stat4': 'В срок',
-            'how.title': 'Процесс',
-            'how.step1.title': 'Анализ',
-            'how.step1.desc': 'Изучаем бизнес. Строим стратегию победы.',
-            'how.step2.title': 'Разработка',
-            'how.step2.desc': 'Дизайн, код, интеграции. Создаём продукт.',
-            'how.step3.title': 'Запуск',
-            'how.step3.desc': 'Старт продаж. Поддержка. Обучение.',
-            'portfolio.title': 'Работы',
-            'reviews.title': 'Отзывы в Telegram',
-            'reviews.desc': 'Больше реальных кейсов и отзывов в моём канале',
-            'reviews.btn': 'Читать отзывы',
-            'cta.title': 'Масштабируем?',
-            'cta.sub': 'Напишите мне напрямую. Обсудим ваш проект.',
-            'footer.tagline': 'Digital-решения для лидеров',
-        },
-        kz: {
-            'nav.contact': 'Байланыс',
-            'hero.title2': 'Автопилотта.',
-            'hero.subtitle': 'SHAIKH Industries — премиум сайттар және AI жүйелері. Артық визуалды шусыз эстетика. Мінсіз жұмыс істейтін инженерия.',
-            'hero.cta': 'Жобаны талқылау',
-            'hero.cta2': 'Портфолио',
-            'services.title': 'Қызметтер',
-            'services.card1.title': 'Лендинг',
-            'services.card1.desc': 'Сатылымды дизайн. Жоғары конверсия. Жылдам іске қосу.',
-            'services.card2.title': 'AI Автоматтандыру',
-            'services.card2.desc': 'Чат-боттар мен автоворонкалар. Бизнес 24/7 жұмыс істейді.',
-            'services.card3.title': 'CRM Жүйелер',
-            'services.card3.desc': 'Клиенттер тәртіпте. Бірде-бір өтінім жоғалмайды.',
-            'services.card4.title': 'Кілтпен тапсыру',
-            'services.card4.desc': 'Идеядан пайдаға дейін. Техникалық бөлім — бізде.',
-            'why.years': '2+ жыл',
-            'why.yearsDesc': 'digital-салада',
-            'why.desc': 'Дизайн мен технология үндестігі. Ақша әкелетін жүйелер құрамын.',
-            'why.stat1': 'Клиент',
-            'why.stat2': 'Жоба',
-            'why.stat3': 'Сағат AI',
-            'why.stat4': 'Мерзімде',
-            'how.title': 'Процесс',
-            'how.step1.title': 'Талдау',
-            'how.step1.desc': 'Бизнесті зерттейміз. Жеңіс стратегиясын құрамыз.',
-            'how.step2.title': 'Әзірлеу',
-            'how.step2.desc': 'Дизайн, код, интеграция. Өнім жасаймыз.',
-            'how.step3.title': 'Іске қосу',
-            'how.step3.desc': 'Сатылым басталуы. Қолдау. Оқыту.',
-            'portfolio.title': 'Жұмыстар',
-            'reviews.title': 'Telegram-дағы пікірлер',
-            'reviews.desc': 'Нақты кейстер мен пікірлер менің арнамда',
-            'reviews.btn': 'Пікірлерді оқу',
-            'cta.title': 'Дамимыз ба?',
-            'cta.sub': 'Маған тікелей жазыңыз. Жобаңызды талқылайық.',
-            'footer.tagline': 'Лидерлерге арналған Digital-шешімдер',
-        }
-    };
+    const tr = (key) => UI_TRANSLATIONS[currentLang][key] || UI_TRANSLATIONS.ru[key] || key;
+    const localized = (value) => value && typeof value === 'object' ? (value[currentLang] || value.ru || '') : (value || '');
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    })[char]);
 
-    let currentLang = 'ru';
-
-    /* =============================================
-       HERO TEXT ANIMATION
-    ============================================= */
-    function rebuildHeroText(text) {
-        const el = document.getElementById('hero-text');
-        if (!el) return;
-        el.innerHTML = '';
-        const parts = text.split(/(\s+)/);
-        let delay = 0;
-        parts.forEach(part => {
-            if (part.match(/^\s+$/)) {
-                el.appendChild(document.createTextNode(part));
-                return;
-            }
-            const wordSpan = document.createElement('span');
-            wordSpan.style.display = 'inline-block';
-            [...part].forEach(char => {
-                const s = document.createElement('span');
-                s.textContent = char;
-                s.style.animationDelay = `${delay}s`;
-                delay += 0.04;
-                wordSpan.appendChild(s);
-            });
-            el.appendChild(wordSpan);
-        });
-    }
-
-    /* =============================================
-       APPLY TRANSLATIONS
-    ============================================= */
-    function applyTranslation(lang) {
-        currentLang = lang;
-        const t = translations[lang];
-        document.querySelectorAll('[data-i18n]').forEach(el => {
-            const key = el.getAttribute('data-i18n');
-            if (t[key]) el.textContent = t[key];
-        });
-        // rebuild animated hero
-        rebuildHeroText(t['hero.title']);
-        // update lang buttons
-        document.querySelectorAll('.lang-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.lang === lang);
-        });
-    }
-
-    // Language switcher click
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', () => applyTranslation(btn.dataset.lang));
-    });
-
-    // Initial render
-    applyTranslation('ru');
-
-    /* =============================================
-       PORTFOLIO RENDER
-       Reads data from js/portfolio.js (PORTFOLIO_PROJECTS)
-    ============================================= */
-    function renderPortfolio() {
-        const grid = document.getElementById('portfolio-grid');
-        if (!grid || typeof PORTFOLIO_PROJECTS === 'undefined') return;
-
-        grid.innerHTML = '';
-        PORTFOLIO_PROJECTS.forEach(project => {
-            const hasImage = project.image && project.image.trim() !== '';
-            const hasLink = project.link && project.link.trim() !== '';
-
-            const card = document.createElement('div');
-            card.className = 'portfolio-card magnet-target fade-in-up';
-            card.innerHTML = `
-                ${hasImage
-                    ? `<img src="${project.image}" alt="${project.title}" loading="lazy" onerror="this.style.display='none'">`
-                    : `<div style="height:180px;background:var(--glass-bg);display:flex;align-items:center;justify-content:center;font-size:3rem">🖥</div>`
-                }
-                <div class="portfolio-card-body">
-                    <h3>${project.title}</h3>
-                    <p>${project.description}</p>
-                    <div class="portfolio-tags">
-                        ${project.tags.map(t => `<span class="portfolio-tag">${t}</span>`).join('')}
-                    </div>
+    function workspaceVisual() {
+        return `
+            <div class="workspace-card-visual" aria-hidden="true">
+                <div class="mock-rail"></div>
+                <div class="mock-panel">
+                    <span class="mock-title"></span>
+                    <div class="mock-metrics"><i></i><i></i><i></i></div>
+                    <span class="mock-graph"></span>
                 </div>
-                ${hasLink ? `<a href="${project.link}" target="_blank" rel="noopener" class="portfolio-link" title="Открыть проект">↗</a>` : ''}
-            `;
-            grid.appendChild(card);
-        });
-
-        // re-observe newly added fade-in-up elements
-        document.querySelectorAll('#portfolio-grid .fade-in-up').forEach(el => revealObserver.observe(el));
+            </div>`;
     }
 
-    /* =============================================
-       SCROLL REVEAL (IntersectionObserver)
-    ============================================= */
-    const revealObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) entry.target.classList.add('visible');
+    function projectCover(project) {
+        return `
+            <div class="project-cover cover-${escapeHtml(project.visualTheme || 'default')}" role="img" aria-label="${escapeHtml(localized(project.imageAlt))}">
+                <span class="cover-grid" aria-hidden="true"></span>
+                <div class="cover-copy">
+                    <small>${escapeHtml(localized(project.category))}</small>
+                    <strong>${escapeHtml(project.title)}</strong>
+                    <span>${escapeHtml(localized(project.coverLabel))}</span>
+                </div>
+                <div class="cover-window" aria-hidden="true">
+                    <i></i><i></i><i></i>
+                    <b></b><b></b><b></b>
+                </div>
+            </div>`;
+    }
+
+    function visualFor(project) {
+        if (project.visual === 'workspace') return workspaceVisual();
+        if (project.visual === 'cover') return projectCover(project);
+        return `<img src="${escapeHtml(project.image)}" alt="${escapeHtml(localized(project.imageAlt))}" loading="lazy" decoding="async">`;
+    }
+
+    function renderProjects() {
+        if (!projectGrid) return;
+        const visibleProjects = projects.filter((project) => currentFilter === 'all' || project.filter === currentFilter);
+        projectGrid.innerHTML = visibleProjects.map((project) => `
+            <article class="project-card reveal" data-project-id="${escapeHtml(project.id)}">
+                <div class="project-media">
+                    ${visualFor(project)}
+                    <span class="project-status status-${escapeHtml(project.status)}">${escapeHtml(tr(`status.${project.status}`))}</span>
+                </div>
+                <div class="project-body">
+                    <div class="project-overline"><span>${escapeHtml(localized(project.category))}</span><span>${escapeHtml(project.year)}</span></div>
+                    <h3>${escapeHtml(project.title)}</h3>
+                    <p>${escapeHtml(localized(project.summary))}</p>
+                    <div class="tag-list project-tags">${project.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join('')}</div>
+                    <button class="project-action" type="button" data-project-open="${escapeHtml(project.id)}">${escapeHtml(tr('dialog.more'))} ↗</button>
+                </div>
+            </article>`).join('');
+        observeReveals(projectGrid);
+        projectGrid.querySelectorAll('[data-project-open]').forEach((button) => {
+            button.addEventListener('click', () => openProject(button.dataset.projectOpen));
         });
-    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    }
 
-    document.querySelectorAll('.fade-in-up').forEach(el => revealObserver.observe(el));
+    function fillDialog(project) {
+        if (!dialog || !project) return;
+        document.getElementById('dialog-visual').innerHTML = visualFor(project);
+        document.getElementById('dialog-status').textContent = tr(`status.${project.status}`);
+        document.getElementById('dialog-year').textContent = project.year;
+        document.getElementById('dialog-title').textContent = project.title;
+        document.getElementById('dialog-summary').textContent = localized(project.summary);
+        document.getElementById('dialog-format').textContent = localized(project.format);
+        document.getElementById('dialog-focus').textContent = localized(project.focus);
+        document.getElementById('dialog-tags').innerHTML = project.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join('');
+        const actionLabel = project.status === 'private' ? tr('dialog.login') : tr('dialog.open');
+        document.getElementById('dialog-actions').innerHTML = project.link
+            ? `<a class="button button-primary" href="${escapeHtml(project.link)}"${project.external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(actionLabel)} <span aria-hidden="true">↗</span></a>`
+            : '';
+        const closeButton = dialog.querySelector('[data-dialog-close]');
+        closeButton.setAttribute('aria-label', tr('dialog.close'));
+    }
 
-    // Render portfolio AFTER observer is set up
-    renderPortfolio();
+    function openProject(id) {
+        const project = projects.find((item) => item.id === id);
+        if (!project || !dialog) return;
+        currentProjectId = id;
+        fillDialog(project);
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+    }
 
-    /* =============================================
-       MAGNETIC BUTTONS (Cleaned up cursor reference)
-    ============================================= */
-    document.querySelectorAll('.magnet-target').forEach(target => {
-        target.addEventListener('mousemove', (e) => {
-            const rect = target.getBoundingClientRect();
-            const x = e.clientX - rect.left - rect.width / 2;
-            const y = e.clientY - rect.top - rect.height / 2;
-            target.style.transform = `translate(${x * 0.25}px, ${y * 0.25}px)`;
+    function applyLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem('shaikh-portfolio-lang', lang);
+        document.documentElement.lang = lang;
+        document.title = tr('meta.title');
+        const description = document.querySelector('meta[name="description"]');
+        if (description) description.setAttribute('content', tr('meta.description'));
+        document.querySelectorAll('[data-i18n]').forEach((element) => {
+            element.textContent = tr(element.dataset.i18n);
         });
-        target.addEventListener('mouseleave', () => {
-            target.style.transform = '';
+        document.querySelectorAll('[data-lang]').forEach((button) => {
+            const active = button.dataset.lang === lang;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-pressed', String(active));
+        });
+        menuButton.setAttribute('aria-label', menuButton.classList.contains('active') ? tr('menu.close') : tr('menu.open'));
+        renderProjects();
+        if (currentProjectId && dialog?.open) fillDialog(projects.find((item) => item.id === currentProjectId));
+    }
+
+    function setMenu(open) {
+        menuButton.classList.toggle('active', open);
+        menuButton.setAttribute('aria-expanded', String(open));
+        menuButton.setAttribute('aria-label', open ? tr('menu.close') : tr('menu.open'));
+        mobileMenu.hidden = !open;
+        document.body.classList.toggle('menu-open', open);
+    }
+
+    function observeReveals(root = document) {
+        if (!revealObserver) return;
+        root.querySelectorAll('.reveal:not([data-observed])').forEach((element) => {
+            element.dataset.observed = 'true';
+            revealObserver.observe(element);
+        });
+    }
+
+    if ('IntersectionObserver' in window) {
+        document.documentElement.classList.add('reveal-enabled');
+        revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                entry.target.classList.add('is-visible');
+                revealObserver.unobserve(entry.target);
+            });
+        }, { threshold: 0.08, rootMargin: '0px 0px -40px' });
+    }
+
+    document.querySelectorAll('[data-lang]').forEach((button) => {
+        button.addEventListener('click', () => applyLanguage(button.dataset.lang));
+    });
+
+    document.querySelectorAll('[data-filter]').forEach((button) => {
+        button.addEventListener('click', () => {
+            currentFilter = button.dataset.filter;
+            document.querySelectorAll('[data-filter]').forEach((item) => {
+                const active = item === button;
+                item.classList.toggle('active', active);
+                item.setAttribute('aria-pressed', String(active));
+            });
+            renderProjects();
         });
     });
 
-    /* =============================================
-       HORIZONTAL SCROLL — Services
-       Fixed: uses sticky + measures actual card
-       overflow width, not dependent on scroll height.
-    ============================================= */
-    const servicesOuter = document.querySelector('.services-outer');
-    const servicesTrack = document.querySelector('.services-track');
+    menuButton.addEventListener('click', () => setMenu(!menuButton.classList.contains('active')));
+    mobileMenu.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setMenu(false)));
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 1100 && menuButton.classList.contains('active')) setMenu(false);
+    });
 
-    function initHorizontalScroll() {
-        if (!servicesOuter || !servicesTrack) return;
-        // Only on desktop
-        if (window.innerWidth <= 768) {
-            servicesTrack.style.transform = '';
-            return;
-        }
+    dialog?.querySelector('[data-dialog-close]')?.addEventListener('click', () => dialog.close());
+    dialog?.addEventListener('click', (event) => {
+        if (event.target === dialog) dialog.close();
+    });
+    dialog?.addEventListener('close', () => { currentProjectId = null; });
 
-        // How far the track can scroll horizontally
-        function getMaxTranslate() {
-            return servicesTrack.scrollWidth - window.innerWidth;
-        }
+    window.addEventListener('scroll', () => siteHeader.classList.toggle('scrolled', window.scrollY > 24), { passive: true });
 
-        // Dynamically set wrapper height so scroll distance = track overflow
-        function setWrapperHeight() {
-            const extra = getMaxTranslate();
-            // 100vh for sticky visibility + extra pixels to drive the animation
-            servicesOuter.style.height = `${window.innerHeight + extra}px`;
-        }
+    applyLanguage(currentLang);
+    observeReveals();
+    requestAnimationFrame(() => {
+        document.querySelectorAll('.hero .reveal').forEach((element, index) => {
+            window.setTimeout(() => element.classList.add('is-visible'), index * 90);
+        });
+    });
 
-        setWrapperHeight();
-        window.addEventListener('resize', setWrapperHeight);
-
-        window.addEventListener('scroll', () => {
-            if (window.innerWidth <= 768) {
-                servicesTrack.style.transform = '';
-                return;
-            }
-            const rect = servicesOuter.getBoundingClientRect();
-            // rect.top goes from 0 to -(height - vh) as we scroll through the section
-            const scrolled = -rect.top;   // 0 at section start, positive as we scroll
-            const total = servicesOuter.offsetHeight - window.innerHeight;
-            if (scrolled <= 0 || total <= 0) {
-                servicesTrack.style.transform = 'translateX(0)';
-                return;
-            }
-            const progress = Math.min(scrolled / total, 1);
-            const tx = progress * getMaxTranslate();
-            servicesTrack.style.transform = `translateX(-${tx}px)`;
-        }, { passive: true });
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
     }
-
-    initHorizontalScroll();
-
-    /* =============================================
-       STEP LINE PROGRESS
-    ============================================= */
-    const howSection = document.querySelector('.how-it-works');
-    const lineProgress = document.getElementById('line-progress');
-    const steps = document.querySelectorAll('.step-item');
-
-    if (howSection && lineProgress) {
-        window.addEventListener('scroll', () => {
-            const rect = howSection.getBoundingClientRect();
-            const winH = window.innerHeight;
-            if (rect.top < winH && rect.bottom > 0) {
-                const scrolled = 1 - rect.bottom / (rect.height + winH);
-                const pct = Math.min(Math.max((scrolled - 0.15) * 180, 0), 100);
-                lineProgress.style.height = `${pct}%`;
-                steps.forEach(step => {
-                    if (step.getBoundingClientRect().top < winH * 0.75) {
-                        step.classList.add('active');
-                    }
-                });
-            }
-        }, { passive: true });
-    }
-
-    /* =============================================
-       COUNTER ANIMATION
-    ============================================= */
-    let countersStarted = false;
-    const statsGrid = document.querySelector('.stats-grid');
-
-    if (statsGrid) {
-        window.addEventListener('scroll', () => {
-            if (countersStarted) return;
-            const rect = statsGrid.getBoundingClientRect();
-            if (rect.top < window.innerHeight * 0.85) {
-                countersStarted = true;
-                document.querySelectorAll('.counter').forEach(el => {
-                    const target = +el.getAttribute('data-target');
-                    const step = target / (2000 / 16);
-                    let curr = 0;
-                    const tick = () => {
-                        curr += step;
-                        if (curr < target) {
-                            el.textContent = Math.ceil(curr) + (target > 100 ? '+' : '');
-                            requestAnimationFrame(tick);
-                        } else {
-                            el.textContent = target + (target > 100 ? '+' : '');
-                        }
-                    };
-                    tick();
-                });
-            }
-        }, { passive: true });
-    }
-
-    /* =============================================
-       PARTICLES CANVAS
-    ============================================= */
-    const canvas = document.getElementById('particles-canvas');
-    if (canvas) {
-        const ctx = canvas.getContext('2d');
-        const particles = [];
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        class Particle {
-            constructor() { this.reset(); }
-            reset() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 1.5 + 0.3;
-                this.speedX = (Math.random() - 0.5) * 0.4;
-                this.speedY = (Math.random() - 0.5) * 0.4;
-                this.opacity = Math.random() * 0.4 + 0.1;
-            }
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
-                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
-            }
-            draw() {
-                ctx.fillStyle = `rgba(108, 99, 255, ${this.opacity})`;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-
-        for (let i = 0; i < 45; i++) particles.push(new Particle());
-
-        function animateParticles() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            particles.forEach(p => { p.update(); p.draw(); });
-            requestAnimationFrame(animateParticles);
-        }
-        animateParticles();
-    }
-
-}); // end DOMContentLoaded
+});
