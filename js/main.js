@@ -148,11 +148,12 @@ document.addEventListener('DOMContentLoaded', () => {
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     })[char]);
 
-    function visualFor(project) {
+    function visualFor(project, eager = false) {
         const source = project.imageMobile
             ? `<source media="(max-width: 800px)" srcset="${escapeHtml(project.imageMobile)}">`
             : '';
-        return `<picture>${source}<img src="${escapeHtml(project.image)}" alt="${escapeHtml(localized(project.imageAlt))}" loading="lazy" decoding="async"></picture>`;
+        const priority = eager ? 'eager' : 'lazy';
+        return `<picture>${source}<img src="${escapeHtml(project.image)}" alt="${escapeHtml(localized(project.imageAlt))}" loading="${priority}" decoding="async"${eager ? ' fetchpriority="high"' : ''}></picture>`;
     }
 
     function renderProjects() {
@@ -180,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function fillDialog(project) {
         if (!dialog || !project) return;
-        document.getElementById('dialog-visual').innerHTML = visualFor(project);
+        document.getElementById('dialog-visual').innerHTML = visualFor(project, true);
         document.getElementById('dialog-status').textContent = tr(`status.${project.status}`);
         document.getElementById('dialog-year').textContent = project.year;
         document.getElementById('dialog-title').textContent = project.title;
@@ -210,6 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!project || !dialog) return;
         currentProjectId = id;
         fillDialog(project);
+        dialog.scrollTop = 0;
         if (typeof dialog.showModal === 'function') dialog.showModal();
         else dialog.setAttribute('open', '');
     }
