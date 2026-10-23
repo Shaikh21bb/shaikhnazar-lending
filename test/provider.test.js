@@ -14,7 +14,11 @@ test('provider key is encrypted per agent and tampering is rejected', () => {
     assert.ok(!box.includes(key));
     assert.equal(decryptProviderKey(agentId, box), key);
     assert.throws(() => decryptProviderKey(otherId, box), /Не удалось прочитать/);
-    assert.throws(() => decryptProviderKey(agentId, box.slice(0, -1) + 'X'), /Не удалось прочитать/);
+    const tampered = box.split('.');
+    const encrypted = Buffer.from(tampered[2], 'base64url');
+    encrypted[0] ^= 1;
+    tampered[2] = encrypted.toString('base64url');
+    assert.throws(() => decryptProviderKey(agentId, tampered.join('.')), /Не удалось прочитать/);
 });
 
 test('key validation and cloud generation keep the key server-side', async () => {

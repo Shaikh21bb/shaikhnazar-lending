@@ -39,11 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadManagers() {
         managerList.innerHTML = '<div class="loading">Загрузка аккаунтов...</div>';
         try {
-            const [{ accounts }, managersResult] = await Promise.all([
-                request('GET'),
-                supabaseClient.from('managers').select('name')
-            ]);
-            const names = new Set((managersResult.data || []).map(m => String(m.name || '').trim().toLowerCase()));
+            const { accounts } = await request('GET');
             totalCount.textContent = `${accounts.length} аккаунт(ов)`;
             if (!accounts.length) {
                 managerList.innerHTML = '<div class="loading">Аккаунтов пока нет.</div>';
@@ -51,11 +47,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             managerList.innerHTML = accounts.map(account => {
                 const login = String(account.login || '');
-                const owner = ['admin', 'shaikh'].includes(login.trim().toLowerCase());
-                const linked = names.has(login.trim().toLowerCase());
-                const status = owner ? '<span style="color:#7CFF9B">полный доступ владельца</span>'
-                    : (linked ? '<span style="color:#FFD66B">привязан к менеджеру</span>'
-                        : '<span style="color:var(--danger-color)">нет привязки · вход ограничен</span>');
+                const owner = account.role === 'owner' || ['admin', 'shaikh'].includes(login.trim().toLowerCase());
+                const disabled = Boolean(account.disabled_at);
+                const status = disabled ? '<span style="color:var(--danger-color)">доступ приостановлен · данные сохранены</span>'
+                    : (owner ? '<span style="color:#7CFF9B">полный доступ владельца</span>'
+                        : account.role === 'manager'
+                            ? '<span style="color:#FFD66B">legacy-менеджер</span>'
+                            : '<span style="color:#7CCBFF">личный Agent Hub</span>');
                 return `<div class="manager-card" data-id="${escapeHtml(account.id)}">
                     <div class="manager-info">
                         <div class="manager-login">👤 ${escapeHtml(login)} &nbsp; ${status}</div>
@@ -65,7 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <button type="button" class="reset-btn">Сменить пароль</button>
                         </div>
                     </div>
-                    ${owner ? '' : '<button type="button" class="delete-btn">Отозвать доступ</button>'}
+                    ${owner ? '' : `<button type="button" class="delete-btn access-toggle" data-enabled="${disabled ? 'false' : 'true'}">${disabled ? 'Вернуть доступ' : 'Приостановить доступ'}</button>`}
                 </div>`;
             }).join('');
 
@@ -83,12 +81,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         alert('Пароль изменён. Ранее открытые сеансы могут оставаться активными до выхода или истечения срока.');
                     } catch (error) { alert('Ошибка смены пароля: ' + error.message); }
                 });
-                card.querySelector('.delete-btn')?.addEventListener('click', async () => {
-                    if (!confirm('Отозвать доступ этого аккаунта?')) return;
+                card.querySelector('.access-toggle')?.addEventListener('click', async event => {
+                    const currentlyEnabled = event.currentTarget.dataset.enabled === 'true';
+                    if (!confirm(currentlyEnabled
+                        ? 'Приостановить вход и Agent Hub? Заметки, календарь и финансы сохранятся.'
+                        : 'Вернуть доступ к этому аккаунту?')) return;
                     try {
-                        await request('DELETE', { id });
+                        await request('PATCH', { id, action: 'set_enabled', enabled: !currentlyEnabled });
                         await loadManagers();
-                    } catch (error) { alert('Ошибка удаления: ' + error.message); }
+                    } catch (error) { alert('Ошибка изменения доступа: ' + error.message); }
                 });
             });
         } catch (error) {

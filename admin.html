@@ -297,7 +297,7 @@
     <!-- Admin Content -->
     <header class="admin-header">
         <h1 class="admin-title">Управление доступом</h1>
-        <p class="admin-subtitle">Создавайте логины и пароли для менеджеров</p>
+        <p class="admin-subtitle">Создавайте клиентские аккаунты с личным Agent Hub</p>
     </header>
 
     <main class="admin-container">
@@ -305,10 +305,10 @@
         <!-- Create Form -->
         <form class="create-box" id="create-manager-form">
             <div class="input-group">
-                <label for="new-login">Логин менеджера</label>
-                <input type="text" id="new-login" placeholder="manager1" required autocomplete="off">
+                <label for="new-login">Логин клиента</label>
+                <input type="text" id="new-login" placeholder="client1" required autocomplete="off">
                 <span style="font-size:0.72rem; color:var(--text-secondary); line-height:1.4; text-transform:none; letter-spacing:0;">
-                    Для доступа менеджера укажите логин, совпадающий с его именем в панели «Менеджеры». Аккаунты владельца создаются отдельно.
+                    После входа клиент получает отдельного агента, заметки, календарь, финансы и свои подключения.
                 </span>
             </div>
             <div class="input-group">
@@ -325,14 +325,11 @@
         </div>
 
         <div class="manager-list" id="manager-list">
-            <div class="loading">Загрузка менеджеров...</div>
+            <div class="loading">Загрузка аккаунтов...</div>
         </div>
 
     </main>
 
-    <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./js/supabase.js"></script>
     <script src="./js/admin.js"></script>
     <script>
         if ('serviceWorker' in navigator) {

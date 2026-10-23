@@ -27,25 +27,33 @@ function response() {
 
 test('owner account list requests only non-secret fields', async () => {
     const previousFetch = globalThis.fetch;
-    let requestUrl = '';
+    const requestUrls = [];
     globalThis.fetch = async url => {
-        requestUrl = String(url);
+        const requestUrl = String(url);
+        requestUrls.push(requestUrl);
+        if (requestUrl.includes('select=id,login,role,disabled_at&id=eq.owner-id')) {
+            return new Response(JSON.stringify([{ id: 'owner-id', login: 'Shaikh', role: 'owner', disabled_at: null }]), { status: 200 });
+        }
         return new Response(JSON.stringify([{ id: 'account-id', login: 'manager1' }]), { status: 200 });
     };
     try {
         const res = response();
         await accounts(ownerRequest('GET'), res);
         assert.equal(res.statusCode, 200);
-        assert.match(requestUrl, /select=id,login,created_at/);
+        const requestUrl = requestUrls.at(-1);
+        assert.match(requestUrl, /select=id,login,role,disabled_at,created_at/);
         assert.doesNotMatch(requestUrl, /password/);
         assert.equal(res.headers['Cache-Control'], 'no-store');
     } finally { globalThis.fetch = previousFetch; }
 });
 
-test('new manager credentials are hashed before database insertion', async () => {
+test('new client credentials are hashed and receive the Agent Hub role', async () => {
     const previousFetch = globalThis.fetch;
     let inserted;
-    globalThis.fetch = async (_url, options) => {
+    globalThis.fetch = async (url, options = {}) => {
+        if (String(url).includes('select=id,login,role,disabled_at&id=eq.owner-id')) {
+            return new Response(JSON.stringify([{ id: 'owner-id', login: 'Shaikh', role: 'owner', disabled_at: null }]), { status: 200 });
+        }
         inserted = JSON.parse(options.body);
         return new Response('', { status: 201 });
     };
@@ -55,5 +63,6 @@ test('new manager credentials are hashed before database insertion', async () =>
         assert.equal(res.statusCode, 201);
         assert.match(inserted.password, /^scrypt\$/);
         assert.notEqual(inserted.password, 'secure-test-password');
+        assert.equal(inserted.role, 'client');
     } finally { globalThis.fetch = previousFetch; }
 });

@@ -5,6 +5,10 @@ import logout from '../server/api/auth/logout.js';
 import session from '../server/api/auth/session.js';
 import customerState from '../server/api/customers/state.js';
 import followupsRun from '../server/api/followups/run.js';
+import hubChat from '../server/api/hub/chat.js';
+import hubConnections from '../server/api/hub/connections.js';
+import hubOverview from '../server/api/hub/overview.js';
+import hubRecords from '../server/api/hub/records.js';
 import messagesSend from '../server/api/messages/send.js';
 import salesSimulate from '../server/api/sales/simulate.js';
 import script from '../server/api/script.js';
@@ -30,6 +34,10 @@ const routes = new Map([
     ['auth/session', session],
     ['customers/state', customerState],
     ['followups/run', followupsRun],
+    ['hub/chat', hubChat],
+    ['hub/connections', hubConnections],
+    ['hub/overview', hubOverview],
+    ['hub/records', hubRecords],
     ['messages/send', messagesSend],
     ['sales/simulate', salesSimulate],
     ['script', script],

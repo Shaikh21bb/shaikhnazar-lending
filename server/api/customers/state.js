@@ -1,5 +1,5 @@
 import { db, readJsonBody } from '../_lib.js';
-import { requireDashboardSession } from '../_auth.js';
+import { requireLegacyDashboardSession } from '../_auth.js';
 
 async function findCustomer(agentId, channel, chatId) {
     const { res, body } = await db(
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     if (req.method !== 'GET' && req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
-    if (!requireDashboardSession(req, res)) return;
+    if (!await requireLegacyDashboardSession(req, res)) return;
 
     try {
         const input = req.method === 'GET' ? req.query || {} : await readJsonBody(req);

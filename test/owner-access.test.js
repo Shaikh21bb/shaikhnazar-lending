@@ -25,7 +25,8 @@ test('password hashing verifies correct passwords without storing them in plaint
 test('Shaikh and admin logins receive signed owner role', () => {
     assert.equal(roleForLogin('Shaikh'), 'owner');
     assert.equal(roleForLogin('admin'), 'owner');
-    assert.equal(roleForLogin('demo1'), 'manager');
+    assert.equal(roleForLogin('demo1'), 'client');
+    assert.equal(roleForLogin('manager1', 'manager'), 'manager');
 });
 
 test('owner account endpoint rejects guests and manager sessions', async () => {

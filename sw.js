@@ -1,7 +1,8 @@
-const VERSION = 'shaikh-sys-v9-dashboard-only';
+const VERSION = 'shaikh-sys-v10-agent-hub';
 const CORE = [
     '/login.html',
     '/dashboard.html',
+    '/hub.html',
     '/admin.html',
     '/manifest.webmanifest',
     '/icons/icon-192.png',
@@ -9,6 +10,7 @@ const CORE = [
     '/icons/apple-touch-icon.png',
     '/css/app.css',
     '/css/sales-studio.css',
+    '/css/hub.css',
     '/js/lang.js',
     '/js/supabase.js',
     '/js/shyraq.js',
@@ -21,7 +23,8 @@ const CORE = [
     '/js/clients.js',
     '/js/i18n.js',
     '/js/toasts.js',
-    '/js/admin.js'
+    '/js/admin.js',
+    '/js/hub.js'
 ];
 
 self.addEventListener('install', (e) => {

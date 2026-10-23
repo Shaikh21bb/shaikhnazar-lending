@@ -7,13 +7,15 @@ export async function db(path, options = {}) {
     if (!SUPABASE_URL || !SUPABASE_KEY) {
         throw new Error('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing');
     }
+    const { timeoutMs, ...fetchOptions } = options;
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-        ...options,
+        ...fetchOptions,
+        signal: fetchOptions.signal || AbortSignal.timeout(timeoutMs || 8_000),
         headers: {
             apikey: SUPABASE_KEY,
             Authorization: `Bearer ${SUPABASE_KEY}`,
             'Content-Type': 'application/json',
-            ...(options.headers || {})
+            ...(fetchOptions.headers || {})
         }
     });
     const text = await res.text();
@@ -28,11 +30,12 @@ export async function readJsonBody(req) {
     return raw ? JSON.parse(raw) : {};
 }
 
-export async function telegram(method, token, payload = {}) {
+export async function telegram(method, token, payload = {}, options = {}) {
     const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: options.signal || AbortSignal.timeout(options.timeoutMs || 15_000)
     });
     const data = await res.json();
     if (!data.ok) {

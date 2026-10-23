@@ -81,6 +81,7 @@ export async function openRouterModels(fetcher = fetch) {
     const models = list.filter(item => safeOpenRouterModel(item.id) && item.architecture?.output_modalities?.includes('text'))
         .map(item => ({ id: item.id, name: String(item.name || item.id).slice(0, 100),
             free: Number(item.pricing?.prompt) === 0 && Number(item.pricing?.completion) === 0,
+            supportsTools: Array.isArray(item.supported_parameters) && item.supported_parameters.includes('tools'),
             inputPerMillion: Number(item.pricing?.prompt) * 1e6,
             outputPerMillion: Number(item.pricing?.completion) * 1e6 }))
         .filter(item => Number.isFinite(item.inputPerMillion) && Number.isFinite(item.outputPerMillion));

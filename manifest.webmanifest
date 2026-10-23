@@ -1,8 +1,8 @@
 {
-  "name": "SHAIKH Industries — AI Dashboard",
-  "short_name": "SHAIKH SYS",
-  "description": "Панель управления: ИИ-анализ, агенты, клиенты, задачи, скрипты и статистика.",
-  "start_url": "/dashboard.html",
+  "name": "SHAIKH Agent Hub",
+  "short_name": "SHAIKH Agent",
+  "description": "Личный AI-оператор: чат, заметки, календарь, финансы и Telegram.",
+  "start_url": "/login.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

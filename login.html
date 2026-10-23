@@ -109,7 +109,7 @@
         });
     </script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const authForm = document.getElementById('auth-form');
             const emailInput = document.getElementById('email');
             const passwordInput = document.getElementById('password');
@@ -126,10 +126,18 @@
                 });
             }
 
-            const token = localStorage.getItem('auth_token');
-            if (token) {
-                window.location.href = 'dashboard.html';
-                return;
+            const destinationFor = role => role === 'client' ? 'hub.html' : 'dashboard.html';
+            if (localStorage.getItem('auth_token')) {
+                try {
+                    const response = await fetch('/api/auth/session', { cache: 'no-store' });
+                    if (response.ok) {
+                        const session = await response.json();
+                        window.location.replace(destinationFor(session.user?.role));
+                        return;
+                    }
+                } catch (_) { /* show login form */ }
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('auth_email');
             }
 
             authForm.addEventListener('submit', async (e) => {
@@ -164,7 +172,7 @@
                     if (response.ok) {
                         localStorage.setItem('auth_token', data.id);
                         localStorage.setItem('auth_email', data.login);
-                        window.location.href = 'dashboard.html';
+                        window.location.href = destinationFor(data.role);
                     } else {
                         if (authError) {
                             authError.textContent = t.err;

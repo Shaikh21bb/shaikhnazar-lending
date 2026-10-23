@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0a0c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="description" content="SHAIKH Agent Hub — личный AI-агент, заметки, календарь, финансы и подключения.">
+    <title>SHAIKH — Agent Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Syne:wght@600;700;800&amp;display=swap" rel="stylesheet">
+    <link rel="icon" href="/icons/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="./css/hub.css?v=20261023a">
+</head>
+<body>
+    <a class="skip-link" href="#hub-main">К содержанию</a>
+
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <header class="hub-header">
+        <div class="hub-header__inner">
+            <a class="hub-brand" href="index.html" aria-label="SHAIKH — на главную">
+                <span class="hub-brand__mark">S</span>
+                <span class="hub-brand__name">shaikh</span>
+                <span class="hub-brand__product">Agent Hub</span>
+            </a>
+            <div class="hub-header__actions">
+                <span class="status-pill" id="system-status">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    <span>Подключение…</span>
+                </span>
+                <button class="icon-button" id="refresh-button" type="button" aria-label="Обновить данные" title="Обновить">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg>
+                </button>
+                <div class="user-pill" id="user-pill" title="Текущий аккаунт">
+                    <span class="user-avatar" id="user-avatar">—</span>
+                    <span class="user-pill__copy">
+                        <strong id="user-name">Мой аккаунт</strong>
+                        <small id="user-email">Загрузка…</small>
+                    </span>
+                </div>
+                <button class="icon-button" id="logout-button" type="button" aria-label="Выйти из аккаунта" title="Выйти">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="hub-shell">
+        <aside class="desktop-rail" aria-label="Разделы Agent Hub">
+            <div class="rail-label">Рабочее пространство</div>
+            <nav class="rail-nav" data-hub-navigation>
+                <a class="rail-link is-active" href="#agent" data-view-target="agent">
+                    <span class="rail-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5M20 12a8 8 0 1 1-3-6.32L20 4v5h-5"/></svg></span>
+                    <span><strong>Агент</strong><small>Спросить и выполнить</small></span>
+                </a>
+                <a class="rail-link" href="#notes" data-view-target="notes">
+                    <span class="rail-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5"/></svg></span>
+                    <span><strong>Заметки</strong><small>Мысли и списки</small></span>
+                </a>
+                <a class="rail-link" href="#calendar" data-view-target="calendar">
+                    <span class="rail-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v16H3zM16 3v4M8 3v4M3 10h18"/></svg></span>
+                    <span><strong>Календарь</strong><small>Планы и встречи</small></span>
+                </a>
+                <a class="rail-link" href="#finance" data-view-target="finance">
+                    <span class="rail-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v14H3zM16 13h5M3 9h18M7 3h10"/></svg></span>
+                    <span><strong>Финансы</strong><small>Доходы и расходы</small></span>
+                </a>
+                <a class="rail-link" href="#connections" data-view-target="connections">
+                    <span class="rail-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.14-1.14"/></svg></span>
+                    <span><strong>Связи</strong><small>Telegram и AI</small></span>
+                </a>
+            </nav>
+            <div class="rail-footer">
+                <span class="rail-footer__eyebrow">Одна точка входа</span>
+                <p>Пишите агенту обычным языком — он работает с вашими данными.</p>
+            </div>
+        </aside>
+
+        <main class="hub-main" id="hub-main" tabindex="-1">
+            <div class="global-alert" id="global-alert" role="alert" hidden></div>
+
+            <section class="hub-view is-active" id="view-agent" data-view="agent" aria-labelledby="agent-title">
+                <div class="view-heading agent-heading">
+                    <div>
+                        <span class="eyebrow">Ваше личное AI-пространство</span>
+                        <h1 id="agent-title">Что сделаем сегодня?</h1>
+                        <p>Пишите как человеку. Агент сохранит заметку, добавит событие или учтёт расход.</p>
+                    </div>
+                    <div class="agent-badge" aria-label="Статус агента">
+                        <span class="agent-badge__orb" aria-hidden="true"></span>
+                        <span><strong id="agent-name">SHAIKH Agent</strong><small id="agent-model">Модель не выбрана</small></span>
+                    </div>
+                </div>
+
+                <div class="chat-layout">
+                    <article class="chat-card panel">
+                        <div class="chat-card__top">
+                            <div>
+                                <span class="live-dot" aria-hidden="true"></span>
+                                <strong>Диалог с агентом</strong>
+                            </div>
+                            <button class="text-button" id="clear-chat-button" type="button">Очистить экран</button>
+                        </div>
+                        <div class="chat-feed" id="chat-feed" aria-live="polite" aria-busy="true">
+                            <div class="loading-block"><span class="loader"></span><span>Загружаю диалог…</span></div>
+                        </div>
+                        <div class="quick-actions" aria-label="Быстрые запросы">
+                            <button type="button" data-prompt="Покажи мои планы на сегодня">Планы на сегодня</button>
+                            <button type="button" data-prompt="Сколько я потратил в этом месяце?">Расходы за месяц</button>
+                            <button type="button" data-prompt="Создай заметку: ">Новая заметка</button>
+                        </div>
+                        <form class="chat-composer" id="chat-form">
+                            <label class="sr-only" for="chat-input">Сообщение агенту</label>
+                            <textarea id="chat-input" rows="1" maxlength="4000" placeholder="Например: запиши расход 8 500 ₸ на рекламу…" required></textarea>
+                            <button class="send-button" id="chat-submit" type="submit" aria-label="Отправить сообщение">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4zM22 2 11 13"/></svg>
+                            </button>
+                        </form>
+                        <p class="composer-hint">Агент покажет выполненные действия в ответе. Важные операции всегда можно проверить в разделах ниже.</p>
+                    </article>
+
+                    <aside class="today-card panel" aria-labelledby="today-title">
+                        <div class="panel-heading">
+                            <div><span class="eyebrow">Кратко</span><h2 id="today-title">Сегодня</h2></div>
+                            <time id="today-date"></time>
+                        </div>
+                        <div class="today-metrics" id="today-summary">
+                            <div class="summary-skeleton"></div>
+                            <div class="summary-skeleton"></div>
+                            <div class="summary-skeleton"></div>
+                        </div>
+                        <div class="next-up">
+                            <span class="section-kicker">Ближайшее</span>
+                            <div id="next-record"><div class="loading-block compact"><span class="loader"></span><span>Ищу планы…</span></div></div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="hub-view" id="view-notes" data-view="notes" aria-labelledby="notes-title" hidden>
+                <div class="view-heading">
+                    <div><span class="eyebrow">Память агента</span><h1 id="notes-title">Заметки</h1><p>Сохраняйте идеи, решения и важные детали. Агент сможет найти их по смыслу.</p></div>
+                    <button class="primary-button" type="button" data-toggle-form="note-form-wrap"><span>+</span> Новая заметка</button>
+                </div>
+                <div class="record-layout">
+                    <div class="records-panel panel">
+                        <div class="records-toolbar">
+                            <label class="search-field"><span class="sr-only">Поиск заметок</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="notes-search" type="search" placeholder="Найти заметку"></label>
+                            <span class="record-count" id="notes-count">—</span>
+                        </div>
+                        <div class="records-grid notes-grid" id="notes-list" aria-live="polite" aria-busy="true">
+                            <div class="loading-block"><span class="loader"></span><span>Загружаю заметки…</span></div>
+                        </div>
+                    </div>
+                    <aside class="record-form-wrap panel" id="note-form-wrap">
+                        <div class="form-heading"><div><span class="eyebrow">Вручную</span><h2>Новая заметка</h2></div><button class="icon-button close-form" type="button" data-close-form="note-form-wrap" aria-label="Закрыть">×</button></div>
+                        <form class="record-form" id="note-form">
+                            <input type="hidden" name="id">
+                            <label>Заголовок<input name="title" type="text" maxlength="140" placeholder="Главная мысль" required></label>
+                            <label>Текст<textarea name="content" rows="7" maxlength="8000" placeholder="Что важно сохранить?" required></textarea></label>
+                            <div class="form-actions"><button class="secondary-button reset-record-form" type="button">Очистить</button><button class="primary-button" type="submit">Сохранить</button></div>
+                            <p class="form-feedback" role="status"></p>
+                        </form>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="hub-view" id="view-calendar" data-view="calendar" aria-labelledby="calendar-title" hidden>
+                <div class="view-heading">
+                    <div><span class="eyebrow">Ваш ритм</span><h1 id="calendar-title">Календарь</h1><p>Встречи, задачи и напоминания — в одном понятном списке.</p></div>
+                    <button class="primary-button" type="button" data-toggle-form="event-form-wrap"><span>+</span> Добавить событие</button>
+                </div>
+                <div class="calendar-strip panel" id="calendar-strip" aria-label="Ближайшие семь дней"></div>
+                <div class="record-layout">
+                    <div class="records-panel panel">
+                        <div class="records-toolbar"><div><span class="section-kicker">Повестка</span><h2>Ближайшие события</h2></div><span class="record-count" id="events-count">—</span></div>
+                        <div class="timeline" id="events-list" aria-live="polite" aria-busy="true"><div class="loading-block"><span class="loader"></span><span>Загружаю календарь…</span></div></div>
+                    </div>
+                    <aside class="record-form-wrap panel" id="event-form-wrap">
+                        <div class="form-heading"><div><span class="eyebrow">Вручную</span><h2>Новое событие</h2></div><button class="icon-button close-form" type="button" data-close-form="event-form-wrap" aria-label="Закрыть">×</button></div>
+                        <form class="record-form" id="event-form">
+                            <input type="hidden" name="id">
+                            <label>Название<input name="title" type="text" maxlength="140" placeholder="Например, созвон с командой" required></label>
+                            <div class="field-row"><label>Дата<input name="date" type="date" required></label><label>Время<input name="time" type="time" required></label></div>
+                            <label>Описание<textarea name="content" rows="4" maxlength="4000" placeholder="Детали, ссылка или адрес"></textarea></label>
+                            <div class="form-actions"><button class="secondary-button reset-record-form" type="button">Очистить</button><button class="primary-button" type="submit">Добавить</button></div>
+                            <p class="form-feedback" role="status"></p>
+                        </form>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="hub-view" id="view-finance" data-view="finance" aria-labelledby="finance-title" hidden>
+                <div class="view-heading">
+                    <div><span class="eyebrow">Личные деньги</span><h1 id="finance-title">Финансы</h1><p>Быстро фиксируйте операции и понимайте, куда уходят деньги.</p></div>
+                    <button class="primary-button" type="button" data-toggle-form="transaction-form-wrap"><span>+</span> Новая операция</button>
+                </div>
+                <div class="finance-summary" id="finance-summary">
+                    <article class="money-card panel"><span>Баланс</span><strong id="balance-value">—</strong><small>за всё время</small></article>
+                    <article class="money-card panel money-income"><span>Доходы</span><strong id="income-value">—</strong><small>в этом месяце</small></article>
+                    <article class="money-card panel money-expense"><span>Расходы</span><strong id="expense-value">—</strong><small>в этом месяце</small></article>
+                </div>
+                <div class="record-layout">
+                    <div class="records-panel panel">
+                        <div class="records-toolbar"><div><span class="section-kicker">Операции</span><h2>История</h2></div><select id="transaction-filter" aria-label="Фильтр операций"><option value="all">Все</option><option value="expense">Расходы</option><option value="income">Доходы</option></select></div>
+                        <div class="transaction-list" id="transactions-list" aria-live="polite" aria-busy="true"><div class="loading-block"><span class="loader"></span><span>Загружаю операции…</span></div></div>
+                    </div>
+                    <aside class="record-form-wrap panel" id="transaction-form-wrap">
+                        <div class="form-heading"><div><span class="eyebrow">Вручную</span><h2>Новая операция</h2></div><button class="icon-button close-form" type="button" data-close-form="transaction-form-wrap" aria-label="Закрыть">×</button></div>
+                        <form class="record-form" id="transaction-form">
+                            <input type="hidden" name="id">
+                            <div class="type-switch" role="group" aria-label="Тип операции"><label><input type="radio" name="type" value="expense" checked><span>Расход</span></label><label><input type="radio" name="type" value="income"><span>Доход</span></label></div>
+                            <label>Сумма, ₸<input name="amount" type="number" min="1" max="999999999999" step="1" inputmode="decimal" placeholder="0" required></label>
+                            <div class="field-row"><label>Категория<input name="category" type="text" maxlength="80" placeholder="Еда, работа…" required></label><label>Дата<input name="date" type="date" required></label></div>
+                            <label>Комментарий<input name="content" type="text" maxlength="500" placeholder="Необязательно"></label>
+                            <div class="form-actions"><button class="secondary-button reset-record-form" type="button">Очистить</button><button class="primary-button" type="submit">Записать</button></div>
+                            <p class="form-feedback" role="status"></p>
+                        </form>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="hub-view" id="view-connections" data-view="connections" aria-labelledby="connections-title" hidden>
+                <div class="view-heading">
+                    <div><span class="eyebrow">Настройка магии</span><h1 id="connections-title">Связи</h1><p>Выберите мозг агента и подключите Telegram. Ключи отправляются только на сервер и не показываются снова.</p></div>
+                </div>
+                <div class="connections-grid">
+                    <article class="connection-card panel connection-wide">
+                        <div class="connection-head"><span class="connection-logo agent-logo">S</span><div><span class="eyebrow">Поведение</span><h2>Ваш агент</h2></div><span class="connection-state is-on">Активен</span></div>
+                        <form class="record-form profile-form" id="profile-form">
+                            <div class="field-row"><label>Имя агента<input name="name" type="text" maxlength="80" placeholder="Например, Ayan"></label><label>Модель<select name="model" id="profile-model"><option value="">Загрузка моделей…</option></select></label></div>
+                            <label>Как агент должен вам помогать<textarea name="instructions" rows="4" maxlength="6000" placeholder="Например: отвечай кратко, уточняй валюту, не создавай событие без даты…"></textarea></label>
+                            <div class="form-actions align-end"><span class="form-feedback" role="status"></span><button class="primary-button" type="submit">Сохранить настройки</button></div>
+                        </form>
+                    </article>
+
+                    <article class="connection-card panel" id="openrouter-card">
+                        <div class="connection-head"><span class="connection-logo openrouter-logo">OR</span><div><span class="eyebrow">AI-провайдер</span><h2>OpenRouter</h2></div><span class="connection-state" id="openrouter-state">Проверяю…</span></div>
+                        <p>Один API-ключ открывает выбор разных AI-моделей. Ключ хранится на сервере в зашифрованном виде.</p>
+                        <form class="record-form" id="openrouter-form">
+                            <label>API-ключ<input name="apiKey" type="password" autocomplete="off" placeholder="sk-or-v1-…" required></label>
+                            <label>Модель по умолчанию<select name="model" id="openrouter-model"><option value="">Загрузка моделей…</option></select></label>
+                            <div class="form-actions"><button class="danger-button" id="openrouter-delete" type="button" hidden>Удалить ключ</button><button class="primary-button" type="submit">Подключить</button></div>
+                            <p class="form-feedback" role="status"></p>
+                        </form>
+                    </article>
+
+                    <article class="connection-card panel" id="telegram-card">
+                        <div class="connection-head"><span class="connection-logo telegram-logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 3-3.4 17-5.3-4.4-3.2 3 .6-5.5 9.8-8.8-12 7.3-5-1.7z"/></svg></span><div><span class="eyebrow">Канал</span><h2>Telegram</h2></div><span class="connection-state" id="telegram-state">Проверяю…</span></div>
+                        <p>Подключите своего бота — и общайтесь с агентом из Telegram теми же командами.</p>
+                        <form class="record-form" id="telegram-form">
+                            <label id="telegram-token-label">Токен от @BotFather<input name="botToken" type="password" autocomplete="off" placeholder="123456:ABC…"></label>
+                            <div class="telegram-link-box" id="telegram-link-box" hidden>
+                                <span class="section-kicker">Код привязки</span>
+                                <strong id="telegram-link-code">—</strong>
+                                <p>Откройте бота и отправьте этот код. Он действует ограниченное время.</p>
+                                <a class="secondary-button" id="telegram-open-link" href="#" target="_blank" rel="noopener" hidden>Открыть Telegram</a>
+                            </div>
+                            <div class="form-actions"><button class="danger-button" id="telegram-disconnect" type="button" hidden>Отключить</button><button class="secondary-button" id="telegram-regenerate" type="button" hidden>Новый код</button><button class="primary-button" id="telegram-connect" type="submit">Подключить</button></div>
+                            <p class="form-feedback" role="status"></p>
+                        </form>
+                    </article>
+                </div>
+                <div class="security-note panel">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4"/></svg>
+                    <div><strong>Ваши ключи не попадают в браузер повторно</strong><p>Интерфейс показывает только статус подключения. Не отправляйте API-ключи в чат агенту.</p></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <nav class="mobile-dock" aria-label="Разделы Agent Hub" data-hub-navigation>
+        <a class="dock-link is-active" href="#agent" data-view-target="agent"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5M20 12a8 8 0 1 1-3-6.32L20 4v5h-5"/></svg><span>Агент</span></a>
+        <a class="dock-link" href="#notes" data-view-target="notes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8"/></svg><span>Заметки</span></a>
+        <a class="dock-link" href="#calendar" data-view-target="calendar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v16H3zM16 3v4M8 3v4M3 10h18"/></svg><span>Планы</span></a>
+        <a class="dock-link" href="#finance" data-view-target="finance"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v14H3zM16 13h5M3 9h18"/></svg><span>Деньги</span></a>
+        <a class="dock-link" href="#connections" data-view-target="connections"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.14-1.14"/></svg><span>Связи</span></a>
+    </nav>
+
+    <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+    <script type="module" src="./js/hub.js?v=20261023a"></script>
+</body>
+</html>

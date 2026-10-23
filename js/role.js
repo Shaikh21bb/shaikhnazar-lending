@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    window.__scope = { isManager: false, chatId: null, agentId: null, name: '' };
+    window.__scope = { isManager: false, isClient: false, chatId: null, agentId: null, name: '' };
     window.__deny = false;
 
     window.__roleReady = (async () => {
@@ -13,6 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // The signed server session, not localStorage, decides owner access.
         if (user?.role === 'owner') return;
+        if (user?.role === 'client') {
+            window.__scope = { isManager: false, isClient: true, chatId: null, agentId: null, name: login };
+            window.location.replace('hub.html');
+            return;
+        }
 
         // Менеджер — по совпадению логина с именем менеджера
         try {

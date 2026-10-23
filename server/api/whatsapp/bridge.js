@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { db, readJsonBody } from '../_lib.js';
-import { requireDashboardSession } from '../_auth.js';
+import { requireLegacyDashboardSession } from '../_auth.js';
 import { findSalesAgent, getLocalSalesContext, handleSalesInbound } from '../_agent/sales.js';
 import { sanitizeRuntime, loadLocalState, selectedProvider, selectedModel, dashboardLocalStatus, configureLocalAgent,
     createLocalTest, localTestResult, claimLocalTest, finishLocalTest } from './local-control.js';
@@ -119,7 +119,7 @@ export default async function handler(req, res) {
         return res.status(503).json({ error: 'QR bridge is not configured' });
     }
     if (req.method === 'GET') {
-        const session = requireDashboardSession(req, res);
+        const session = await requireLegacyDashboardSession(req, res, ['owner']);
         if (!session) return;
         if (session.role !== 'owner') return res.status(403).json({ error: 'Owner access required' });
         const agentId = String(req.query?.agentId || '');
@@ -139,7 +139,7 @@ export default async function handler(req, res) {
     try {
         const body = await readJsonBody(req);
         if (['configure', 'test_create', 'provider_key_set', 'provider_key_delete'].includes(body.action)) {
-            const session = requireDashboardSession(req, res);
+            const session = await requireLegacyDashboardSession(req, res, ['owner']);
             if (!session) return;
             if (session.role !== 'owner') return res.status(403).json({ error: 'Owner access required' });
             if (!String(req.headers['content-type'] || '').includes('application/json')) return res.status(415).json({ error: 'JSON required' });

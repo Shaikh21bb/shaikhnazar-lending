@@ -1,24 +1,25 @@
 import { db, readJsonBody } from '../_lib.js';
-import { requireDashboardSession } from '../_auth.js';
+import { requireLegacyDashboardSession, requireSameOrigin } from '../_auth.js';
 import { hashPassword } from '../_password.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
-    const session = requireDashboardSession(req, res);
+    const session = await requireLegacyDashboardSession(req, res, ['owner']);
     if (!session) return;
     if (session.role !== 'owner') return res.status(403).json({ error: 'Owner access required' });
 
     try {
         if (req.method === 'GET') {
-            const result = await db('managers_auth?select=id,login,created_at&order=created_at.desc');
+            const result = await db('managers_auth?select=id,login,role,disabled_at,created_at&order=created_at.desc');
             if (!result.res.ok) throw new Error(`Account list failed (${result.res.status})`);
             return res.status(200).json({ accounts: result.body || [] });
         }
         if (!['POST', 'PATCH', 'DELETE'].includes(req.method)) {
             return res.status(405).json({ error: 'Method not allowed' });
         }
+        if (!requireSameOrigin(req, res)) return;
         const body = await readJsonBody(req);
         if (req.method === 'POST') {
             const login = String(body.login || '').trim();
@@ -31,7 +32,7 @@ export default async function handler(req, res) {
             }
             const result = await db('managers_auth', {
                 method: 'POST',
-                body: JSON.stringify({ login, password: await hashPassword(password) })
+                body: JSON.stringify({ login, password: await hashPassword(password), role: 'client' })
             });
             if (!result.res.ok) return res.status(result.res.status === 409 ? 409 : 500).json({ error: 'Could not create account' });
             return res.status(201).json({ ok: true });
@@ -39,6 +40,23 @@ export default async function handler(req, res) {
         const id = String(body.id || '');
         if (!UUID.test(id)) return res.status(400).json({ error: 'Invalid account id' });
         if (req.method === 'PATCH') {
+            if (body.action === 'set_enabled') {
+                if (id === session.sub) return res.status(400).json({ error: 'Cannot suspend your own account' });
+                const lookup = await db(`managers_auth?select=login,role&id=eq.${encodeURIComponent(id)}&limit=1`);
+                if (!lookup.res.ok) throw new Error(`Account lookup failed (${lookup.res.status})`);
+                const account = lookup.body?.[0];
+                if (!account) return res.status(404).json({ error: 'Account not found' });
+                if (account.role === 'owner' || ['admin', 'shaikh'].includes(String(account.login).toLowerCase())) {
+                    return res.status(400).json({ error: 'Owner accounts cannot be suspended here' });
+                }
+                const result = await db(`managers_auth?id=eq.${encodeURIComponent(id)}`, {
+                    method: 'PATCH',
+                    headers: { Prefer: 'return=representation' },
+                    body: JSON.stringify({ disabled_at: body.enabled === true ? null : new Date().toISOString() })
+                });
+                if (!result.res.ok) throw new Error(`Account status update failed (${result.res.status})`);
+                return res.status(result.body?.length ? 200 : 404).json(result.body?.length ? { ok: true } : { error: 'Account not found' });
+            }
             const password = String(body.password || '');
             if (password.length < 12 || password.length > 128) {
                 return res.status(400).json({ error: 'Password must be 12-128 characters' });
@@ -58,9 +76,12 @@ export default async function handler(req, res) {
         if (['admin', 'shaikh'].includes(String(lookup.body[0].login).toLowerCase())) {
             return res.status(400).json({ error: 'Owner accounts cannot be removed here' });
         }
-        const result = await db(`managers_auth?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
-        if (!result.res.ok) throw new Error(`Account removal failed (${result.res.status})`);
-        return res.status(200).json({ ok: true });
+        const result = await db(`managers_auth?id=eq.${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ disabled_at: new Date().toISOString() })
+        });
+        if (!result.res.ok) throw new Error(`Account suspension failed (${result.res.status})`);
+        return res.status(200).json({ ok: true, disabled: true });
     } catch (error) {
         console.error('Admin accounts error:', error);
         return res.status(500).json({ error: 'Account operation unavailable' });
