@@ -278,23 +278,28 @@ LANGUAGE plpgsql
 SET search_path = public
 AS $$
 BEGIN
-    IF TG_TABLE_NAME = 'agents' AND NEW.platform = 'telegram' THEN
-        -- Keep deploys safe if the old dashboard reconnects a bot between the
-        -- additive migration and the new server release.
-        IF NEW.connected = false
-           AND NEW.telegram_connection_nonce IS NULL
-           AND NEW.webhook_secret IS NULL THEN
-            NEW.telegram_bot_id := NULL;
-            NEW.webhook_secret_hash := NULL;
-        ELSE
-            IF NEW.telegram_bot_id IS NULL AND NEW.token ~ '^[0-9]{6,14}:' THEN
-                NEW.telegram_bot_id := split_part(NEW.token, ':', 1);
-            END IF;
-            IF NEW.webhook_secret IS NOT NULL THEN
-                NEW.webhook_secret_hash := encode(
-                    extensions.digest(NEW.webhook_secret, 'sha256'),
-                    'hex'
-                );
+    -- Keep references to legacy-only columns inside a separate branch. A
+    -- trigger RECORD from personal_agents has no platform/token fields, and
+    -- PostgreSQL resolves those fields even in a compound AND expression.
+    IF TG_TABLE_NAME = 'agents' THEN
+        IF NEW.platform = 'telegram' THEN
+            -- Keep deploys safe if the old dashboard reconnects a bot between
+            -- the additive migration and the new server release.
+            IF NEW.connected = false
+               AND NEW.telegram_connection_nonce IS NULL
+               AND NEW.webhook_secret IS NULL THEN
+                NEW.telegram_bot_id := NULL;
+                NEW.webhook_secret_hash := NULL;
+            ELSE
+                IF NEW.telegram_bot_id IS NULL AND NEW.token ~ '^[0-9]{6,14}:' THEN
+                    NEW.telegram_bot_id := split_part(NEW.token, ':', 1);
+                END IF;
+                IF NEW.webhook_secret IS NOT NULL THEN
+                    NEW.webhook_secret_hash := encode(
+                        extensions.digest(NEW.webhook_secret, 'sha256'),
+                        'hex'
+                    );
+                END IF;
             END IF;
         END IF;
     END IF;
