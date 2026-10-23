@@ -1,4 +1,4 @@
-const VERSION = 'shaikh-sys-v10-agent-hub';
+const VERSION = 'shaikh-sys-v12-agent-hub';
 const CORE = [
     '/login.html',
     '/dashboard.html',
@@ -26,6 +26,25 @@ const CORE = [
     '/js/admin.js',
     '/js/hub.js'
 ];
+
+function cacheKeyFor(request) {
+    const url = new URL(request.url, self.location.origin);
+    const isSameOriginStaticAsset = url.origin === self.location.origin &&
+        (url.pathname.startsWith('/css/') || url.pathname.startsWith('/js/')) &&
+        (url.pathname.endsWith('.css') || url.pathname.endsWith('.js'));
+
+    if (!isSameOriginStaticAsset) return request;
+
+    // HTML uses versioned CSS/JS URLs, while CORE preloads their canonical paths.
+    // Keep one fresh cache entry per same-origin asset so both forms work offline.
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+}
+
+function matchCached(request) {
+    return caches.match(cacheKeyFor(request));
+}
 
 self.addEventListener('install', (e) => {
     e.waitUntil(
@@ -61,27 +80,28 @@ self.addEventListener('fetch', (e) => {
         e.respondWith(
             fetch(e.request)
                 .then((res) => {
-                    const copy = res.clone();
-                    caches.open(VERSION).then((c) => c.put(e.request, copy));
+                    if (res.ok) {
+                        const copy = res.clone();
+                        caches.open(VERSION).then((c) => c.put(cacheKeyFor(e.request), copy));
+                    }
                     return res;
                 })
                 .catch(() =>
-                    caches.match(e.request).then((r) => r || caches.match('/dashboard.html'))
+                    matchCached(e.request).then((r) => r || caches.match('/dashboard.html'))
                 )
         );
         return;
     }
 
     e.respondWith(
-        caches.match(e.request).then((cached) => {
-            const network = fetch(e.request)
-                .then((res) => {
+        fetch(e.request)
+            .then((res) => {
+                if (res.ok) {
                     const copy = res.clone();
-                    caches.open(VERSION).then((c) => c.put(e.request, copy));
-                    return res;
-                })
-                .catch(() => cached);
-            return cached || network;
-        })
+                    caches.open(VERSION).then((c) => c.put(cacheKeyFor(e.request), copy));
+                }
+                return res;
+            })
+            .catch(() => matchCached(e.request))
     );
 });

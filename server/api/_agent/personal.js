@@ -6,10 +6,20 @@ import { openRouterModels, safeOpenRouterModel } from '../whatsapp/provider.js';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const KINDS = new Set(['note', 'event', 'transaction']);
+const OVERVIEW_LIMITS = Object.freeze({ note: 80, event: 80, transaction: 120 });
 const failure = (message, status = 400) => Object.assign(new Error(message), { status });
 
 const clean = (value, max = 4000) => String(value ?? '').trim().slice(0, max);
 const encoded = value => encodeURIComponent(String(value));
+const encodedFilterValue = value => encodeURIComponent(String(value)).replace(/[!'()*]/g, character => (
+    `%${character.codePointAt(0).toString(16).toUpperCase()}`
+));
+
+function boundedInteger(value, fallback, min, max) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return fallback;
+    return Math.min(Math.max(Math.trunc(numeric), min), max);
+}
 
 function zonedParts(date, timeZone) {
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -174,22 +184,42 @@ export function serializeRecord(row) {
     };
 }
 
-export async function listPersonalRecords(agentId, { kind, limit = 120, search = '' } = {}) {
+export async function listPersonalRecords(agentId, {
+    kind,
+    limit = 120,
+    offset = 0,
+    search = '',
+    upcoming = false,
+    past = false
+} = {}) {
     if (kind && !KINDS.has(kind)) throw failure('Неизвестный тип записи.');
+    if (upcoming === true && past === true) {
+        throw failure('Нельзя одновременно запросить будущие и прошедшие события.');
+    }
+    const term = clean(search, 120);
+    const upcomingEvents = kind === 'event' && upcoming === true;
+    const pastEvents = kind === 'event' && past === true;
+    const eventBoundary = upcomingEvents || pastEvents ? new Date().toISOString() : '';
+    const recordLimit = boundedInteger(limit, 120, 1, 250);
+    const recordOffset = boundedInteger(offset, 0, 0, 10_000);
+    const searchPattern = term
+        ? encodedFilterValue(`"*${term.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}*"`)
+        : '';
     const filters = [
         'select=*',
         `agent_id=eq.${encoded(agentId)}`,
         'status=neq.deleted',
         kind ? `kind=eq.${encoded(kind)}` : null,
-        'order=created_at.desc',
-        `limit=${Math.min(Math.max(Number(limit) || 120, 1), 250)}`
+        term ? `or=(title.ilike.${searchPattern},body.ilike.${searchPattern},category.ilike.${searchPattern})` : null,
+        upcomingEvents ? `event_at=gte.${encoded(eventBoundary)}` : null,
+        pastEvents ? `event_at=lt.${encoded(eventBoundary)}` : null,
+        upcomingEvents ? 'order=event_at.asc' : (pastEvents ? 'order=event_at.desc' : 'order=created_at.desc'),
+        `limit=${recordLimit}`,
+        recordOffset ? `offset=${recordOffset}` : null
     ].filter(Boolean);
     const result = await db(`personal_agent_records?${filters.join('&')}`);
     if (!result.res.ok) throw failure('Не удалось загрузить данные агента.', 503);
-    let rows = result.body || [];
-    const term = clean(search, 120).toLocaleLowerCase('ru');
-    if (term) rows = rows.filter(row => `${row.title} ${row.body} ${row.category}`.toLocaleLowerCase('ru').includes(term));
-    return rows.map(serializeRecord);
+    return (result.body || []).map(serializeRecord);
 }
 
 function normalizedRecord(input, existing = {}) {
@@ -462,7 +492,7 @@ async function callPersonalTool(agent, name, args, actions, sourceMessageKey = n
         });
         result = { ok: true, record };
     } else if (name === 'list_events') {
-        result = { ok: true, records: (await listPersonalRecords(agent.id, { kind: 'event', limit: 40 }))
+        result = { ok: true, records: (await listPersonalRecords(agent.id, { kind: 'event', limit: 40, upcoming: true }))
             .sort((a, b) => String(a.eventAt).localeCompare(String(b.eventAt))) };
     } else if (name === 'record_transaction') {
         const record = await createPersonalRecord(agent.id, {
@@ -759,13 +789,16 @@ export async function overviewFor(session) {
     const agent = await ensurePersonalAgent(session);
     const now = new Date();
     const month = monthlyRangeForTimeZone(now);
-    const [view, messages, records, allFinance, monthFinance] = await Promise.all([
+    const [view, messages, notes, events, transactions, allFinance, monthFinance] = await Promise.all([
         agentView(agent),
         listPersonalMessages(agent.id, 36),
-        listPersonalRecords(agent.id, { limit: 160 }),
+        listPersonalRecords(agent.id, { kind: 'note', limit: OVERVIEW_LIMITS.note }),
+        listPersonalRecords(agent.id, { kind: 'event', limit: OVERVIEW_LIMITS.event, upcoming: true }),
+        listPersonalRecords(agent.id, { kind: 'transaction', limit: OVERVIEW_LIMITS.transaction }),
         financeTotals(agent.id),
         financeTotals(agent.id, month.start, month.end)
     ]);
+    const records = [...notes, ...events, ...transactions];
     const allKzt = allFinance.totals.KZT || { expense: 0, income: 0 };
     const monthKzt = monthFinance.totals.KZT || { expense: 0, income: 0 };
     return {
@@ -774,8 +807,8 @@ export async function overviewFor(session) {
         messages,
         records,
         summary: {
-            notes: records.filter(item => item.kind === 'note').length,
-            upcomingEvents: records.filter(item => item.kind === 'event' && item.eventAt && new Date(item.eventAt) >= new Date()).length,
+            notes: notes.length,
+            upcomingEvents: events.length,
             balance: allKzt.income - allKzt.expense,
             monthIncome: monthKzt.income,
             monthExpense: monthKzt.expense,

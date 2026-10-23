@@ -13,7 +13,7 @@
     <link rel="icon" href="/icons/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="stylesheet" href="./css/hub.css?v=20261023a">
+    <link rel="stylesheet" href="./css/hub.css?v=20261023c">
 </head>
 <body>
     <a class="skip-link" href="#hub-main">К содержанию</a>
@@ -97,23 +97,61 @@
                     </div>
                 </div>
 
+                <section class="activation-panel panel" id="activation-panel" aria-labelledby="activation-title">
+                    <div class="activation-copy">
+                        <span class="eyebrow">Быстрый старт</span>
+                        <h2 id="activation-title">Запустите первого помощника</h2>
+                        <p id="activation-copy">Три коротких шага — и агент начнёт выполнять задачи, а не просто отвечать.</p>
+                    </div>
+                    <div class="activation-progress" aria-live="polite">
+                        <strong id="activation-progress">0/3</strong>
+                        <span>готово</span>
+                    </div>
+                    <div class="activation-steps" id="activation-steps"></div>
+                </section>
+
+                <section class="workflow-section" aria-labelledby="workflow-title">
+                    <div class="section-heading">
+                        <div><span class="eyebrow">Готовые сценарии</span><h2 id="workflow-title">Выберите результат</h2></div>
+                        <span class="section-note">Агент уточнит только недостающие детали</span>
+                    </div>
+                    <div class="workflow-grid" id="workflow-grid">
+                        <button class="workflow-card" type="button" data-workflow data-prompt="Сохрани заметку: ">
+                            <span class="workflow-icon">✦</span><span><strong>Сохранить мысль</strong><small>Текст → готовая заметка</small></span><span class="workflow-arrow">→</span>
+                        </button>
+                        <button class="workflow-card" type="button" data-workflow data-prompt="Запиши расход: ">
+                            <span class="workflow-icon is-coral">₸</span><span><strong>Учесть расход</strong><small>Сумма + категория → финансы</small></span><span class="workflow-arrow">→</span>
+                        </button>
+                        <button class="workflow-card" type="button" data-workflow data-prompt="Составь мой план на сегодня по событиям и заметкам">
+                            <span class="workflow-icon is-blue">✓</span><span><strong>Собрать план дня</strong><small>Планы + приоритеты → список</small></span><span class="workflow-arrow">→</span>
+                        </button>
+                        <button class="workflow-card" type="button" data-workflow data-prompt="Сделай краткий обзор моих последних заметок, ближайших событий и расходов за последние 7 дней">
+                            <span class="workflow-icon is-lime">↗</span><span><strong>Обзор недели</strong><small>Все данные → ясная сводка</small></span><span class="workflow-arrow">→</span>
+                        </button>
+                        <button class="workflow-card" type="button" data-workflow data-prompt="Помоги подготовиться к встрече: ">
+                            <span class="workflow-icon is-amber">◎</span><span><strong>Подготовить встречу</strong><small>Контекст → вопросы и план</small></span><span class="workflow-arrow">→</span>
+                        </button>
+                        <button class="workflow-card" type="button" data-workflow data-prompt="Создай контент-план на неделю для: ">
+                            <span class="workflow-icon is-pink">#</span><span><strong>Контент-план</strong><small>Цель → идеи на неделю</small></span><span class="workflow-arrow">→</span>
+                        </button>
+                    </div>
+                </section>
+
                 <div class="chat-layout">
                     <article class="chat-card panel">
                         <div class="chat-card__top">
                             <div>
-                                <span class="live-dot" aria-hidden="true"></span>
+                                <span class="live-dot" id="agent-live-dot" aria-hidden="true"></span>
                                 <strong>Диалог с агентом</strong>
                             </div>
-                            <button class="text-button" id="clear-chat-button" type="button">Очистить экран</button>
+                            <button class="text-button" id="clear-chat-button" type="button">Скрыть историю</button>
                         </div>
                         <div class="chat-feed" id="chat-feed" aria-live="polite" aria-busy="true">
                             <div class="loading-block"><span class="loader"></span><span>Загружаю диалог…</span></div>
                         </div>
-                        <div class="quick-actions" aria-label="Быстрые запросы">
-                            <button type="button" data-prompt="Покажи мои планы на сегодня">Планы на сегодня</button>
-                            <button type="button" data-prompt="Сколько я потратил в этом месяце?">Расходы за месяц</button>
-                            <button type="button" data-prompt="Создай заметку: ">Новая заметка</button>
-                        </div>
+                        <button class="chat-lock-cta" id="chat-lock-cta" type="button" hidden>
+                            <span><strong>Подключить AI</strong><small>Добавьте ключ OpenRouter, чтобы отправить первую задачу</small></span><span>→</span>
+                        </button>
                         <form class="chat-composer" id="chat-form">
                             <label class="sr-only" for="chat-input">Сообщение агенту</label>
                             <textarea id="chat-input" rows="1" maxlength="4000" placeholder="Например: запиши расход 8 500 ₸ на рекламу…" required></textarea>
@@ -178,7 +216,7 @@
                 <div class="calendar-strip panel" id="calendar-strip" aria-label="Ближайшие семь дней"></div>
                 <div class="record-layout">
                     <div class="records-panel panel">
-                        <div class="records-toolbar"><div><span class="section-kicker">Повестка</span><h2>Ближайшие события</h2></div><span class="record-count" id="events-count">—</span></div>
+                        <div class="records-toolbar"><div><span class="section-kicker">Повестка</span><h2 id="calendar-list-title">Ближайшие события</h2></div><div class="toolbar-controls"><select id="event-filter" aria-label="Период событий"><option value="upcoming">Предстоящие</option><option value="past">Прошедшие</option></select><span class="record-count" id="events-count">—</span></div></div>
                         <div class="timeline" id="events-list" aria-live="polite" aria-busy="true"><div class="loading-block"><span class="loader"></span><span>Загружаю календарь…</span></div></div>
                     </div>
                     <aside class="record-form-wrap panel" id="event-form-wrap">
@@ -233,15 +271,31 @@
                     <article class="connection-card panel connection-wide">
                         <div class="connection-head"><span class="connection-logo agent-logo">S</span><div><span class="eyebrow">Поведение</span><h2>Ваш агент</h2></div><span class="connection-state is-on">Активен</span></div>
                         <form class="record-form profile-form" id="profile-form">
-                            <div class="field-row"><label>Имя агента<input name="name" type="text" maxlength="80" placeholder="Например, Ayan"></label><label>Модель<select name="model" id="profile-model"><option value="">Загрузка моделей…</option></select></label></div>
-                            <label>Как агент должен вам помогать<textarea name="instructions" rows="4" maxlength="6000" placeholder="Например: отвечай кратко, уточняй валюту, не создавай событие без даты…"></textarea></label>
+                            <div class="field-row profile-basics"><label>Имя агента<input name="name" type="text" maxlength="80" placeholder="Например, Ayan"></label><label>Язык<select name="language" id="profile-language"><option value="ru">Русский</option><option value="kk">Қазақша</option></select></label></div>
+                            <fieldset class="role-presets">
+                                <legend>Выберите роль — инструкции заполнятся сами</legend>
+                                <div class="preset-grid">
+                                    <button type="button" data-agent-preset="personal">Личный помощник</button>
+                                    <button type="button" data-agent-preset="business">Предприниматель</button>
+                                    <button type="button" data-agent-preset="content">Контент и задачи</button>
+                                    <button type="button" data-agent-preset="study">Учёба</button>
+                                </div>
+                            </fieldset>
+                            <details class="advanced-settings">
+                                <summary>Точная настройка</summary>
+                                <div class="advanced-settings__body">
+                                    <label>Модель<select name="model" id="profile-model"><option value="">Загрузка моделей…</option></select></label>
+                                    <label>Как агент должен вам помогать<textarea name="instructions" rows="4" maxlength="6000" placeholder="Например: отвечай кратко, уточняй валюту, не создавай событие без даты…"></textarea></label>
+                                </div>
+                            </details>
                             <div class="form-actions align-end"><span class="form-feedback" role="status"></span><button class="primary-button" type="submit">Сохранить настройки</button></div>
                         </form>
                     </article>
 
                     <article class="connection-card panel" id="openrouter-card">
                         <div class="connection-head"><span class="connection-logo openrouter-logo">OR</span><div><span class="eyebrow">AI-провайдер</span><h2>OpenRouter</h2></div><span class="connection-state" id="openrouter-state">Проверяю…</span></div>
-                        <p>Один API-ключ открывает выбор разных AI-моделей. Ключ хранится на сервере в зашифрованном виде.</p>
+                        <p>1. Создайте ключ. 2. Вставьте его ниже. 3. Мы проверим подключение до сохранения.</p>
+                        <a class="connection-help" href="https://openrouter.ai/keys" target="_blank" rel="noopener">Получить ключ в OpenRouter ↗</a>
                         <form class="record-form" id="openrouter-form">
                             <label>API-ключ<input name="apiKey" type="password" autocomplete="off" placeholder="sk-or-v1-…" required></label>
                             <label>Модель по умолчанию<select name="model" id="openrouter-model"><option value="">Загрузка моделей…</option></select></label>
@@ -252,7 +306,8 @@
 
                     <article class="connection-card panel" id="telegram-card">
                         <div class="connection-head"><span class="connection-logo telegram-logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 3-3.4 17-5.3-4.4-3.2 3 .6-5.5 9.8-8.8-12 7.3-5-1.7z"/></svg></span><div><span class="eyebrow">Канал</span><h2>Telegram</h2></div><span class="connection-state" id="telegram-state">Проверяю…</span></div>
-                        <p>Подключите своего бота — и общайтесь с агентом из Telegram теми же командами.</p>
+                        <p>1. Создайте бота у BotFather. 2. Вставьте токен. 3. Отправьте боту одноразовый код.</p>
+                        <a class="connection-help" href="https://t.me/BotFather" target="_blank" rel="noopener">Открыть BotFather ↗</a>
                         <form class="record-form" id="telegram-form">
                             <label id="telegram-token-label">Токен от @BotFather<input name="botToken" type="password" autocomplete="off" placeholder="123456:ABC…"></label>
                             <div class="telegram-link-box" id="telegram-link-box" hidden>
@@ -283,6 +338,6 @@
     </nav>
 
     <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
-    <script type="module" src="./js/hub.js?v=20261023a"></script>
+    <script type="module" src="./js/hub.js?v=20261023c"></script>
 </body>
 </html>

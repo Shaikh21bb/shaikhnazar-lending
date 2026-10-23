@@ -14,7 +14,9 @@ const {
     createPersonalRecord,
     handlePersonalMessage,
     linkPersonalTelegramOwner,
+    listPersonalRecords,
     monthlyRangeForTimeZone,
+    overviewFor,
     saveOpenRouterConnection
 } = await import('../server/api/_agent/personal.js');
 const { default: telegramHandler, replyToPersonalAgent } = await import('../server/api/telegram.js');
@@ -105,14 +107,242 @@ test('record API derives the personal agent from the signed account session', as
         await recordsHandler({
             method: 'GET',
             headers: { cookie: clientCookie(accountId) },
-            query: { kind: 'note', agentId: 'attacker-controlled-id' }
+            query: {
+                kind: 'event',
+                limit: '40',
+                offset: '80',
+                past: 'true',
+                upcoming: 'false',
+                agentId: 'attacker-controlled-id'
+            }
         }, res);
         assert.equal(res.statusCode, 200);
         assert.deepEqual(res.body.records, []);
         assert.match(urls[0], new RegExp(`id=eq\\.${accountId}`));
         assert.match(urls[1], new RegExp(`account_id=eq\\.${accountId}`));
         assert.match(urls[2], new RegExp(`agent_id=eq\\.${agentId}`));
+        assert.match(decodeURIComponent(urls[2]), /kind=eq\.event/);
+        assert.match(decodeURIComponent(urls[2]), /event_at=lt\.[^&]+&order=event_at\.desc&limit=40&offset=80/);
         assert.equal(urls.some(url => url.includes('attacker-controlled-id')), false);
+
+        const unsafe = response();
+        await recordsHandler({
+            method: 'GET',
+            headers: { cookie: clientCookie(accountId) },
+            query: {
+                kind: 'note',
+                limit: '20&status=eq.deleted',
+                offset: '10&agent_id=eq.attacker'
+            }
+        }, unsafe);
+        const unsafeRecordUrl = decodeURIComponent(urls.filter(url => url.includes('/personal_agent_records?')).at(-1));
+        assert.equal(unsafe.statusCode, 200);
+        assert.match(unsafeRecordUrl, /order=created_at\.desc&limit=160$/);
+        assert.equal(unsafeRecordUrl.includes('agent_id=eq.attacker'), false);
+    } finally { globalThis.fetch = previousFetch; }
+});
+
+test('record search is applied in PostgREST before the result limit', async () => {
+    const previousFetch = globalThis.fetch;
+    const agentId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    let requestedUrl = '';
+    globalThis.fetch = async url => {
+        requestedUrl = decodeURIComponent(String(url));
+        return new Response(JSON.stringify([{
+            id: '11111111-1111-4111-8111-111111111111',
+            kind: 'note',
+            title: 'Roadmap, Q4',
+            body: 'Found beyond the newest records',
+            status: 'active',
+            created_at: '2025-01-01T00:00:00.000Z',
+            updated_at: '2025-01-01T00:00:00.000Z'
+        }]), { status: 200 });
+    };
+    try {
+        const records = await listPersonalRecords(agentId, {
+            kind: 'note',
+            search: 'Roadmap, Q4',
+            limit: 20
+        });
+        assert.equal(records[0].title, 'Roadmap, Q4');
+        assert.match(requestedUrl, new RegExp(`agent_id=eq\\.${agentId}`));
+        assert.match(requestedUrl, /kind=eq\.note/);
+        assert.match(requestedUrl, /or=\(title\.ilike\."\*Roadmap, Q4\*",body\.ilike\."\*Roadmap, Q4\*",category\.ilike\."\*Roadmap, Q4\*"\)/);
+        assert.match(requestedUrl, /order=created_at\.desc/);
+        assert.match(requestedUrl, /limit=20/);
+    } finally { globalThis.fetch = previousFetch; }
+});
+
+test('record pagination supports past events and rejects conflicting event modes', async () => {
+    const previousFetch = globalThis.fetch;
+    const agentId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    let requestedUrl = '';
+    let fetchCount = 0;
+    globalThis.fetch = async url => {
+        fetchCount += 1;
+        requestedUrl = decodeURIComponent(String(url));
+        return new Response(JSON.stringify([]), { status: 200 });
+    };
+    try {
+        await listPersonalRecords(agentId, { kind: 'event', past: true, limit: 25, offset: 50 });
+        assert.match(requestedUrl, new RegExp(`agent_id=eq\\.${agentId}`));
+        assert.match(requestedUrl, /kind=eq\.event/);
+        assert.match(requestedUrl, /event_at=lt\.[^&]+&order=event_at\.desc&limit=25&offset=50/);
+        await assert.rejects(
+            listPersonalRecords(agentId, { kind: 'event', upcoming: true, past: true }),
+            /Нельзя одновременно/
+        );
+        assert.equal(fetchCount, 1);
+    } finally { globalThis.fetch = previousFetch; }
+});
+
+test('list_events tool queries only upcoming events in chronological order', async () => {
+    const previousFetch = globalThis.fetch;
+    const agentId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const box = encryptCredential(agentId, 'openrouter', 'sk-or-v1-abcdefghijklmnop');
+    const soon = new Date(Date.now() + 60_000).toISOString();
+    const later = new Date(Date.now() + 120_000).toISOString();
+    let completionCalls = 0;
+    let recordUrl = '';
+    let toolPayload;
+    globalThis.fetch = async (url, options = {}) => {
+        const href = String(url);
+        if (href.includes('/personal_agent_messages?select=role')) {
+            return new Response(JSON.stringify([]), { status: 200 });
+        }
+        if (href.endsWith('/personal_agent_messages')) {
+            return new Response(JSON.stringify([{ id: 'saved-message' }]), { status: 201 });
+        }
+        if (href.includes('/personal_agent_secrets?select=')) {
+            return new Response(JSON.stringify([{ secret_box: box, last_four: 'mnop' }]), { status: 200 });
+        }
+        if (href.includes('/personal_agent_records?')) {
+            recordUrl = decodeURIComponent(href);
+            return new Response(JSON.stringify([
+                {
+                    id: '22222222-2222-4222-8222-222222222222', kind: 'event', title: 'Later', body: '',
+                    event_at: later, status: 'active', created_at: soon, updated_at: soon
+                },
+                {
+                    id: '11111111-1111-4111-8111-111111111111', kind: 'event', title: 'Soon', body: '',
+                    event_at: soon, status: 'active', created_at: soon, updated_at: soon
+                }
+            ]), { status: 200 });
+        }
+        if (href === 'https://openrouter.ai/api/v1/chat/completions') {
+            completionCalls += 1;
+            if (completionCalls === 1) {
+                return new Response(JSON.stringify({ choices: [{ message: {
+                    role: 'assistant',
+                    content: null,
+                    tool_calls: [{ id: 'events-1', type: 'function', function: { name: 'list_events', arguments: '{}' } }]
+                } }] }), { status: 200 });
+            }
+            const body = JSON.parse(options.body);
+            toolPayload = JSON.parse(body.messages.find(message => message.role === 'tool').content);
+            return new Response(JSON.stringify({
+                choices: [{ message: { role: 'assistant', content: 'Ближайшее событие найдено.', tool_calls: [] } }]
+            }), { status: 200 });
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+    };
+    try {
+        const result = await handlePersonalMessage({
+            agent: { id: agentId, name: 'Agent', language: 'ru', model: 'openrouter/free', instructions: '' },
+            channel: 'web',
+            chatId: 'web',
+            message: 'Какие у меня ближайшие события?'
+        });
+        assert.equal(result.reply, 'Ближайшее событие найдено.');
+        assert.match(recordUrl, new RegExp(`agent_id=eq\\.${agentId}`));
+        assert.match(recordUrl, /kind=eq\.event/);
+        assert.match(recordUrl, /event_at=gte\.[^&]+/);
+        assert.match(recordUrl, /order=event_at\.asc/);
+        assert.match(recordUrl, /limit=40/);
+        assert.deepEqual(toolPayload.records.map(record => record.title), ['Soon', 'Later']);
+    } finally { globalThis.fetch = previousFetch; }
+});
+
+test('overview loads each record kind independently without starving mature accounts', async () => {
+    const previousFetch = globalThis.fetch;
+    const accountId = '11111111-1111-4111-8111-111111111111';
+    const agentId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const future = new Date(Date.now() + 86_400_000).toISOString();
+    const recordUrls = [];
+    globalThis.fetch = async (url, options = {}) => {
+        const href = String(url);
+        const decodedHref = decodeURIComponent(href);
+        if (href.includes('/managers_auth?')) {
+            return new Response(JSON.stringify([{ id: accountId }]), { status: 200 });
+        }
+        if (href.includes('/personal_agents?')) {
+            return new Response(JSON.stringify([{
+                id: agentId,
+                account_id: accountId,
+                name: 'Agent',
+                language: 'ru',
+                model: 'openrouter/free',
+                instructions: ''
+            }]), { status: 200 });
+        }
+        if (href.includes('/personal_agent_secrets?select=')) {
+            return new Response(JSON.stringify([]), { status: 200 });
+        }
+        if (href.includes('/personal_agent_messages?')) {
+            return new Response(JSON.stringify([]), { status: 200 });
+        }
+        if (href.includes('/personal_agent_records?')) {
+            recordUrls.push(decodedHref);
+            const shared = { status: 'active', created_at: future, updated_at: future };
+            if (decodedHref.includes('kind=eq.note')) {
+                return new Response(JSON.stringify([{
+                    ...shared, id: '22222222-2222-4222-8222-222222222222', kind: 'note', title: 'Note', body: 'Remember'
+                }]), { status: 200 });
+            }
+            if (decodedHref.includes('kind=eq.event')) {
+                return new Response(JSON.stringify([{
+                    ...shared, id: '33333333-3333-4333-8333-333333333333', kind: 'event', title: 'Event', body: '', event_at: future
+                }]), { status: 200 });
+            }
+            if (decodedHref.includes('kind=eq.transaction')) {
+                return new Response(JSON.stringify([{
+                    ...shared,
+                    id: '44444444-4444-4444-8444-444444444444',
+                    kind: 'transaction',
+                    title: 'Expense',
+                    body: '',
+                    amount: 100,
+                    currency: 'KZT',
+                    transaction_type: 'expense',
+                    occurred_at: future
+                }]), { status: 200 });
+            }
+        }
+        if (href.endsWith('/rpc/personal_agent_finance_summary')) {
+            const body = JSON.parse(options.body);
+            const totals = body.p_from
+                ? [{ currency: 'KZT', expense: 30, income: 200, entry_count: 2 }]
+                : [{ currency: 'KZT', expense: 100, income: 1000, entry_count: 4 }];
+            return new Response(JSON.stringify(totals), { status: 200 });
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+    };
+    try {
+        const overview = await overviewFor({ id: accountId, sub: accountId, login: 'client-one', role: 'client' });
+        assert.deepEqual(overview.records.map(record => record.title), ['Note', 'Event', 'Expense']);
+        assert.deepEqual(overview.summary, {
+            notes: 1,
+            upcomingEvents: 1,
+            balance: 900,
+            monthIncome: 200,
+            monthExpense: 30,
+            month: { KZT: { expense: 30, income: 200 } }
+        });
+        assert.equal(recordUrls.length, 3);
+        assert.equal(recordUrls.every(url => url.includes(`agent_id=eq.${agentId}`)), true);
+        assert.match(recordUrls.find(url => url.includes('kind=eq.note')), /order=created_at\.desc&limit=80/);
+        assert.match(recordUrls.find(url => url.includes('kind=eq.event')), /event_at=gte\.[^&]+&order=event_at\.asc&limit=80/);
+        assert.match(recordUrls.find(url => url.includes('kind=eq.transaction')), /order=created_at\.desc&limit=120/);
     } finally { globalThis.fetch = previousFetch; }
 });
 

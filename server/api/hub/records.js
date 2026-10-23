@@ -8,6 +8,24 @@ import {
     updatePersonalRecord
 } from '../_agent/personal.js';
 
+function scalarQuery(value) {
+    return Array.isArray(value) ? value[0] : value;
+}
+
+function integerQuery(value, fallback, min, max) {
+    const scalar = scalarQuery(value);
+    if (scalar === undefined || scalar === null || String(scalar).trim() === '') return fallback;
+    const numeric = Number(scalar);
+    if (!Number.isSafeInteger(numeric)) return fallback;
+    return Math.min(Math.max(numeric, min), max);
+}
+
+function booleanQuery(value) {
+    const scalar = scalarQuery(value);
+    if (scalar === true || scalar === 1) return true;
+    return typeof scalar === 'string' && ['1', 'true'].includes(scalar.trim().toLowerCase());
+}
+
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'private, no-store');
     const session = requireHubSession(req, res);
@@ -16,9 +34,12 @@ export default async function handler(req, res) {
         const agent = await ensurePersonalAgent(session);
         if (req.method === 'GET') {
             const records = await listPersonalRecords(agent.id, {
-                kind: req.query?.kind || undefined,
-                search: req.query?.search || '',
-                limit: req.query?.limit || 160
+                kind: scalarQuery(req.query?.kind) || undefined,
+                search: scalarQuery(req.query?.search) || '',
+                limit: integerQuery(req.query?.limit, 160, 1, 250),
+                offset: integerQuery(req.query?.offset, 0, 0, 10_000),
+                upcoming: booleanQuery(req.query?.upcoming),
+                past: booleanQuery(req.query?.past)
             });
             return res.status(200).json({ records });
         }
