@@ -14,7 +14,14 @@ const IDS = {
     manager: '22222222-2222-4222-8222-222222222222',
     client: '33333333-3333-4333-8333-333333333333',
     agent: '44444444-4444-4444-8444-444444444444',
-    customer: '55555555-5555-4555-8555-555555555555'
+    customer: '55555555-5555-4555-8555-555555555555',
+    otherAgent: '66666666-6666-4666-8666-666666666666'
+};
+
+const sameOrigin = {
+    origin: 'https://shaikh.example',
+    host: 'shaikh.example',
+    'x-forwarded-proto': 'https'
 };
 
 function cookieFor(id, login, role) {
@@ -89,8 +96,19 @@ test('active owner and manager sessions can reach a legacy customer route', asyn
             globalThis.fetch = async url => {
                 const requestUrl = String(url);
                 urls.push(requestUrl);
+                if (requestUrl.includes('select=manager_id')) {
+                    return new Response(JSON.stringify([{ manager_id: IDS.manager }]), { status: 200 });
+                }
                 if (requestUrl.includes('/managers_auth?')) {
                     return new Response(JSON.stringify([{ ...account, disabled_at: null }]), { status: 200 });
+                }
+                if (requestUrl.includes('/managers?')) {
+                    return new Response(JSON.stringify([{
+                        id: IDS.manager,
+                        name: 'manager-one',
+                        chat_id: '777001',
+                        agent_id: IDS.agent
+                    }]), { status: 200 });
                 }
                 if (requestUrl.includes('/customers?')) {
                     return new Response(JSON.stringify([{
@@ -113,7 +131,108 @@ test('active owner and manager sessions can reach a legacy customer route', asyn
             }, res);
             assert.equal(res.statusCode, 200);
             assert.equal(res.body.customer.id, IDS.customer);
-            assert.equal(urls.length, 2);
+            assert.equal(urls.length, account.role === 'manager' ? 4 : 2);
         }
     } finally { globalThis.fetch = previousFetch; }
+});
+
+test('manager customer and message actions cannot target another agent', async () => {
+    const previousFetch = globalThis.fetch;
+    const urls = [];
+    globalThis.fetch = async url => {
+        const requestUrl = String(url);
+        urls.push(requestUrl);
+        if (requestUrl.includes('select=id,login,role,disabled_at')) {
+            return new Response(JSON.stringify([{
+                id: IDS.manager, login: 'manager-one', role: 'manager', disabled_at: null
+            }]), { status: 200 });
+        }
+        if (requestUrl.includes('select=manager_id')) {
+            return new Response(JSON.stringify([{ manager_id: IDS.manager }]), { status: 200 });
+        }
+        if (requestUrl.includes('/managers?')) {
+            return new Response(JSON.stringify([{
+                id: IDS.manager,
+                name: 'manager-one',
+                chat_id: '777001',
+                agent_id: IDS.agent
+            }]), { status: 200 });
+        }
+        throw new Error(`Unexpected URL: ${requestUrl}`);
+    };
+    try {
+        const customerRes = response();
+        await customerState({
+            method: 'GET',
+            headers: { cookie: cookieFor(IDS.manager, 'manager-one', 'manager') },
+            query: { agentId: IDS.otherAgent, channel: 'telegram', chatId: '777' }
+        }, customerRes);
+        assert.equal(customerRes.statusCode, 403);
+        assert.match(customerRes.body.error, /outside the manager scope/);
+
+        const messageRes = response();
+        await sendMessage({
+            method: 'POST',
+            headers: {
+                cookie: cookieFor(IDS.manager, 'manager-one', 'manager'),
+                ...sameOrigin
+            },
+            body: { id: IDS.otherAgent, chatId: '777', text: 'must not send' }
+        }, messageRes);
+        assert.equal(messageRes.statusCode, 403);
+        assert.match(messageRes.body.error, /outside the manager scope/);
+        assert.equal(urls.filter(url => /\/(customers|agents)\?/.test(url)).length, 0);
+    } finally {
+        globalThis.fetch = previousFetch;
+    }
+});
+
+test('manager cannot send through the assigned bot to an unknown customer', async () => {
+    const previousFetch = globalThis.fetch;
+    let providerCalls = 0;
+    globalThis.fetch = async (url) => {
+        const requestUrl = String(url);
+        if (requestUrl.includes('select=id,login,role,disabled_at')) {
+            return new Response(JSON.stringify([{
+                id: IDS.manager, login: 'manager-one', role: 'manager', disabled_at: null
+            }]), { status: 200 });
+        }
+        if (requestUrl.includes('select=manager_id')) {
+            return new Response(JSON.stringify([{ manager_id: IDS.manager }]), { status: 200 });
+        }
+        if (requestUrl.includes('/managers?')) {
+            return new Response(JSON.stringify([{
+                id: IDS.manager,
+                name: 'manager-one',
+                chat_id: '777001',
+                agent_id: IDS.agent
+            }]), { status: 200 });
+        }
+        if (requestUrl.includes('/agents?')) {
+            return new Response(JSON.stringify([{
+                id: IDS.agent, platform: 'telegram', token: 'server-only-token'
+            }]), { status: 200 });
+        }
+        if (requestUrl.includes('/customers?')) {
+            return new Response('[]', { status: 200 });
+        }
+        providerCalls += 1;
+        throw new Error(`Provider must not be called: ${requestUrl}`);
+    };
+    try {
+        const res = response();
+        await sendMessage({
+            method: 'POST',
+            headers: {
+                cookie: cookieFor(IDS.manager, 'manager-one', 'manager'),
+                ...sameOrigin
+            },
+            body: { id: IDS.agent, chatId: 'unknown-chat', text: 'must not send' }
+        }, res);
+        assert.equal(res.statusCode, 404);
+        assert.match(res.body.error, /Customer not found/);
+        assert.equal(providerCalls, 0);
+    } finally {
+        globalThis.fetch = previousFetch;
+    }
 });

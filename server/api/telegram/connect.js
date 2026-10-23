@@ -32,7 +32,7 @@ async function releaseReservation(agentId, nonce) {
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-    if (!await requireLegacyDashboardSession(req, res)) return;
+    if (!await requireLegacyDashboardSession(req, res, ['owner'])) return;
     if (!requireSameOrigin(req, res)) return;
 
     try {

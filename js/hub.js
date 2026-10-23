@@ -1,9 +1,19 @@
+import { MAX_FILE_BYTES, parseTransactionCsv } from './transaction-csv.js';
+
 const API_ROOT = '/api/hub';
 const VALID_VIEWS = new Set(['agent', 'notes', 'calendar', 'finance', 'connections']);
 const RECORD_PAGE_SIZES = Object.freeze({ note: 80, event: 80, transaction: 120 });
+const CHAT_DRAFT_STORAGE_KEY = 'shaikh-agent-hub-chat-draft-v1';
+const CHAT_RUN_STORAGE_KEY = 'shaikh-agent-hub-chat-run-v1';
+const TELEGRAM_POLL_INTERVAL = 5000;
+const CSV_PREVIEW_LIMIT = 6;
 
 function pagingState() {
     return { offset: 0, hasMore: false, loading: false, request: 0 };
+}
+
+function csvImportState() {
+    return { fileName: '', rows: [], errors: [], error: '', submitError: '', parsing: false, submitting: false, result: null };
 }
 
 const state = {
@@ -16,15 +26,24 @@ const state = {
     eventMode: 'upcoming',
     summary: {},
     models: [],
-    connections: { openrouter: null, telegram: null },
-    errors: { overview: null, connections: null, note: null, event: null, transaction: null },
+    connections: { openrouter: null, telegram: null, googleCalendar: null },
+    errors: { overview: null, connections: null, googleCalendar: null, note: null, event: null, transaction: null },
     loaded: false,
-    hiddenHistory: false
+    hiddenHistory: false,
+    chatRun: null,
+    csvImport: csvImportState(),
+    googleCalendarReturn: '',
+    googleCalendarReturnAnnounced: false,
+    googleCalendarFeedback: null
 };
 
 const dom = {};
 let lastFormTrigger = null;
 let noteSearchTimer = 0;
+let telegramPollTimer = 0;
+let telegramCountdownTimer = 0;
+let telegramStatusPromise = null;
+let lastForegroundRefresh = 0;
 
 const AGENT_PRESETS = {
     personal: 'Будь моим личным помощником. Отвечай кратко, помогай держать фокус, сохраняй важные мысли и уточняй недостающие даты или суммы перед записью.',
@@ -51,11 +70,15 @@ function cacheDom() {
         'next-record', 'notes-search', 'notes-count', 'notes-list', 'note-form',
         'calendar-strip', 'calendar-list-title', 'event-filter', 'events-count', 'events-list', 'event-form', 'balance-value',
         'income-value', 'expense-value', 'transaction-filter', 'transactions-list',
-        'transaction-form', 'profile-form', 'profile-model', 'profile-language', 'openrouter-state',
+        'transaction-form', 'transaction-csv-file', 'transaction-csv-picker', 'transaction-csv-template',
+        'transaction-csv-status', 'transaction-csv-preview', 'transaction-csv-submit',
+        'profile-form', 'profile-model', 'profile-language', 'openrouter-state',
         'openrouter-form', 'openrouter-model', 'openrouter-delete', 'telegram-state',
         'telegram-form', 'telegram-token-label', 'telegram-link-box', 'telegram-link-code',
-        'telegram-open-link', 'telegram-disconnect', 'telegram-regenerate', 'telegram-connect',
-        'toast-region'
+        'telegram-link-status', 'telegram-copy', 'telegram-check', 'telegram-open-link',
+        'telegram-disconnect', 'telegram-regenerate', 'telegram-connect', 'google-calendar-state',
+        'google-calendar-copy', 'google-calendar-connect', 'google-calendar-sync',
+        'google-calendar-disconnect', 'google-calendar-feedback', 'form-overlay', 'toast-region'
     ].forEach(id => { dom[toCamel(id)] = document.getElementById(id); });
 }
 
@@ -72,6 +95,66 @@ function escapeHtml(value) {
 function safeText(value, fallback = '') {
     const text = String(value ?? '').trim();
     return text || fallback;
+}
+
+function readSessionValue(key) {
+    try {
+        return sessionStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+function writeSessionValue(key, value) {
+    try {
+        if (value === null || value === undefined || value === '') sessionStorage.removeItem(key);
+        else sessionStorage.setItem(key, value);
+    } catch {
+        // Private browsing and strict storage policies can disable sessionStorage.
+    }
+}
+
+function saveChatDraft(value) {
+    writeSessionValue(CHAT_DRAFT_STORAGE_KEY, String(value || '').slice(0, 4000));
+}
+
+function persistChatRun(run) {
+    if (!run) {
+        writeSessionValue(CHAT_RUN_STORAGE_KEY, null);
+        return;
+    }
+    const stored = {
+        message: String(run.message || '').slice(0, 4000),
+        requestId: String(run.requestId || '').slice(0, 128),
+        createdAt: run.createdAt || new Date().toISOString()
+    };
+    writeSessionValue(CHAT_RUN_STORAGE_KEY, JSON.stringify(stored));
+}
+
+function restoreChatSession() {
+    const draft = readSessionValue(CHAT_DRAFT_STORAGE_KEY);
+    if (draft) {
+        dom.chatInput.value = draft.slice(0, 4000);
+        resizeChatInput();
+    }
+    const rawRun = readSessionValue(CHAT_RUN_STORAGE_KEY);
+    if (!rawRun) return;
+    try {
+        const stored = JSON.parse(rawRun);
+        const message = safeText(stored?.message);
+        const requestId = safeText(stored?.requestId);
+        const createdAt = parseDate(stored?.createdAt)?.toISOString() || new Date().toISOString();
+        if (!message || !/^[A-Za-z0-9_-]{8,128}$/.test(requestId)) throw new Error('Invalid chat run');
+        state.chatRun = {
+            message,
+            requestId,
+            createdAt,
+            status: 'error',
+            error: 'Отправка могла завершиться после закрытия страницы. Безопасно проверьте результат тем же запросом.'
+        };
+    } catch {
+        persistChatRun(null);
+    }
 }
 
 function getId(record) {
@@ -195,6 +278,20 @@ function normalizeOverviewRecords(records) {
     };
 }
 
+function mergeTelegramConnection(previous, next) {
+    if (!next) return next;
+    const samePendingBot = !Boolean(next.ownerLinked ?? next.owner_linked)
+        && safeText(previous?.username) === safeText(next.username)
+        && safeText(previous?.linkCode || previous?.link_code);
+    if (!samePendingBot) return next;
+    return {
+        ...next,
+        linkCode: previous.linkCode || previous.link_code,
+        linkExpiresAt: previous.linkExpiresAt || previous.link_expires_at,
+        deepLink: previous.deepLink || previous.deep_link
+    };
+}
+
 async function loadOverview({ replaceRecords = true } = {}) {
     const payload = await api('/overview');
     state.user = payload.user || null;
@@ -205,7 +302,9 @@ async function loadOverview({ replaceRecords = true } = {}) {
             model: state.agent.model || ''
         };
     }
-    if (state.agent?.telegram) state.connections.telegram = state.agent.telegram;
+    if (state.agent?.telegram) {
+        state.connections.telegram = mergeTelegramConnection(state.connections.telegram, state.agent.telegram);
+    }
     state.messages = Array.isArray(payload.messages) ? payload.messages : [];
     state.summary = payload.summary || {};
     const overviewRecords = normalizeOverviewRecords(payload.records);
@@ -304,19 +403,34 @@ async function loadConnections() {
     renderConnections();
 }
 
+async function loadGoogleCalendarStatus({ render = true } = {}) {
+    try {
+        state.connections.googleCalendar = await api('/google-calendar');
+        state.errors.googleCalendar = null;
+        if (render) renderGoogleCalendarConnection();
+        return state.connections.googleCalendar;
+    } catch (error) {
+        state.errors.googleCalendar = error;
+        if (render) renderGoogleCalendarConnection();
+        throw error;
+    }
+}
+
 async function loadAll({ announce = false } = {}) {
     setSystemStatus('loading', 'Синхронизация…');
     dom.refreshButton.disabled = true;
+    if (announce) state.googleCalendarFeedback = null;
     window.clearTimeout(noteSearchTimer);
     dom.notesSearch.value = '';
     clearGlobalError();
 
-    const tasks = [loadOverview(), loadConnections()];
+    const tasks = [loadOverview(), loadConnections(), loadGoogleCalendarStatus()];
     const results = await Promise.allSettled(tasks);
     const rejected = results.filter(result => result.status === 'rejected');
 
     state.errors.overview = results[0].status === 'rejected' ? results[0].reason : null;
     state.errors.connections = results[1].status === 'rejected' ? results[1].reason : null;
+    state.errors.googleCalendar = results[2].status === 'rejected' ? results[2].reason : null;
     ['note', 'event', 'transaction'].forEach(kind => { state.errors[kind] = state.errors.overview; });
 
     if (results[0].status === 'rejected') {
@@ -333,6 +447,7 @@ async function loadAll({ announce = false } = {}) {
     renderFinance();
     if (results[1].status === 'rejected') renderConnectionsError(results[1].reason);
     else renderConnections();
+    renderGoogleCalendarConnection();
 
     if (!rejected.length) {
         setSystemStatus('ready', 'Всё синхронизировано');
@@ -342,6 +457,7 @@ async function loadAll({ announce = false } = {}) {
         if (announce) toast('Некоторые разделы не обновились', 'error');
     }
     dom.refreshButton.disabled = false;
+    announceGoogleCalendarReturn();
 }
 
 function renderIdentity() {
@@ -361,13 +477,14 @@ function initials(value) {
 function renderAgent() {
     const agent = state.agent || {};
     const aiReady = connectionIsOn(state.connections.openrouter) || Boolean(agent.ai?.keyConfigured ?? agent.ai?.configured);
+    const chatNeedsResolution = Boolean(state.chatRun);
     dom.agentName.textContent = safeText(agent.name, 'SHAIKH Agent');
     dom.agentModel.textContent = aiReady ? (modelName(agent.model) || 'AI подключён') : 'Нужно подключить AI';
     dom.agentLiveDot.classList.toggle('is-off', !aiReady);
     dom.chatForm.classList.toggle('is-locked', !aiReady);
     dom.chatLockCta.hidden = aiReady;
-    dom.chatInput.disabled = !aiReady;
-    dom.chatSubmit.disabled = !aiReady;
+    dom.chatInput.disabled = !aiReady || chatNeedsResolution;
+    dom.chatSubmit.disabled = !aiReady || chatNeedsResolution;
     dom.chatInput.placeholder = aiReady
         ? 'Например: запиши расход 8 500 ₸ на рекламу…'
         : 'Сначала подключите OpenRouter — это займёт около минуты';
@@ -409,8 +526,19 @@ function renderActivation() {
 
 function renderMessages() {
     const messages = state.hiddenHistory ? [] : state.messages;
-    dom.chatFeed.setAttribute('aria-busy', 'false');
-    if (!messages.length) {
+    const run = state.chatRun;
+    const runMessageVisible = run && messages.some(message => (
+        message.clientRequestId === run.requestId
+        || (message.role === 'user'
+            && message.channel !== 'telegram'
+            && safeText(message.content || message.text) === run.message
+            && Math.abs((parseDate(message.createdAt || message.created_at)?.getTime() || 0) - (parseDate(run.createdAt)?.getTime() || 0)) < 15 * 60 * 1000)
+    ));
+    const visibleMessages = run && !runMessageVisible
+        ? [...messages, { role: 'user', channel: 'web', content: run.message, createdAt: run.createdAt, clientRequestId: run.requestId }]
+        : messages;
+    dom.chatFeed.setAttribute('aria-busy', String(run?.status === 'pending'));
+    if (!visibleMessages.length && !run) {
         const name = safeText(state.user?.name || state.user?.displayName, 'друг');
         const aiReady = activationState().aiReady;
         dom.chatFeed.innerHTML = `
@@ -425,7 +553,7 @@ function renderMessages() {
             </div>`;
         return;
     }
-    dom.chatFeed.innerHTML = messages.map(messageTemplate).join('');
+    dom.chatFeed.innerHTML = visibleMessages.map(messageTemplate).join('') + (run ? chatRunTemplate(run) : '');
     dom.chatFeed.scrollTop = dom.chatFeed.scrollHeight;
 }
 
@@ -483,17 +611,27 @@ function actionKind(action) {
     })[action.tool] || '';
 }
 
-function appendPendingMessage() {
-    const node = document.createElement('div');
-    node.className = 'chat-message is-pending';
-    node.id = 'pending-agent-message';
-    node.innerHTML = `<span class="message-avatar">AI</span><div class="message-body"><div class="message-bubble"><div class="run-progress">
-        <span class="run-step is-done">Запрос отправлен</span><span class="run-divider">→</span>
-        <span class="run-step is-active">Агент работает</span><span class="run-divider">→</span>
-        <span class="run-step">Результат</span>
-    </div></div></div>`;
-    dom.chatFeed.appendChild(node);
-    dom.chatFeed.scrollTop = dom.chatFeed.scrollHeight;
+function chatRunTemplate(run) {
+    if (run.status === 'error') {
+        return `<div class="chat-run-error" role="alert">
+            <span class="chat-run-error__icon" aria-hidden="true">!</span>
+            <div class="chat-run-error__copy">
+                <strong>Результат не подтверждён</strong>
+                <p>${escapeHtml(run.error || 'Связь прервалась. Запрос можно безопасно повторить.')}</p>
+                <div class="chat-run-error__actions">
+                    <button class="secondary-button" type="button" data-chat-retry>Повторить безопасно</button>
+                    <button class="text-button" type="button" data-chat-edit>Изменить текст</button>
+                </div>
+            </div>
+        </div>`;
+    }
+    return `<div class="chat-message is-pending" id="pending-agent-message">
+        <span class="message-avatar">AI</span><div class="message-body"><div class="message-bubble"><div class="run-progress">
+            <span class="run-step is-done">Запрос принят</span><span class="run-divider">→</span>
+            <span class="run-step is-active">Агент работает</span><span class="run-divider">→</span>
+            <span class="run-step">Подтверждение</span>
+        </div></div></div>
+    </div>`;
 }
 
 async function submitChat(event) {
@@ -505,27 +643,81 @@ async function submitChat(event) {
     }
     const message = dom.chatInput.value.trim();
     if (!message || dom.chatSubmit.disabled) return;
+    if (state.chatRun) {
+        toast(state.chatRun.status === 'pending'
+            ? 'Дождитесь результата текущего запроса'
+            : 'Сначала повторите запрос или верните его в поле для изменения', 'error');
+        return;
+    }
+    const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const run = { message, requestId, createdAt: new Date().toISOString(), status: 'pending', error: '' };
     state.hiddenHistory = false;
+    state.chatRun = run;
+    persistChatRun(run);
     dom.chatInput.value = '';
+    saveChatDraft('');
     resizeChatInput();
-    state.messages.push({ role: 'user', channel: 'web', content: message, createdAt: new Date().toISOString() });
+    state.messages.push({ role: 'user', channel: 'web', content: message, createdAt: run.createdAt, clientRequestId: requestId });
     renderMessages();
-    appendPendingMessage();
+    await sendChatRun(run);
+}
+
+async function retryChatRun() {
+    const run = state.chatRun;
+    if (!run || run.status === 'pending') return;
+    state.hiddenHistory = false;
+    await sendChatRun(run);
+}
+
+function editChatRun() {
+    const run = state.chatRun;
+    if (!run) return;
+    state.messages = state.messages.filter(message => message.clientRequestId !== run.requestId);
+    dom.chatInput.value = run.message;
+    saveChatDraft(run.message);
+    state.chatRun = null;
+    persistChatRun(null);
+    resizeChatInput();
+    renderAgent();
+    dom.chatInput.focus();
+    dom.chatInput.setSelectionRange(dom.chatInput.value.length, dom.chatInput.value.length);
+}
+
+async function sendChatRun(run) {
+    if (!run || state.chatRun?.requestId !== run.requestId) return;
+    state.chatRun = { ...run, status: 'pending', error: '' };
+    persistChatRun(state.chatRun);
+    renderMessages();
+    dom.chatInput.disabled = true;
     setButtonLoading(dom.chatSubmit, true, '…');
 
     try {
-        const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const payload = await api('/chat', { method: 'POST', body: { message, requestId } });
-        document.getElementById('pending-agent-message')?.remove();
+        const payload = await api('/chat', { method: 'POST', body: { message: run.message, requestId: run.requestId } });
+        if (state.chatRun?.requestId !== run.requestId) return;
+        if (payload.busy) throw new ApiError('Запрос ещё обрабатывается. Подождите несколько секунд и повторите проверку.', 409);
+        if (payload.duplicate && !payload.reply) {
+            await loadOverview();
+            state.chatRun = null;
+            persistChatRun(null);
+            renderNotes();
+            renderCalendar();
+            renderFinance();
+            renderMessages();
+            toast('Результат синхронизирован');
+            return;
+        }
+        const actions = Array.isArray(payload.actions) ? payload.actions : [];
         state.messages.push({
             role: 'assistant',
             content: payload.reply || 'Готово.',
             channel: 'web',
-            actions: Array.isArray(payload.actions) ? payload.actions : [],
+            actions,
             createdAt: new Date().toISOString()
         });
+        state.chatRun = null;
+        persistChatRun(null);
         renderMessages();
-        (payload.actions || []).forEach(action => {
+        actions.forEach(action => {
             if (!action?.record) return;
             const kind = actionKind(action);
             if (!state.records[kind]) return;
@@ -535,7 +727,7 @@ async function submitChat(event) {
                 state.records.event = state.records.event.filter(item => getId(item) !== getId(action.record));
             }
         });
-        const touchedKinds = new Set((payload.actions || []).map(actionKind));
+        const touchedKinds = new Set(actions.map(actionKind));
         if (touchedKinds.has('transaction')) {
             await loadOverview({ replaceRecords: false });
             renderNotes();
@@ -549,13 +741,17 @@ async function submitChat(event) {
             renderActivation();
         }
     } catch (error) {
-        document.getElementById('pending-agent-message')?.remove();
-        state.messages.push({ role: 'assistant', channel: 'web', content: error.message, createdAt: new Date().toISOString() });
+        if (state.chatRun?.requestId !== run.requestId) return;
+        state.chatRun = { ...run, status: 'error', error: error.message };
+        persistChatRun(state.chatRun);
         renderMessages();
         toast(error.message, 'error');
     } finally {
         setButtonLoading(dom.chatSubmit, false);
-        dom.chatInput.focus();
+        const chatNeedsResolution = Boolean(state.chatRun);
+        dom.chatInput.disabled = !activationState().aiReady || chatNeedsResolution;
+        dom.chatSubmit.disabled = !activationState().aiReady || chatNeedsResolution;
+        if (location.hash === '#agent' && !dom.chatInput.disabled && state.chatRun?.status !== 'error') dom.chatInput.focus();
     }
 }
 
@@ -671,6 +867,7 @@ function renderCalendarStrip() {
 }
 
 function renderFinance() {
+    renderTransactionCsvImport();
     const transactions = [...state.records.transaction].sort((a, b) => transactionDate(b) - transactionDate(a));
     const currentMonth = monthKey(new Date());
     const monthly = transactions.filter(record => monthKey(transactionDate(record)) === currentMonth);
@@ -711,6 +908,149 @@ function renderTransactions(source = state.records.transaction) {
             ${cardActions('transaction', getId(record))}
         </article>`;
     }).join('') + loadMoreControl('transaction');
+}
+
+function csvPreviewTable(rows) {
+    const preview = rows.slice(0, CSV_PREVIEW_LIMIT);
+    return `<div class="csv-preview-table" tabindex="0" role="region" aria-label="Предпросмотр операций">
+        <table>
+            <caption class="sr-only">Первые ${preview.length} операций из CSV</caption>
+            <thead><tr><th>Дата</th><th>Описание</th><th>Тип</th><th>Сумма</th></tr></thead>
+            <tbody>${preview.map(row => `<tr>
+                <td>${escapeHtml(inputDate(row.occurredAt))}</td>
+                <td><strong>${escapeHtml(row.title)}</strong><small>${escapeHtml(row.category)}</small></td>
+                <td><span class="csv-type is-${row.transactionType === 'income' ? 'income' : 'expense'}">${row.transactionType === 'income' ? 'Доход' : 'Расход'}</span></td>
+                <td>${escapeHtml(formatMoneyPrecise(row.amount))}</td>
+            </tr>`).join('')}</tbody>
+        </table>
+        ${rows.length > preview.length ? `<p class="csv-preview-more">И ещё ${rows.length - preview.length} ${plural(rows.length - preview.length, ['операция', 'операции', 'операций'])}.</p>` : ''}
+    </div>`;
+}
+
+function renderTransactionCsvImport() {
+    const current = state.csvImport;
+    if (!dom.transactionCsvPreview) return;
+    const busy = current.parsing || current.submitting;
+    const canSubmit = current.rows.length > 0 && current.errors.length === 0 && !current.error && !current.result && !busy;
+    dom.transactionCsvFile.disabled = busy;
+    dom.transactionCsvPicker.disabled = busy;
+    dom.transactionCsvSubmit.disabled = !canSubmit;
+    dom.transactionCsvSubmit.textContent = current.submitting
+        ? 'Импортирую…'
+        : (current.rows.length ? `Импортировать ${current.rows.length}` : 'Импортировать');
+    dom.transactionCsvStatus.classList.toggle('is-error', Boolean(current.error || current.errors.length || current.submitError));
+    dom.transactionCsvStatus.classList.toggle('is-success', Boolean(current.result));
+
+    if (current.parsing) {
+        dom.transactionCsvStatus.textContent = `Проверяю ${current.fileName || 'CSV-файл'}…`;
+        dom.transactionCsvPreview.innerHTML = '<div class="csv-preview-empty"><span class="loader"></span><span>Читаю файл локально</span></div>';
+        return;
+    }
+    if (current.error) {
+        dom.transactionCsvStatus.textContent = current.error;
+        dom.transactionCsvPreview.innerHTML = '<div class="csv-preview-empty is-error">Файл не отправлялся на сервер.</div>';
+        return;
+    }
+    if (current.result) {
+        const imported = numberValue(current.result.imported);
+        const duplicates = numberValue(current.result.duplicates);
+        dom.transactionCsvStatus.textContent = imported
+            ? `Импорт завершён: добавлено ${imported} ${plural(imported, ['операция', 'операции', 'операций'])}.`
+            : 'Новых операций не добавлено.';
+        dom.transactionCsvPreview.innerHTML = `<div class="csv-import-result">
+            <strong>${imported ? 'Готово' : 'Файл уже был учтён'}</strong>
+            <span>Добавлено: ${imported}${duplicates ? ` · повторов пропущено: ${duplicates}` : ''}</span>
+        </div>`;
+        return;
+    }
+    if (!current.fileName) {
+        dom.transactionCsvStatus.textContent = 'Нужны столбцы: дата, описание, сумма и тип доход/расход.';
+        dom.transactionCsvPreview.innerHTML = '<div class="csv-preview-empty">Выберите CSV — здесь появится локальный предпросмотр до отправки.</div>';
+        return;
+    }
+
+    const validCopy = `${current.fileName}: распознано ${current.rows.length} из ${current.rows.length + current.errors.length} строк.`;
+    dom.transactionCsvStatus.textContent = current.errors.length
+        ? `${validCopy} Исправьте ошибки — пока файл не будет отправлен.`
+        : `${validCopy} Проверьте операции и подтвердите импорт.`;
+    const errorList = current.errors.length
+        ? `<div class="csv-error-box" role="alert"><strong>Строки с ошибками</strong><ul>${current.errors.slice(0, 8).map(error => `<li>Строка ${error.line}: ${escapeHtml(error.message)}</li>`).join('')}</ul>${current.errors.length > 8 ? `<p>И ещё ${current.errors.length - 8}.</p>` : ''}</div>`
+        : '';
+    const submitError = current.submitError
+        ? `<div class="csv-error-box" role="alert"><strong>Импорт не завершён</strong><p>${escapeHtml(current.submitError)} Строки сохранены в предпросмотре — можно повторить.</p></div>`
+        : '';
+    dom.transactionCsvPreview.innerHTML = `${submitError}${errorList}${current.rows.length ? csvPreviewTable(current.rows) : ''}`;
+}
+
+async function selectTransactionCsv(event) {
+    const file = event.currentTarget.files?.[0];
+    if (!file) {
+        state.csvImport = csvImportState();
+        renderTransactionCsvImport();
+        return;
+    }
+    state.csvImport = { ...csvImportState(), fileName: file.name, parsing: true };
+    renderTransactionCsvImport();
+    try {
+        if (file.size > MAX_FILE_BYTES) throw new Error('CSV-файл больше 1 МБ. Выберите файл поменьше.');
+        const parsed = parseTransactionCsv(await file.text());
+        state.csvImport = {
+            ...csvImportState(),
+            fileName: file.name,
+            rows: parsed.rows,
+            errors: parsed.errors
+        };
+    } catch (error) {
+        state.csvImport = { ...csvImportState(), fileName: file.name, error: error.message || 'Не удалось прочитать CSV-файл.' };
+    }
+    renderTransactionCsvImport();
+}
+
+function downloadTransactionCsvTemplate() {
+    const template = [
+        'Дата;Описание;Сумма;Тип;Категория;Комментарий',
+        '23.10.2026;Кофе;1250;Расход;Еда;Встреча с клиентом',
+        '23.10.2026;Оплата проекта;100000;Доход;Работа;'
+    ].join('\n');
+    const url = URL.createObjectURL(new Blob([`\uFEFF${template}`], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'shaikh-finance-template.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+async function submitTransactionCsvImport() {
+    const current = state.csvImport;
+    if (!current.rows.length || current.errors.length || current.error || current.submitting || current.result) return;
+    const rows = current.rows.map(row => ({ ...row }));
+    state.csvImport = { ...current, submitting: true, submitError: '' };
+    renderTransactionCsvImport();
+    let payload;
+    try {
+        payload = await api('/import', { method: 'POST', body: { action: 'transaction_csv', rows } });
+    } catch (error) {
+        state.csvImport = { ...state.csvImport, submitting: false, submitError: error.message };
+        renderTransactionCsvImport();
+        toast(error.message, 'error');
+        return;
+    }
+
+    state.csvImport = { ...state.csvImport, rows: [], submitting: false, result: payload };
+    renderTransactionCsvImport();
+    const imported = numberValue(payload.imported);
+    const duplicates = numberValue(payload.duplicates);
+    toast(imported
+        ? `Добавлено ${imported} ${plural(imported, ['операция', 'операции', 'операций'])}`
+        : (duplicates ? 'Повторы найдены и безопасно пропущены' : 'Импорт завершён'));
+    try {
+        await loadOverview();
+        renderFinance();
+    } catch {
+        toast('Импорт завершён, но обзор не обновился. Нажмите «Обновить данные».', 'error');
+    }
 }
 
 function cardActions(kind, id) {
@@ -942,6 +1282,7 @@ function renderConnections() {
     if (openrouter?.model) dom.openrouterModel.value = openrouter.model;
 
     renderTelegramConnection();
+    renderGoogleCalendarConnection();
 }
 
 function renderConnectionsError(error) {
@@ -970,21 +1311,333 @@ function populateModels() {
     dom.openrouterModel.value = selectedRouter;
 }
 
+function googleCalendarReturnFeedback() {
+    const result = state.googleCalendarReturn;
+    if (!result) return null;
+    if (result === 'setup_required') {
+        return { type: 'warning', message: 'Google Calendar ещё не настроен владельцем сайта. Подключение пользователя не запускалось.' };
+    }
+    if (result === 'error') {
+        return { type: 'error', message: 'Google не подтвердил подключение. Доступ не сохранён — попробуйте ещё раз.' };
+    }
+    if (state.errors.googleCalendar) {
+        return { type: 'error', message: 'Google вернул вас в Hub, но статус подключения пока не удалось проверить.' };
+    }
+    if (state.connections.googleCalendar?.connected) {
+        return { type: 'success', message: 'Google Calendar подключён. Запустите синхронизацию, когда будете готовы.' };
+    }
+    if (state.connections.googleCalendar) {
+        return { type: 'error', message: 'Возврат из Google завершён, но подключение не подтвердилось. Попробуйте подключить снова.' };
+    }
+    return { type: '', message: 'Проверяю подключение после возврата из Google…' };
+}
+
+function setGoogleCalendarFeedback(feedback) {
+    const value = feedback || { message: '', type: '' };
+    dom.googleCalendarFeedback.textContent = value.message || '';
+    dom.googleCalendarFeedback.classList.toggle('is-error', value.type === 'error');
+    dom.googleCalendarFeedback.classList.toggle('is-success', value.type === 'success');
+    dom.googleCalendarFeedback.classList.toggle('is-warning', value.type === 'warning');
+}
+
+function renderGoogleCalendarConnection() {
+    if (!dom.googleCalendarState) return;
+    const status = state.connections.googleCalendar;
+    const error = state.errors.googleCalendar;
+    if (error) {
+        setConnectionState(dom.googleCalendarState, 'Недоступно', 'error');
+        dom.googleCalendarCopy.textContent = 'Не удалось проверить Google Calendar. Остальные разделы Hub продолжают работать.';
+        dom.googleCalendarConnect.hidden = false;
+        dom.googleCalendarConnect.disabled = true;
+        dom.googleCalendarSync.hidden = true;
+        dom.googleCalendarDisconnect.hidden = true;
+        const prior = state.googleCalendarFeedback?.message ? ` ${state.googleCalendarFeedback.message}` : '';
+        setGoogleCalendarFeedback(googleCalendarReturnFeedback() || { type: 'error', message: `${error.message}${prior}` });
+        return;
+    }
+    if (!status) {
+        setConnectionState(dom.googleCalendarState, 'Проверяю…', 'off');
+        dom.googleCalendarCopy.textContent = 'Проверяю, доступно ли подключение Google Calendar.';
+        dom.googleCalendarConnect.hidden = false;
+        dom.googleCalendarConnect.disabled = true;
+        dom.googleCalendarSync.hidden = true;
+        dom.googleCalendarDisconnect.hidden = true;
+        setGoogleCalendarFeedback(googleCalendarReturnFeedback());
+        return;
+    }
+
+    const configured = Boolean(status.configured);
+    const connected = Boolean(status.connected);
+    const reconnectRequired = Boolean(status.reconnectRequired ?? status.reconnect_required);
+    const updatedAt = parseDate(status.updatedAt || status.updated_at);
+    const updatedCopy = updatedAt
+        ? ` Последнее обновление подключения: ${new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(updatedAt)}.`
+        : '';
+    const label = connected ? 'Подключён' : (reconnectRequired ? 'Нужно переподключить' : (configured ? 'Не подключён' : 'Нужна настройка'));
+    const type = connected ? 'on' : (reconnectRequired || !configured ? 'waiting' : 'off');
+    setConnectionState(dom.googleCalendarState, label, type);
+    dom.googleCalendarCopy.textContent = !configured
+        ? 'Интеграция пока выключена: владельцу сайта нужно добавить Google OAuth Client ID и Client Secret.'
+        : (connected
+            ? `События можно синхронизировать в обе стороны вручную.${updatedCopy}`
+            : (reconnectRequired
+                ? 'Сохранённый доступ повреждён или отозван. Подключите календарь заново.'
+                : 'Подключите основной календарь Google, затем запустите первую синхронизацию.'));
+    dom.googleCalendarConnect.hidden = connected;
+    dom.googleCalendarConnect.disabled = !configured;
+    dom.googleCalendarConnect.textContent = reconnectRequired ? 'Подключить заново' : (configured ? 'Подключить Google' : 'Нужна настройка сайта');
+    dom.googleCalendarSync.hidden = !connected;
+    dom.googleCalendarSync.disabled = false;
+    dom.googleCalendarDisconnect.hidden = !connected && !reconnectRequired;
+    dom.googleCalendarDisconnect.disabled = false;
+    const defaultFeedback = !configured
+        ? { type: 'warning', message: 'Требуется настройка: подключение появится после добавления OAuth владельцем сайта.' }
+        : null;
+    setGoogleCalendarFeedback(state.googleCalendarFeedback || googleCalendarReturnFeedback() || defaultFeedback);
+}
+
+function consumeGoogleCalendarReturn() {
+    const url = new URL(window.location.href);
+    const result = url.searchParams.get('google');
+    if (!['connected', 'error', 'setup_required'].includes(result)) return;
+    state.googleCalendarReturn = result;
+    url.searchParams.delete('google');
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function announceGoogleCalendarReturn() {
+    if (!state.googleCalendarReturn || state.googleCalendarReturnAnnounced) return;
+    state.googleCalendarReturnAnnounced = true;
+    const feedback = googleCalendarReturnFeedback();
+    if (feedback?.message) toast(feedback.message, feedback.type === 'success' ? 'success' : 'error');
+}
+
+function connectGoogleCalendar() {
+    if (!state.connections.googleCalendar?.configured) {
+        state.googleCalendarFeedback = { type: 'warning', message: 'Сначала владелец сайта должен настроить Google OAuth.' };
+        renderGoogleCalendarConnection();
+        return;
+    }
+    window.location.assign(`${API_ROOT}/google-calendar/start`);
+}
+
+function googleCalendarSyncFeedback(payload) {
+    const push = payload?.push || {};
+    const pull = payload?.pull || {};
+    const parts = [
+        `В Google отправлено: ${numberValue(push.synced)}`,
+        `из Google добавлено: ${numberValue(pull.imported)}, обновлено: ${numberValue(pull.updated)}`
+    ];
+    if (numberValue(push.failed)) parts.push(`ошибок: ${numberValue(push.failed)}`);
+    if (numberValue(push.remaining)) parts.push(`ещё ждут отправки: ${numberValue(push.remaining)}`);
+    if (numberValue(pull.skippedLocalChanges)) parts.push(`локальных изменений сохранено: ${numberValue(pull.skippedLocalChanges)}`);
+    if (pull.truncated) parts.push('получены первые 500 событий');
+    return {
+        type: payload?.ok ? 'success' : 'warning',
+        message: `${parts.join(' · ')}.${numberValue(push.remaining) ? ' Повторите синхронизацию, чтобы продолжить.' : ''}`
+    };
+}
+
+async function syncGoogleCalendar() {
+    if (!state.connections.googleCalendar?.connected) return;
+    setButtonLoading(dom.googleCalendarSync, true, 'Синхронизирую…');
+    dom.googleCalendarDisconnect.disabled = true;
+    state.googleCalendarFeedback = { type: '', message: 'Сверяю события Hub и Google Calendar…' };
+    setGoogleCalendarFeedback(state.googleCalendarFeedback);
+    let payload;
+    try {
+        payload = await api('/google-calendar', { method: 'POST', body: { action: 'sync' } });
+    } catch (error) {
+        if (error.status === 409) await loadGoogleCalendarStatus({ render: false }).catch(() => {});
+        state.googleCalendarFeedback = { type: 'error', message: error.message };
+        toast(error.message, 'error');
+        renderGoogleCalendarConnection();
+        return;
+    } finally {
+        setButtonLoading(dom.googleCalendarSync, false);
+        dom.googleCalendarDisconnect.disabled = false;
+    }
+
+    state.googleCalendarFeedback = googleCalendarSyncFeedback(payload);
+    renderGoogleCalendarConnection();
+    toast(payload.ok ? 'Google Calendar синхронизирован' : 'Синхронизация завершилась частично', payload.ok ? 'success' : 'error');
+    const [overviewResult, statusResult] = await Promise.allSettled([
+        loadOverview(),
+        loadGoogleCalendarStatus({ render: false })
+    ]);
+    if (overviewResult.status === 'fulfilled') {
+        renderCalendar();
+        renderFinance();
+    } else {
+        toast('Синхронизация завершилась, но обзор не обновился. Нажмите «Обновить данные».', 'error');
+    }
+    if (statusResult.status === 'rejected') toast('Не удалось обновить статус Google Calendar.', 'error');
+    renderGoogleCalendarConnection();
+}
+
+async function disconnectGoogleCalendar() {
+    if (!window.confirm('Отключить Google Calendar? События, уже сохранённые в Hub, останутся на месте.')) return;
+    setButtonLoading(dom.googleCalendarDisconnect, true, 'Отключаю…');
+    dom.googleCalendarSync.disabled = true;
+    let payload;
+    try {
+        payload = await api('/google-calendar', { method: 'POST', body: { action: 'disconnect' } });
+    } catch (error) {
+        state.googleCalendarFeedback = { type: 'error', message: error.message };
+        toast(error.message, 'error');
+        renderGoogleCalendarConnection();
+        return;
+    } finally {
+        setButtonLoading(dom.googleCalendarDisconnect, false);
+        dom.googleCalendarSync.disabled = false;
+    }
+    state.connections.googleCalendar = {
+        ...(state.connections.googleCalendar || {}),
+        connected: false,
+        reconnectRequired: false,
+        updatedAt: null
+    };
+    state.googleCalendarReturn = '';
+    state.googleCalendarFeedback = payload.remoteRevoked === false
+        ? { type: 'warning', message: 'Подключение удалено из Hub, но Google не подтвердил отзыв токена. При необходимости проверьте доступы аккаунта Google.' }
+        : { type: 'success', message: 'Google Calendar отключён. Сохранённые в Hub события не удалены.' };
+    renderGoogleCalendarConnection();
+    toast('Google Calendar отключён');
+}
+
 function renderTelegramConnection() {
     const telegram = state.connections.telegram;
     const connected = connectionIsOn(telegram);
     const ownerLinked = Boolean(telegram?.ownerLinked ?? telegram?.owner_linked);
+    const waiting = connected && !ownerLinked;
     const linkCode = safeText(telegram?.linkCode || telegram?.link_code || telegram?.code);
     const linkUrl = safeText(telegram?.deepLink || telegram?.deep_link || telegram?.linkUrl || telegram?.link_url || telegram?.botUrl || telegram?.bot_url || telegram?.url);
-    setConnectionState(dom.telegramState, ownerLinked ? 'Подключён' : (connected || linkCode ? 'Ждёт привязки' : 'Не подключён'), connected || linkCode ? 'on' : 'off');
+    setConnectionState(dom.telegramState, ownerLinked ? 'Подключён' : (waiting ? 'Ожидает подтверждения' : 'Не подключён'), ownerLinked ? 'on' : (waiting ? 'waiting' : 'off'));
     dom.telegramTokenLabel.hidden = connected;
     dom.telegramDisconnect.hidden = !connected;
-    dom.telegramRegenerate.hidden = !connected || ownerLinked;
-    dom.telegramConnect.hidden = connected || Boolean(linkCode);
-    dom.telegramLinkBox.hidden = !linkCode;
+    dom.telegramRegenerate.hidden = !waiting;
+    dom.telegramConnect.hidden = connected;
+    dom.telegramLinkBox.hidden = !waiting;
     dom.telegramLinkCode.textContent = linkCode || '—';
-    dom.telegramOpenLink.hidden = !linkUrl;
-    if (linkUrl) dom.telegramOpenLink.href = safeExternalUrl(linkUrl) || '#';
+    const expired = telegramLinkExpired(telegram);
+    const safeLinkUrl = safeExternalUrl(linkUrl);
+    dom.telegramCopy.disabled = !linkCode || expired;
+    dom.telegramOpenLink.hidden = !safeLinkUrl || expired;
+    if (safeLinkUrl && !expired) dom.telegramOpenLink.href = safeLinkUrl;
+    dom.telegramCheck.hidden = !waiting;
+    updateTelegramCountdown();
+    scheduleTelegramPolling();
+}
+
+function telegramLinkExpired(telegram = state.connections.telegram) {
+    const expiresAt = parseDate(telegram?.linkExpiresAt || telegram?.link_expires_at);
+    return Boolean(expiresAt && expiresAt.getTime() <= Date.now());
+}
+
+function updateTelegramCountdown() {
+    window.clearInterval(telegramCountdownTimer);
+    telegramCountdownTimer = 0;
+    const telegram = state.connections.telegram;
+    const connected = connectionIsOn(telegram);
+    const ownerLinked = Boolean(telegram?.ownerLinked ?? telegram?.owner_linked);
+    if (!connected || ownerLinked || !dom.telegramLinkStatus) return;
+    const code = safeText(telegram?.linkCode || telegram?.link_code || telegram?.code);
+    const expiresAt = parseDate(telegram?.linkExpiresAt || telegram?.link_expires_at);
+    const paint = () => {
+        const remaining = expiresAt ? expiresAt.getTime() - Date.now() : 0;
+        dom.telegramLinkStatus.classList.remove('is-expired');
+        if (!code || !expiresAt) {
+            dom.telegramLinkStatus.textContent = 'Код не показывается после обновления страницы. Создайте новый код и откройте бота.';
+            dom.telegramCopy.disabled = true;
+            dom.telegramOpenLink.hidden = true;
+            return false;
+        }
+        if (remaining <= 0) {
+            dom.telegramLinkStatus.textContent = 'Срок действия кода истёк. Создайте новый код привязки.';
+            dom.telegramLinkStatus.classList.add('is-expired');
+            dom.telegramCopy.disabled = true;
+            dom.telegramOpenLink.hidden = true;
+            return false;
+        }
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        dom.telegramLinkStatus.classList.remove('is-expired');
+        dom.telegramLinkStatus.textContent = `Откройте бота и отправьте код. Он действует ещё ${minutes}:${String(seconds).padStart(2, '0')}.`;
+        return true;
+    };
+    if (paint()) telegramCountdownTimer = window.setInterval(() => {
+        if (!paint()) window.clearInterval(telegramCountdownTimer);
+    }, 1000);
+}
+
+function scheduleTelegramPolling() {
+    window.clearTimeout(telegramPollTimer);
+    telegramPollTimer = 0;
+    const telegram = state.connections.telegram;
+    const waiting = connectionIsOn(telegram) && !Boolean(telegram?.ownerLinked ?? telegram?.owner_linked);
+    if (!waiting || document.visibilityState === 'hidden') return;
+    telegramPollTimer = window.setTimeout(async () => {
+        telegramPollTimer = 0;
+        try {
+            await refreshTelegramStatus();
+        } catch {
+            scheduleTelegramPolling();
+        }
+    }, TELEGRAM_POLL_INTERVAL);
+}
+
+async function refreshTelegramStatus({ refreshRecords = false } = {}) {
+    if (!telegramStatusPromise) {
+        telegramStatusPromise = (async () => {
+            await loadOverview({ replaceRecords: false });
+            renderTelegramConnection();
+            if (refreshRecords) {
+                const activeView = VALID_VIEWS.has(location.hash.slice(1)) ? location.hash.slice(1) : 'agent';
+                const kind = ({ notes: 'note', calendar: 'event', finance: 'transaction' })[activeView];
+                if (kind) await loadRecords(kind, {
+                    search: kind === 'note' ? dom.notesSearch.value.trim() : '',
+                    mode: kind === 'event' ? state.eventMode : undefined
+                });
+            }
+            return state.connections.telegram;
+        })().finally(() => { telegramStatusPromise = null; });
+    }
+    return telegramStatusPromise;
+}
+
+async function checkTelegramConnection() {
+    setButtonLoading(dom.telegramCheck, true, 'Проверяю…');
+    try {
+        const telegram = await refreshTelegramStatus();
+        if (telegram?.ownerLinked ?? telegram?.owner_linked) toast('Telegram подключён и готов к работе');
+        else if (telegramLinkExpired(telegram)) toast('Код истёк — создайте новый', 'error');
+        else toast('Пока ждём подтверждение в Telegram');
+    } catch (error) {
+        toast(error.message, 'error');
+    } finally {
+        setButtonLoading(dom.telegramCheck, false);
+    }
+}
+
+async function copyTelegramCode() {
+    const code = safeText(state.connections.telegram?.linkCode || state.connections.telegram?.link_code);
+    if (!code || telegramLinkExpired()) return;
+    try {
+        await navigator.clipboard.writeText(code);
+        toast('Код привязки скопирован');
+    } catch {
+        toast('Не удалось скопировать код. Выделите его вручную.', 'error');
+    }
+}
+
+function refreshOnForeground() {
+    if (!state.loaded || document.visibilityState === 'hidden') return;
+    const now = Date.now();
+    if (now - lastForegroundRefresh < 1500) return;
+    lastForegroundRefresh = now;
+    const refreshes = [refreshTelegramStatus({ refreshRecords: true })];
+    if (location.hash === '#connections') refreshes.push(loadGoogleCalendarStatus());
+    Promise.allSettled(refreshes);
 }
 
 function connectionIsOn(connection) {
@@ -995,6 +1648,7 @@ function connectionIsOn(connection) {
 function setConnectionState(element, label, type) {
     element.textContent = label;
     element.classList.toggle('is-on', type === 'on');
+    element.classList.toggle('is-waiting', type === 'waiting');
     element.classList.toggle('is-error', type === 'error');
 }
 
@@ -1027,7 +1681,7 @@ function applyConnectionPayload(payload) {
                 model: payload.agent.model || ''
             };
         }
-        if (payload.agent.telegram) state.connections.telegram = payload.agent.telegram;
+        if (payload.agent.telegram) state.connections.telegram = mergeTelegramConnection(state.connections.telegram, payload.agent.telegram);
     }
     if (payload.models) state.models = payload.models;
     const connections = payload.connections || {};
@@ -1077,6 +1731,7 @@ function prepareWorkflow(prompt) {
     else navigate('agent');
     state.hiddenHistory = false;
     dom.chatInput.value = prompt;
+    saveChatDraft(prompt);
     resizeChatInput();
     window.setTimeout(() => {
         dom.chatInput.focus();
@@ -1115,8 +1770,12 @@ function openMobileForm(wrap) {
     wrap.classList.add('is-open');
     document.body.classList.add('form-open');
     if (window.matchMedia('(max-width: 960px)').matches) {
+        const heading = wrap.querySelector('.form-heading h2');
         wrap.setAttribute('role', 'dialog');
         wrap.setAttribute('aria-modal', 'true');
+        if (heading?.id) wrap.setAttribute('aria-labelledby', heading.id);
+        dom.formOverlay.hidden = false;
+        setDialogBackgroundInert(wrap, true);
         wrap.querySelector('.record-form input:not([type="hidden"]):not([disabled]), .record-form textarea:not([disabled]), .record-form select:not([disabled])')
             ?.focus({ preventScroll: true });
     }
@@ -1127,9 +1786,34 @@ function closeMobileForm(wrap) {
     wrap.classList.remove('is-open');
     wrap.removeAttribute('role');
     wrap.removeAttribute('aria-modal');
+    wrap.removeAttribute('aria-labelledby');
+    setDialogBackgroundInert(wrap, false);
+    dom.formOverlay.hidden = true;
     if (!document.querySelector('.record-form-wrap.is-open')) document.body.classList.remove('form-open');
     if (lastFormTrigger instanceof HTMLElement) lastFormTrigger.focus({ preventScroll: true });
     lastFormTrigger = null;
+}
+
+function setDialogBackgroundInert(dialog, enabled) {
+    if (!dialog) return;
+    if (!enabled) {
+        document.querySelectorAll('[data-hub-dialog-inert="true"]').forEach(element => {
+            element.inert = false;
+            element.removeAttribute('inert');
+            element.removeAttribute('data-hub-dialog-inert');
+        });
+        return;
+    }
+    let branch = dialog;
+    while (branch?.parentElement && branch !== document.body) {
+        [...branch.parentElement.children].forEach(element => {
+            if (element === branch || element === dom.formOverlay || element.inert) return;
+            element.inert = true;
+            element.setAttribute('inert', '');
+            element.dataset.hubDialogInert = 'true';
+        });
+        branch = branch.parentElement;
+    }
 }
 
 function focusableElements(container) {
@@ -1154,6 +1838,14 @@ function queueNoteSearch() {
 
 function bindEvents() {
     window.addEventListener('hashchange', () => navigate(location.hash.slice(1), { replace: true, focus: true }));
+    window.addEventListener('focus', refreshOnForeground);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') refreshOnForeground();
+        else {
+            window.clearTimeout(telegramPollTimer);
+            telegramPollTimer = 0;
+        }
+    });
     document.querySelectorAll('[data-view-target]').forEach(link => link.addEventListener('click', () => navigate(link.dataset.viewTarget)));
     dom.refreshButton.addEventListener('click', () => loadAll({ announce: true }));
     dom.logoutButton.addEventListener('click', async () => {
@@ -1161,6 +1853,8 @@ function bindEvents() {
         try {
             const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
             if (!response.ok) throw new Error('Logout failed');
+            writeSessionValue(CHAT_DRAFT_STORAGE_KEY, null);
+            writeSessionValue(CHAT_RUN_STORAGE_KEY, null);
             localStorage.removeItem('auth_token');
             localStorage.removeItem('auth_email');
             window.location.replace('login.html');
@@ -1174,7 +1868,10 @@ function bindEvents() {
     });
 
     dom.chatForm.addEventListener('submit', submitChat);
-    dom.chatInput.addEventListener('input', resizeChatInput);
+    dom.chatInput.addEventListener('input', () => {
+        resizeChatInput();
+        saveChatDraft(dom.chatInput.value);
+    });
     dom.chatInput.addEventListener('keydown', event => {
         if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
             event.preventDefault();
@@ -1209,6 +1906,13 @@ function bindEvents() {
     dom.noteForm.addEventListener('submit', event => submitRecord(event, 'note'));
     dom.eventForm.addEventListener('submit', event => submitRecord(event, 'event'));
     dom.transactionForm.addEventListener('submit', event => submitRecord(event, 'transaction'));
+    dom.transactionCsvPicker.addEventListener('click', () => {
+        dom.transactionCsvFile.value = '';
+        dom.transactionCsvFile.click();
+    });
+    dom.transactionCsvFile.addEventListener('change', selectTransactionCsv);
+    dom.transactionCsvTemplate.addEventListener('click', downloadTransactionCsvTemplate);
+    dom.transactionCsvSubmit.addEventListener('click', submitTransactionCsvImport);
     document.querySelectorAll('.reset-record-form').forEach(button => button.addEventListener('click', () => resetRecordForm(button.form)));
 
     document.addEventListener('click', event => {
@@ -1222,6 +1926,8 @@ function bindEvents() {
         const result = event.target.closest('[data-result-view]');
         const preset = event.target.closest('[data-agent-preset]');
         const loadMore = event.target.closest('[data-load-more]');
+        const retryChat = event.target.closest('[data-chat-retry]');
+        const editChat = event.target.closest('[data-chat-edit]');
         if (edit) editRecord(edit.dataset.recordEdit, edit.dataset.recordId);
         if (remove) deleteRecord(remove.dataset.recordDelete, remove.dataset.recordId);
         if (toggle) openMobileForm(document.getElementById(toggle.dataset.toggleForm));
@@ -1244,6 +1950,8 @@ function bindEvents() {
                 mode: kind === 'event' ? state.eventMode : undefined
             }).catch(error => toast(error.message, 'error'));
         }
+        if (retryChat) retryChatRun();
+        if (editChat) editChatRun();
         if (preset) {
             const value = AGENT_PRESETS[preset.dataset.agentPreset];
             if (value) {
@@ -1288,6 +1996,14 @@ function bindEvents() {
         }
     });
     dom.telegramRegenerate.addEventListener('click', () => runConnectionAction(dom.telegramRegenerate, 'telegram_regenerate_link', 'Новый код создан'));
+    dom.telegramCopy.addEventListener('click', copyTelegramCode);
+    dom.telegramCheck.addEventListener('click', checkTelegramConnection);
+    dom.googleCalendarConnect.addEventListener('click', connectGoogleCalendar);
+    dom.googleCalendarSync.addEventListener('click', syncGoogleCalendar);
+    dom.googleCalendarDisconnect.addEventListener('click', disconnectGoogleCalendar);
+    dom.formOverlay.addEventListener('click', () => {
+        closeMobileForm(document.querySelector('.record-form-wrap.is-open'));
+    });
 
     document.addEventListener('keydown', event => {
         if (event.key === 'Escape') {
@@ -1405,6 +2121,15 @@ function formatMoney(value, compact = false) {
     }).format(amount);
 }
 
+function formatMoneyPrecise(value) {
+    return new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: 'KZT',
+        currencyDisplay: 'narrowSymbol',
+        maximumFractionDigits: 2
+    }).format(numberValue(value));
+}
+
 function numberValue(value) {
     const number = Number(value);
     return Number.isFinite(number) ? number : 0;
@@ -1448,9 +2173,13 @@ function iconWallet() {
 
 function init() {
     cacheDom();
+    restoreChatSession();
+    consumeGoogleCalendarReturn();
     bindEvents();
     [dom.noteForm, dom.eventForm, dom.transactionForm].forEach(setFormDefaults);
     renderCalendarStrip();
+    renderTransactionCsvImport();
+    renderGoogleCalendarConnection();
     navigate(location.hash.slice(1), { replace: true });
     loadAll();
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});

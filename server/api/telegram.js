@@ -222,12 +222,15 @@ async function handleCallback(agent, callback) {
     const action = m[1].toLowerCase();
     const taskId = m[2];
     const status = action === 'confirm' ? 'confirmed' : 'done';
+    const callbackChatId = String(callback.message?.chat?.id ?? '');
+    if (!callbackChatId) return;
 
-    const { res: tRes, body: tasks } = await db(`tasks?select=id,title&id=eq.${encodeURIComponent(taskId)}`);
+    const taskScope = `id=eq.${encodeURIComponent(taskId)}&agent_id=eq.${encodeURIComponent(agent.id)}&chat_id=eq.${encodeURIComponent(callbackChatId)}`;
+    const { res: tRes, body: tasks } = await db(`tasks?select=id,title&${taskScope}`);
     const task = tasks && tasks[0];
 
     if (tRes.ok && task) {
-        await db(`tasks?id=eq.${encodeURIComponent(taskId)}`, {
+        await db(`tasks?${taskScope}`, {
             method: 'PATCH',
             body: JSON.stringify({ status: status })
         });

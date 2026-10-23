@@ -54,6 +54,18 @@ test('one function rejects unknown routes and malformed JSON', async () => {
     assert.equal(malformed.statusCode, 400);
 });
 
+test('one function registers Agent Hub imports and Google Calendar OAuth routes', async () => {
+    const source = await import('node:fs/promises').then(fs => fs.readFile(new URL('../api/index.js', import.meta.url), 'utf8'));
+    for (const route of [
+        'hub/import',
+        'hub/google-calendar',
+        'hub/google-calendar/start',
+        'hub/google-calendar/callback'
+    ]) {
+        assert.match(source, new RegExp(`\\['${route.replaceAll('/', '\\/')}'`));
+    }
+});
+
 test('scheduled routes require a configured secret and matching authorization', async () => {
     const previous = process.env.CRON_SECRET;
     try {

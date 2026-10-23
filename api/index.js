@@ -7,8 +7,14 @@ import customerState from '../server/api/customers/state.js';
 import followupsRun from '../server/api/followups/run.js';
 import hubChat from '../server/api/hub/chat.js';
 import hubConnections from '../server/api/hub/connections.js';
+import hubGoogleCalendar, {
+    callback as hubGoogleCalendarCallback,
+    start as hubGoogleCalendarStart
+} from '../server/api/hub/google-calendar.js';
+import hubImport from '../server/api/hub/import.js';
 import hubOverview from '../server/api/hub/overview.js';
 import hubRecords from '../server/api/hub/records.js';
+import legacyData from '../server/api/legacy/data.js';
 import messagesSend from '../server/api/messages/send.js';
 import salesSimulate from '../server/api/sales/simulate.js';
 import script from '../server/api/script.js';
@@ -36,8 +42,13 @@ const routes = new Map([
     ['followups/run', followupsRun],
     ['hub/chat', hubChat],
     ['hub/connections', hubConnections],
+    ['hub/google-calendar', hubGoogleCalendar],
+    ['hub/google-calendar/callback', hubGoogleCalendarCallback],
+    ['hub/google-calendar/start', hubGoogleCalendarStart],
+    ['hub/import', hubImport],
     ['hub/overview', hubOverview],
     ['hub/records', hubRecords],
+    ['legacy/data', legacyData],
     ['messages/send', messagesSend],
     ['sales/simulate', salesSimulate],
     ['script', script],

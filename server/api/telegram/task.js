@@ -1,7 +1,9 @@
 import { db, telegram, escapeHtml, readJsonBody } from '../_lib.js';
-import { requireLegacyDashboardSession } from '../_auth.js';
+import { requireLegacyDashboardSession, requireSameOrigin } from '../_auth.js';
+import { legacyManagerAssignment } from '../legacy/data.js';
 
 const STATUS_LABEL = { pending: '⏳ Запланировано', confirmed: '✅ Подтверждено', done: '🎉 Выполнено' };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function formatDate(iso) {
     if (!iso) return '';
@@ -13,14 +15,24 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
-    if (!await requireLegacyDashboardSession(req, res)) return;
+    const session = await requireLegacyDashboardSession(req, res);
+    if (!session || !requireSameOrigin(req, res)) return;
 
     try {
         const { taskId } = await readJsonBody(req);
 
-        if (!taskId) return res.status(400).json({ error: 'Missing taskId' });
+        if (!UUID.test(String(taskId || ''))) return res.status(400).json({ error: 'Invalid taskId' });
 
-        const { res: tRes, body: tasks } = await db(`tasks?select=*&id=eq.${encodeURIComponent(taskId)}`);
+        let taskPath = `tasks?select=*&id=eq.${encodeURIComponent(taskId)}`;
+        if (session.role === 'manager') {
+            const manager = await legacyManagerAssignment(session);
+            if (!manager.chat_id || !manager.agent_id) {
+                return res.status(403).json({ error: 'Task is outside the manager scope' });
+            }
+            taskPath += `&chat_id=eq.${encodeURIComponent(manager.chat_id)}&agent_id=eq.${encodeURIComponent(manager.agent_id)}`;
+        }
+
+        const { res: tRes, body: tasks } = await db(taskPath);
         if (!tRes.ok || !tasks || tasks.length === 0) {
             return res.status(404).json({ error: 'Task not found' });
         }

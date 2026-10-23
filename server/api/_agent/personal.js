@@ -5,6 +5,9 @@ import { openRouterModels, safeOpenRouterModel } from '../whatsapp/provider.js';
 
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TELEGRAM_MAX_ID = (1n << 52n) - 1n;
+const DELETE_CONFIRMATION_TTL_MS = 10 * 60 * 1000;
+const DELETE_CONFIRMATION_TYPE = 'delete_confirmation';
 const KINDS = new Set(['note', 'event', 'transaction']);
 const OVERVIEW_LIMITS = Object.freeze({ note: 80, event: 80, transaction: 120 });
 const failure = (message, status = 400) => Object.assign(new Error(message), { status });
@@ -19,6 +22,29 @@ function boundedInteger(value, fallback, min, max) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return fallback;
     return Math.min(Math.max(Math.trunc(numeric), min), max);
+}
+
+function canonicalToolValue(value) {
+    if (Array.isArray(value)) return value.map(canonicalToolValue);
+    if (!value || typeof value !== 'object') return value;
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonicalToolValue(value[key])]));
+}
+
+export function personalWriteSourceKey({ agentId, channel, chatId, externalMessageId, tool, args, occurrence = 1 }) {
+    const argumentsHash = createHash('sha256')
+        .update(JSON.stringify(canonicalToolValue(args || {})))
+        .digest('hex');
+    return createHash('sha256')
+        .update([
+            agentId,
+            clean(channel, 20),
+            clean(chatId, 255),
+            clean(externalMessageId, 255),
+            clean(tool, 80),
+            argumentsHash,
+            boundedInteger(occurrence, 1, 1, 100)
+        ].join('\n'))
+        .digest('hex');
 }
 
 function zonedParts(date, timeZone) {
@@ -96,13 +122,21 @@ function publicAgent(agent, keyConfigured = false) {
     };
 }
 
+function accountHasHubAccess(account) {
+    if (!account) return false;
+    const login = clean(account.login, 120).toLowerCase();
+    const role = ['admin', 'shaikh'].includes(login) ? 'owner' : clean(account.role, 20);
+    return role === 'owner' || role === 'client';
+}
+
 export async function ensurePersonalAgent(session) {
     if (!session?.sub) throw failure('Unauthorized', 401);
     const account = await db(
-        `managers_auth?select=id&id=eq.${encoded(session.sub)}&disabled_at=is.null&limit=1`
+        `managers_auth?select=id,login,role&id=eq.${encoded(session.sub)}&disabled_at=is.null&limit=1`
     );
     if (!account.res.ok) throw failure('Не удалось проверить аккаунт.', 503);
     if (!account.body?.[0]) throw failure('Доступ к аккаунту приостановлен.', 403);
+    if (!accountHasHubAccess(account.body[0])) throw failure('Agent Hub недоступен для этой роли.', 403);
     const lookup = await db(
         `personal_agents?select=*&account_id=eq.${encoded(session.sub)}&limit=1`
     );
@@ -190,11 +224,28 @@ export async function listPersonalRecords(agentId, {
     offset = 0,
     search = '',
     upcoming = false,
-    past = false
+    past = false,
+    transactionType = '',
+    category = '',
+    from = '',
+    to = '',
+    dateOrder = false
 } = {}) {
     if (kind && !KINDS.has(kind)) throw failure('Неизвестный тип записи.');
     if (upcoming === true && past === true) {
         throw failure('Нельзя одновременно запросить будущие и прошедшие события.');
+    }
+    const requestedTransactionType = clean(transactionType, 20);
+    if (requestedTransactionType && (kind !== 'transaction' || !['expense', 'income'].includes(requestedTransactionType))) {
+        throw failure('Неизвестный тип финансовой операции.');
+    }
+    const requestedCategory = clean(category, 80);
+    const dateColumn = kind === 'event' ? 'event_at' : (kind === 'transaction' ? 'occurred_at' : '');
+    if ((from || to) && !dateColumn) throw failure('Диапазон дат доступен только для событий и операций.');
+    const rangeStart = from ? safeDate(from) : '';
+    const rangeEnd = to ? safeDate(to) : '';
+    if (rangeStart && rangeEnd && new Date(rangeStart).getTime() >= new Date(rangeEnd).getTime()) {
+        throw failure('Дата начала должна быть раньше даты окончания.');
     }
     const term = clean(search, 120);
     const upcomingEvents = kind === 'event' && upcoming === true;
@@ -211,9 +262,17 @@ export async function listPersonalRecords(agentId, {
         'status=neq.deleted',
         kind ? `kind=eq.${encoded(kind)}` : null,
         term ? `or=(title.ilike.${searchPattern},body.ilike.${searchPattern},category.ilike.${searchPattern})` : null,
+        requestedTransactionType ? `transaction_type=eq.${encoded(requestedTransactionType)}` : null,
+        requestedCategory ? `category=ilike.${encodedFilterValue(`"*${requestedCategory.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}*"`)}` : null,
+        rangeStart ? `${dateColumn}=gte.${encoded(rangeStart)}` : null,
+        rangeEnd ? `${dateColumn}=lt.${encoded(rangeEnd)}` : null,
         upcomingEvents ? `event_at=gte.${encoded(eventBoundary)}` : null,
         pastEvents ? `event_at=lt.${encoded(eventBoundary)}` : null,
-        upcomingEvents ? 'order=event_at.asc' : (pastEvents ? 'order=event_at.desc' : 'order=created_at.desc'),
+        upcomingEvents ? 'order=event_at.asc' : (pastEvents
+            ? 'order=event_at.desc'
+            : (dateOrder && kind === 'event'
+                ? 'order=event_at.asc'
+                : (dateOrder && kind === 'transaction' ? 'order=occurred_at.desc' : 'order=created_at.desc'))),
         `limit=${recordLimit}`,
         recordOffset ? `offset=${recordOffset}` : null
     ].filter(Boolean);
@@ -345,7 +404,7 @@ export async function deletePersonalRecord(agentId, id) {
 
 export async function listPersonalMessages(agentId, limit = 40) {
     const result = await db(
-        `personal_agent_messages?select=id,channel,chat_id,role,text,metadata,created_at&agent_id=eq.${encoded(agentId)}&processing_state=in.(ready,completed)&order=created_at.desc&limit=${Math.min(Math.max(Number(limit) || 40, 1), 100)}`
+        `personal_agent_messages?select=id,channel,chat_id,role,text,metadata,created_at&agent_id=eq.${encoded(agentId)}&role=in.(user,assistant)&processing_state=in.(ready,completed)&order=created_at.desc&limit=${Math.min(Math.max(Number(limit) || 40, 1), 100)}`
     );
     if (!result.res.ok) throw failure('Не удалось загрузить диалог.', 503);
     return (result.body || []).reverse().map(row => ({
@@ -377,6 +436,176 @@ async function saveMessage({ agentId, channel, chatId, role, text, externalMessa
         throw failure('Не удалось сохранить сообщение.', 503);
     }
     return result.body?.[0] || null;
+}
+
+function deleteRequestHash(agentId, context) {
+    const requestId = clean(context?.requestId, 255);
+    if (!requestId) throw failure('Для удаления нужен отдельный подтверждаемый запрос.', 409);
+    return createHash('sha256')
+        .update(`${agentId}\n${clean(context.channel, 20)}\n${clean(context.chatId, 255)}\n${requestId}`)
+        .digest('hex');
+}
+
+function explicitDeleteConfirmation(message) {
+    const normalized = clean(message, 200)
+        .toLocaleLowerCase('ru')
+        .replace(/[.!?]+$/g, '')
+        .replace(/\s+/g, ' ');
+    return /^(подтверждаю удаление|confirm deletion|жоюды растаймын|өшіруді растаймын)$/iu.test(normalized);
+}
+
+function deleteReceiptRecord(record) {
+    return { kind: clean(record?.kind, 20), title: clean(record?.title, 240) };
+}
+
+async function requestRecordDeletion(agent, recordId, context) {
+    const current = await ownedRecord(agent.id, recordId);
+    const requestHash = deleteRequestHash(agent.id, context);
+    const challengeHash = createHash('sha256').update(randomBytes(32)).digest('hex');
+    const expiresAt = new Date(Date.now() + DELETE_CONFIRMATION_TTL_MS).toISOString();
+    const externalMessageId = `delete:${requestHash}:${current.id}`;
+    const metadata = {
+        internal_type: DELETE_CONFIRMATION_TYPE,
+        delete_confirmation: {
+            state: 'pending',
+            record_id: current.id,
+            record_kind: current.kind,
+            record_title: clean(current.title, 240),
+            request_hash: requestHash,
+            challenge_hash: challengeHash,
+            expires_at: expiresAt
+        }
+    };
+    let stored = await saveMessage({
+        agentId: agent.id,
+        channel: context.channel,
+        chatId: context.chatId,
+        role: 'tool',
+        text: DELETE_CONFIRMATION_TYPE,
+        externalMessageId,
+        metadata
+    });
+    if (!stored) {
+        const existing = await db(
+            `personal_agent_messages?select=id,metadata,created_at&agent_id=eq.${encoded(agent.id)}&channel=eq.${encoded(context.channel)}&chat_id=eq.${encoded(clean(context.chatId, 255))}&role=eq.tool&external_message_id=eq.${encoded(externalMessageId)}&limit=1`
+        );
+        if (!existing.res.ok || !existing.body?.[0]) throw failure('Не удалось подготовить подтверждение удаления.', 503);
+        stored = existing.body[0];
+    }
+    const confirmation = stored.metadata?.delete_confirmation;
+    if (!confirmation || confirmation.state !== 'pending') {
+        throw failure('Этот запрос удаления уже обработан. Начните удаление заново.', 409);
+    }
+    return {
+        ok: true,
+        confirmationRequired: true,
+        expiresAt: confirmation.expires_at,
+        record: deleteReceiptRecord(current),
+        instruction: 'Попросите пользователя отправить отдельным следующим сообщением точную фразу «Подтверждаю удаление».'
+    };
+}
+
+async function transitionDeleteConfirmation(agentId, context, row, expectedState, nextState, extra = {}) {
+    const confirmation = row?.metadata?.delete_confirmation;
+    if (!row?.id || !confirmation?.challenge_hash) return null;
+    const nextMetadata = {
+        ...(row.metadata || {}),
+        delete_confirmation: {
+            ...confirmation,
+            ...extra,
+            state: nextState
+        }
+    };
+    const result = await db(
+        `personal_agent_messages?id=eq.${encoded(row.id)}&agent_id=eq.${encoded(agentId)}&channel=eq.${encoded(context.channel)}&chat_id=eq.${encoded(clean(context.chatId, 255))}&role=eq.tool&metadata->delete_confirmation->>state=eq.${encoded(expectedState)}&metadata->delete_confirmation->>challenge_hash=eq.${encoded(confirmation.challenge_hash)}`,
+        {
+            method: 'PATCH',
+            headers: { Prefer: 'return=representation' },
+            body: JSON.stringify({ metadata: nextMetadata })
+        }
+    );
+    if (!result.res.ok) throw failure('Не удалось зафиксировать подтверждение удаления.', 503);
+    return result.body?.[0] || null;
+}
+
+async function supersedePendingDeleteConfirmations(agentId, context) {
+    const result = await db(
+        `personal_agent_messages?agent_id=eq.${encoded(agentId)}&channel=eq.${encoded(context.channel)}&chat_id=eq.${encoded(clean(context.chatId, 255))}&role=eq.tool&metadata->>internal_type=eq.${DELETE_CONFIRMATION_TYPE}&metadata->delete_confirmation->>state=eq.pending`,
+        {
+            method: 'PATCH',
+            headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({
+                metadata: {
+                    internal_type: DELETE_CONFIRMATION_TYPE,
+                    delete_confirmation: {
+                        state: 'superseded',
+                        superseded_at: new Date().toISOString()
+                    }
+                }
+            })
+        }
+    );
+    if (!result.res.ok) throw failure('Не удалось отменить неоднозначные запросы удаления.', 503);
+}
+
+async function confirmRecordDeletion(agent, context) {
+    if (!explicitDeleteConfirmation(context?.userMessage)) {
+        throw failure('Для удаления отправьте отдельным сообщением: «Подтверждаю удаление».', 409);
+    }
+    const currentRequestHash = deleteRequestHash(agent.id, context);
+    const pendingResult = await db(
+        `personal_agent_messages?select=id,metadata,created_at&agent_id=eq.${encoded(agent.id)}&channel=eq.${encoded(context.channel)}&chat_id=eq.${encoded(clean(context.chatId, 255))}&role=eq.tool&metadata->>internal_type=eq.${DELETE_CONFIRMATION_TYPE}&metadata->delete_confirmation->>state=eq.pending&order=created_at.desc&limit=2`
+    );
+    if (!pendingResult.res.ok) throw failure('Не удалось проверить запрос удаления.', 503);
+    const pendingRows = (pendingResult.body || []).filter(item => (
+        item.metadata?.internal_type === DELETE_CONFIRMATION_TYPE
+        && item.metadata?.delete_confirmation?.state === 'pending'
+    ));
+    if (pendingRows.length > 1) {
+        await supersedePendingDeleteConfirmations(agent.id, context);
+        throw failure('Найдено несколько запросов удаления. Начните удаление нужной записи заново.', 409);
+    }
+    const row = pendingRows[0];
+    if (!row) throw failure('Нет ожидающего запроса удаления. Сначала попросите удалить конкретную запись.', 409);
+
+    const confirmation = row.metadata.delete_confirmation;
+    if (confirmation.request_hash === currentRequestHash) {
+        throw failure('Удаление нельзя подтвердить в том же запросе. Отправьте подтверждение отдельным следующим сообщением.', 409);
+    }
+    const expiresAt = new Date(confirmation.expires_at || '').getTime();
+    if (!Number.isFinite(expiresAt)) {
+        throw failure('Запрос удаления повреждён. Начните удаление заново.', 409);
+    }
+    if (expiresAt <= Date.now()) {
+        await transitionDeleteConfirmation(agent.id, context, row, 'pending', 'expired', {
+            expired_at: new Date().toISOString()
+        }).catch(() => {});
+        throw failure('Срок подтверждения удаления истёк. Начните удаление заново.', 409);
+    }
+    if (!UUID.test(String(confirmation.record_id || ''))) {
+        throw failure('Запрос удаления повреждён. Начните удаление заново.', 409);
+    }
+
+    const current = await ownedRecord(agent.id, confirmation.record_id);
+    const claimed = await transitionDeleteConfirmation(agent.id, context, row, 'pending', 'confirming', {
+        confirmed_request_hash: currentRequestHash,
+        confirming_at: new Date().toISOString()
+    });
+    if (!claimed) throw failure('Этот запрос удаления уже подтверждается или обработан.', 409);
+
+    try {
+        await deletePersonalRecord(agent.id, current.id);
+    } catch (error) {
+        await transitionDeleteConfirmation(agent.id, context, claimed, 'confirming', 'pending', {
+            confirmed_request_hash: null,
+            confirming_at: null
+        }).catch(() => {});
+        throw error;
+    }
+    await transitionDeleteConfirmation(agent.id, context, claimed, 'confirming', 'completed', {
+        completed_at: new Date().toISOString()
+    }).catch(() => {});
+    return { ok: true, deleted: true, record: deleteReceiptRecord(current) };
 }
 
 function rangeFromArgs(args = {}) {
@@ -441,10 +670,18 @@ const PERSONAL_TOOLS = [
     },
     {
         name: 'list_events',
-        description: 'List internal calendar events.',
+        description: 'Search internal calendar events by text and date range. When no range or direction is given, upcoming events are the safe default.',
         parameters: {
             type: 'object', additionalProperties: false,
-            properties: {}, required: []
+            properties: {
+                query: { type: 'string', description: 'Search title, details, or category' },
+                from: { type: 'string', description: 'Inclusive ISO 8601 start' },
+                to: { type: 'string', description: 'Exclusive ISO 8601 end' },
+                past: { type: 'boolean' },
+                upcoming: { type: 'boolean' },
+                limit: { type: 'integer', minimum: 1, maximum: 100 }
+            },
+            required: []
         }
     },
     {
@@ -465,6 +702,22 @@ const PERSONAL_TOOLS = [
         }
     },
     {
+        name: 'list_transactions',
+        description: 'Search the private transaction journal by text, expense/income type, category, and date range.',
+        parameters: {
+            type: 'object', additionalProperties: false,
+            properties: {
+                query: { type: 'string', description: 'Search title, details, or category' },
+                transaction_type: { type: 'string', enum: ['expense', 'income', 'all'] },
+                category: { type: 'string', description: 'Case-insensitive category text' },
+                from: { type: 'string', description: 'Inclusive ISO 8601 start' },
+                to: { type: 'string', description: 'Exclusive ISO 8601 end' },
+                limit: { type: 'integer', minimum: 1, maximum: 100 }
+            },
+            required: []
+        }
+    },
+    {
         name: 'finance_summary',
         description: 'Calculate recorded income and expenses for a date range.',
         parameters: {
@@ -474,26 +727,82 @@ const PERSONAL_TOOLS = [
                 to: { type: 'string', description: 'ISO 8601 end date' }
             }, required: ['from', 'to']
         }
+    },
+    {
+        name: 'update_record',
+        description: 'Update one existing private note, event, or transaction. First use a list tool when the target is ambiguous. Never change the record kind.',
+        parameters: {
+            type: 'object', additionalProperties: false,
+            properties: {
+                record_id: { type: 'string' },
+                title: { type: 'string' },
+                details: { type: 'string' },
+                status: { type: 'string', enum: ['active', 'done'] },
+                starts_at: { type: 'string', description: 'ISO 8601 date and time for an event' },
+                amount: { type: 'number' },
+                category: { type: 'string' },
+                transaction_type: { type: 'string', enum: ['expense', 'income'] },
+                occurred_at: { type: 'string', description: 'ISO 8601 transaction date and time' }
+            },
+            required: ['record_id']
+        }
+    },
+    {
+        name: 'request_delete_record',
+        description: 'Start deletion of one owned record. This never deletes immediately; it creates a short-lived confirmation request for a later user message.',
+        parameters: {
+            type: 'object', additionalProperties: false,
+            properties: { record_id: { type: 'string' } },
+            required: ['record_id']
+        }
+    },
+    {
+        name: 'confirm_delete_record',
+        description: 'Complete the latest pending deletion only after the user sends an explicit, separate confirmation message. Never call it in the message that requested deletion.',
+        parameters: {
+            type: 'object', additionalProperties: false,
+            properties: {}, required: []
+        }
     }
 ];
 
-async function callPersonalTool(agent, name, args, actions, sourceMessageKey = null) {
+async function callPersonalTool(agent, name, args, actions, context = {}) {
     let result;
     if (name === 'save_note') {
         const record = await createPersonalRecord(agent.id, {
-            kind: 'note', title: args.title, body: args.body, sourceMessageKey
+            kind: 'note', title: args.title, body: args.body, sourceMessageKey: context.sourceMessageKey
         });
         result = { ok: true, record };
     } else if (name === 'list_notes') {
         result = { ok: true, records: await listPersonalRecords(agent.id, { kind: 'note', search: args.query, limit: 20 }) };
     } else if (name === 'schedule_event') {
         const record = await createPersonalRecord(agent.id, {
-            kind: 'event', title: args.title, body: args.details, eventAt: args.starts_at, sourceMessageKey
+            kind: 'event', title: args.title, body: args.details, eventAt: args.starts_at, sourceMessageKey: context.sourceMessageKey
         });
         result = { ok: true, record };
     } else if (name === 'list_events') {
-        result = { ok: true, records: (await listPersonalRecords(agent.id, { kind: 'event', limit: 40, upcoming: true }))
-            .sort((a, b) => String(a.eventAt).localeCompare(String(b.eventAt))) };
+        const past = args.past === true;
+        const hasDirection = Object.prototype.hasOwnProperty.call(args, 'past')
+            || Object.prototype.hasOwnProperty.call(args, 'upcoming');
+        const hasRange = Boolean(args.from || args.to);
+        const upcoming = args.upcoming === true || (!hasDirection && !hasRange);
+        const records = await listPersonalRecords(agent.id, {
+            kind: 'event',
+            search: args.query,
+            from: args.from,
+            to: args.to,
+            past,
+            upcoming,
+            limit: boundedInteger(args.limit, 40, 1, 100),
+            dateOrder: true
+        });
+        records.sort((a, b) => past
+            ? String(b.eventAt).localeCompare(String(a.eventAt))
+            : String(a.eventAt).localeCompare(String(b.eventAt)));
+        result = {
+            ok: true,
+            records
+        };
     } else if (name === 'record_transaction') {
         const record = await createPersonalRecord(agent.id, {
             kind: 'transaction',
@@ -504,11 +813,46 @@ async function callPersonalTool(agent, name, args, actions, sourceMessageKey = n
             category: args.category,
             transactionType: args.transaction_type,
             occurredAt: args.occurred_at,
-            sourceMessageKey
+            sourceMessageKey: context.sourceMessageKey
         });
         result = { ok: true, record };
+    } else if (name === 'list_transactions') {
+        result = {
+            ok: true,
+            records: await listPersonalRecords(agent.id, {
+                kind: 'transaction',
+                search: args.query,
+                transactionType: args.transaction_type === 'all' ? '' : args.transaction_type,
+                category: args.category,
+                from: args.from,
+                to: args.to,
+                limit: boundedInteger(args.limit, 40, 1, 100),
+                dateOrder: true
+            })
+        };
     } else if (name === 'finance_summary') {
         result = await financeSummary(agent.id, args);
+    } else if (name === 'update_record') {
+        const input = {};
+        const mappings = {
+            title: 'title',
+            details: 'body',
+            status: 'status',
+            starts_at: 'eventAt',
+            amount: 'amount',
+            category: 'category',
+            transaction_type: 'transactionType',
+            occurred_at: 'occurredAt'
+        };
+        for (const [argument, field] of Object.entries(mappings)) {
+            if (Object.prototype.hasOwnProperty.call(args, argument)) input[field] = args[argument];
+        }
+        if (!Object.keys(input).length) throw failure('Укажите, что именно нужно изменить.');
+        result = { ok: true, updated: true, record: await updatePersonalRecord(agent.id, args.record_id, input) };
+    } else if (name === 'request_delete_record') {
+        result = await requestRecordDeletion(agent, args.record_id, context);
+    } else if (name === 'confirm_delete_record') {
+        result = await confirmRecordDeletion(agent, context);
     } else {
         throw failure(`Неизвестный инструмент: ${name}`);
     }
@@ -526,7 +870,11 @@ Current time: ${new Date().toISOString()}. User timezone: ${process.env.BUSINESS
 
 Your available memory is private notes, an internal calendar, and a manual income/expense journal.
 - When the user clearly asks to save a note, event, expense, or income, call the matching tool. Do not merely claim it was saved.
-- When the user asks what is stored or how much was spent, call a read tool. Never invent stored data.
+- When the user asks what is stored or how much was spent, call a read tool with the requested text, type, category, and date filters. Never invent stored data.
+- Before updating or deleting, identify exactly one owned record with a list tool if the target is ambiguous. Never expose record IDs to the user.
+- Updating is allowed only when the requested fields are clear. Never change a record from one kind to another.
+- Deletion is always two-step. On the first request call request_delete_record and ask the user to send the exact phrase «Подтверждаю удаление» as a separate next message. Never call confirm_delete_record in that same request.
+- Call confirm_delete_record only when a later user message explicitly confirms deletion with that phrase. A confirmation expires after 10 minutes. Never claim deletion before the confirmation tool succeeds.
 - If a date, amount, currency, or intent is ambiguous, ask one short clarifying question before writing.
 - Never initiate bank transfers, payments, trades, or external messages. You only record transactions.
 - The calendar is internal to SHAIKH Agent; do not claim that Google Calendar is connected.
@@ -734,18 +1082,35 @@ export async function handlePersonalMessage({
     }
 
     const actions = [];
-    const writeTools = new Set(['save_note', 'schedule_event', 'record_transaction']);
-    let writeSequence = 0;
+    const createTools = new Set(['save_note', 'schedule_event', 'record_transaction']);
+    const writeOccurrences = new Map();
     const callTool = (name, args) => {
         requireTime(4_000);
         let sourceMessageKey = null;
-        if (externalMessageId && writeTools.has(name)) {
-            sourceMessageKey = createHash('sha256')
-                .update(`${agent.id}\n${channel}\n${clean(chatId, 255)}\n${clean(externalMessageId, 255)}\n${writeSequence}\n${name}`)
+        if (externalMessageId && createTools.has(name)) {
+            const argumentsHash = createHash('sha256')
+                .update(JSON.stringify(canonicalToolValue(args || {})))
                 .digest('hex');
-            writeSequence += 1;
+            const occurrenceKey = `${name}:${argumentsHash}`;
+            const occurrence = (writeOccurrences.get(occurrenceKey) || 0) + 1;
+            writeOccurrences.set(occurrenceKey, occurrence);
+            sourceMessageKey = personalWriteSourceKey({
+                agentId: agent.id,
+                channel,
+                chatId,
+                externalMessageId,
+                tool: name,
+                args,
+                occurrence
+            });
         }
-        return callPersonalTool(agent, name, args, actions, sourceMessageKey);
+        return callPersonalTool(agent, name, args, actions, {
+            sourceMessageKey,
+            channel,
+            chatId: clean(chatId, 255),
+            requestId: externalMessageId,
+            userMessage: text
+        });
     };
     let reply;
     try {
@@ -754,7 +1119,14 @@ export async function handlePersonalMessage({
             reply = await runOpenRouterAgent({ agent, history, message: text, callTool, deadlineAt: effectiveDeadline });
         } else throw failure('Подключите свой API-ключ OpenRouter, чтобы запустить агента.', 409);
     } catch (error) {
-        const completedWrites = actions.filter(action => ['save_note', 'schedule_event', 'record_transaction'].includes(action.tool));
+        const completedWrites = actions.filter(action => [
+            'save_note',
+            'schedule_event',
+            'record_transaction',
+            'update_record',
+            'request_delete_record',
+            'confirm_delete_record'
+        ].includes(action.tool));
         if (!completedWrites.length) {
             if (claim) await failPersonalMessage(claim, error).catch(() => {});
             throw error;
@@ -763,6 +1135,11 @@ export async function handlePersonalMessage({
             const title = clean(action.record?.title, 120) || 'Без названия';
             if (action.tool === 'save_note') return `Заметка «${title}» сохранена.`;
             if (action.tool === 'schedule_event') return `Событие «${title}» добавлено во внутренний календарь.`;
+            if (action.tool === 'update_record') return `Запись «${title}» обновлена.`;
+            if (action.tool === 'request_delete_record') {
+                return `Чтобы удалить «${title}», отправьте отдельным следующим сообщением: «Подтверждаю удаление».`;
+            }
+            if (action.tool === 'confirm_delete_record') return `Запись «${title}» удалена.`;
             const type = action.record?.transactionType === 'income' ? 'Доход' : 'Расход';
             return `${type} ${Number(action.record?.amount || 0)} ${action.record?.currency || 'KZT'} записан: «${title}».`;
         }).join(' ');
@@ -878,6 +1255,16 @@ export function telegramWebhookSecretHash(secret) {
     return linkHash(clean(secret, 255));
 }
 
+function validTelegramBotToken(token) {
+    const match = String(token).match(/^([1-9]\d{0,15}):([A-Za-z0-9_-]{24,200})$/);
+    if (!match) return false;
+    try {
+        return BigInt(match[1]) <= TELEGRAM_MAX_ID;
+    } catch {
+        return false;
+    }
+}
+
 async function storeLinkCode(agent, code) {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
     const result = await db(`personal_agents?id=eq.${encoded(agent.id)}`, {
@@ -897,7 +1284,7 @@ async function storeLinkCode(agent, code) {
 export async function connectPersonalTelegram(agent, rawToken, origin) {
     if (agent.telegram_connected) throw failure('Сначала отключите текущего Telegram-бота.', 409);
     const token = clean(rawToken, 256);
-    if (!/^\d{6,14}:[A-Za-z0-9_-]{24,}$/.test(token)) throw failure('Вставьте токен бота из BotFather.');
+    if (!validTelegramBotToken(token)) throw failure('Вставьте токен бота из BotFather.');
     let bot;
     try { bot = await telegram('getMe', token, {}, { timeoutMs: 10_000 }); }
     catch { throw failure('Telegram отклонил токен. Проверьте его в BotFather.'); }
@@ -961,9 +1348,18 @@ export async function connectPersonalTelegram(agent, rawToken, origin) {
             secret_token: webhookSecret,
             allowed_updates: ['message']
         }, { timeoutMs: 12_000 });
-    } catch (error) {
+        const webhookInfo = await telegram('getWebhookInfo', token, {}, { timeoutMs: 10_000 });
+        const confirmedUrl = clean(webhookInfo?.url, 2048);
+        const lastError = clean(webhookInfo?.last_error_message, 1000);
+        if (confirmedUrl !== webhookUrl || lastError) {
+            throw failure('Telegram не подтвердил webhook. Повторите подключение.', 503);
+        }
+    } catch {
         await abortReservation();
-        throw error;
+        // Never surface Telegram response details here: provider errors may
+        // contain request metadata, while the bot token and webhook secret
+        // must remain server-only.
+        throw failure('Telegram не подтвердил webhook. Повторите подключение.', 503);
     }
 
     let result = await db(
@@ -1067,10 +1463,10 @@ export async function findPersonalAgentByWebhookSecret(secret) {
     const agent = result.body?.[0] || null;
     if (!agent) return null;
     const account = await db(
-        `managers_auth?select=id&id=eq.${encoded(agent.account_id)}&disabled_at=is.null&limit=1`
+        `managers_auth?select=id,login,role&id=eq.${encoded(agent.account_id)}&disabled_at=is.null&limit=1`
     );
     if (!account.res.ok) throw failure('Telegram account lookup failed', 503);
-    return account.body?.[0] ? agent : null;
+    return accountHasHubAccess(account.body?.[0]) ? agent : null;
 }
 
 export async function linkPersonalTelegramOwner(agent, code, chatId, userId) {

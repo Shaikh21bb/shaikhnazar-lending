@@ -1,4 +1,4 @@
-const VERSION = 'shaikh-sys-v12-agent-hub';
+const VERSION = 'shaikh-sys-v14-agent-integrations';
 const CORE = [
     '/login.html',
     '/dashboard.html',
@@ -24,7 +24,8 @@ const CORE = [
     '/js/i18n.js',
     '/js/toasts.js',
     '/js/admin.js',
-    '/js/hub.js'
+    '/js/hub.js',
+    '/js/transaction-csv.js'
 ];
 
 function cacheKeyFor(request) {

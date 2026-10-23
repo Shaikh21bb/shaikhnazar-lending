@@ -1,5 +1,8 @@
 import { db, readJsonBody } from '../_lib.js';
-import { requireLegacyDashboardSession } from '../_auth.js';
+import { requireLegacyDashboardSession, requireSameOrigin } from '../_auth.js';
+import { legacyManagerAssignment } from '../legacy/data.js';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function findCustomer(agentId, channel, chatId) {
     const { res, body } = await db(
@@ -13,15 +16,23 @@ export default async function handler(req, res) {
     if (req.method !== 'GET' && req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
-    if (!await requireLegacyDashboardSession(req, res)) return;
+    const session = await requireLegacyDashboardSession(req, res);
+    if (!session) return;
+    if (req.method === 'POST' && !requireSameOrigin(req, res)) return;
 
     try {
         const input = req.method === 'GET' ? req.query || {} : await readJsonBody(req);
         const agentId = String(input.agentId || '');
         const channel = String(input.channel || '');
         const chatId = String(input.chatId || '');
-        if (!/^[0-9a-f-]{36}$/i.test(agentId) || !['telegram', 'whatsapp', 'local'].includes(channel) || !chatId || chatId.length > 255) {
+        if (!UUID.test(agentId) || !['telegram', 'whatsapp', 'local'].includes(channel) || !chatId || chatId.length > 255) {
             return res.status(400).json({ error: 'Invalid customer selector' });
+        }
+        if (session.role === 'manager') {
+            const manager = await legacyManagerAssignment(session);
+            if (!manager.agent_id || String(manager.agent_id) !== agentId) {
+                return res.status(403).json({ error: 'Customer is outside the manager scope' });
+            }
         }
         const customer = await findCustomer(agentId, channel, chatId);
         if (!customer) return res.status(404).json({ error: 'Customer not found' });
@@ -31,7 +42,9 @@ export default async function handler(req, res) {
         if (input.handoffStatus !== 'human' && input.handoffStatus !== 'ai') {
             return res.status(400).json({ error: 'Invalid handoffStatus' });
         }
-        const { res: patchRes, body } = await db(`customers?id=eq.${encodeURIComponent(customer.id)}`, {
+        const { res: patchRes, body } = await db(
+            `customers?id=eq.${encodeURIComponent(customer.id)}&agent_id=eq.${encodeURIComponent(agentId)}`,
+            {
             method: 'PATCH',
             headers: { Prefer: 'return=representation' },
             body: JSON.stringify({
@@ -40,11 +53,15 @@ export default async function handler(req, res) {
                 handoff_reason: toHuman ? 'Передано менеджером из панели' : null,
                 updated_at: new Date().toISOString()
             })
-        });
+            }
+        );
         if (!patchRes.ok) throw new Error(`Customer update failed (${patchRes.status})`);
-        return res.status(200).json({ customer: body?.[0] || null });
+        if (!body?.[0]) return res.status(409).json({ error: 'Customer changed; reload and try again' });
+        return res.status(200).json({ customer: body[0] });
     } catch (error) {
-        console.error('Customer state error:', error);
-        return res.status(500).json({ error: error.message });
+        console.error('Customer state error:', error.message);
+        return res.status(error.status || 500).json({ error: error.status && error.status < 500
+            ? error.message
+            : 'Customer state unavailable' });
     }
 }

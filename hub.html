@@ -13,7 +13,7 @@
     <link rel="icon" href="/icons/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="stylesheet" href="./css/hub.css?v=20261023c">
+    <link rel="stylesheet" href="./css/hub.css?v=20261023e">
 </head>
 <body>
     <a class="skip-link" href="#hub-main">К содержанию</a>
@@ -72,7 +72,7 @@
                 </a>
                 <a class="rail-link" href="#connections" data-view-target="connections">
                     <span class="rail-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.14-1.14"/></svg></span>
-                    <span><strong>Связи</strong><small>Telegram и AI</small></span>
+                    <span><strong>Связи</strong><small>AI, Telegram и Google</small></span>
                 </a>
             </nav>
             <div class="rail-footer">
@@ -182,7 +182,7 @@
 
             <section class="hub-view" id="view-notes" data-view="notes" aria-labelledby="notes-title" hidden>
                 <div class="view-heading">
-                    <div><span class="eyebrow">Память агента</span><h1 id="notes-title">Заметки</h1><p>Сохраняйте идеи, решения и важные детали. Агент сможет найти их по смыслу.</p></div>
+                    <div><span class="eyebrow">Память агента</span><h1 id="notes-title">Заметки</h1><p>Сохраняйте идеи, решения и важные детали. Агент найдёт их по тексту и ключевым словам.</p></div>
                     <button class="primary-button" type="button" data-toggle-form="note-form-wrap"><span>+</span> Новая заметка</button>
                 </div>
                 <div class="record-layout">
@@ -196,7 +196,7 @@
                         </div>
                     </div>
                     <aside class="record-form-wrap panel" id="note-form-wrap">
-                        <div class="form-heading"><div><span class="eyebrow">Вручную</span><h2>Новая заметка</h2></div><button class="icon-button close-form" type="button" data-close-form="note-form-wrap" aria-label="Закрыть">×</button></div>
+                        <div class="form-heading"><div><span class="eyebrow">Вручную</span><h2 id="note-form-title">Новая заметка</h2></div><button class="icon-button close-form" type="button" data-close-form="note-form-wrap" aria-label="Закрыть">×</button></div>
                         <form class="record-form" id="note-form">
                             <input type="hidden" name="id">
                             <label>Заголовок<input name="title" type="text" maxlength="140" placeholder="Главная мысль" required></label>
@@ -220,7 +220,7 @@
                         <div class="timeline" id="events-list" aria-live="polite" aria-busy="true"><div class="loading-block"><span class="loader"></span><span>Загружаю календарь…</span></div></div>
                     </div>
                     <aside class="record-form-wrap panel" id="event-form-wrap">
-                        <div class="form-heading"><div><span class="eyebrow">Вручную</span><h2>Новое событие</h2></div><button class="icon-button close-form" type="button" data-close-form="event-form-wrap" aria-label="Закрыть">×</button></div>
+                        <div class="form-heading"><div><span class="eyebrow">Вручную</span><h2 id="event-form-title">Новое событие</h2></div><button class="icon-button close-form" type="button" data-close-form="event-form-wrap" aria-label="Закрыть">×</button></div>
                         <form class="record-form" id="event-form">
                             <input type="hidden" name="id">
                             <label>Название<input name="title" type="text" maxlength="140" placeholder="Например, созвон с командой" required></label>
@@ -239,17 +239,37 @@
                     <button class="primary-button" type="button" data-toggle-form="transaction-form-wrap"><span>+</span> Новая операция</button>
                 </div>
                 <div class="finance-summary" id="finance-summary">
-                    <article class="money-card panel"><span>Баланс</span><strong id="balance-value">—</strong><small>за всё время</small></article>
+                    <article class="money-card panel"><span>Учтённый баланс</span><strong id="balance-value">—</strong><small>по записанным операциям</small></article>
                     <article class="money-card panel money-income"><span>Доходы</span><strong id="income-value">—</strong><small>в этом месяце</small></article>
                     <article class="money-card panel money-expense"><span>Расходы</span><strong id="expense-value">—</strong><small>в этом месяце</small></article>
                 </div>
+                <section class="finance-import panel" aria-labelledby="transaction-csv-title">
+                    <div class="finance-import__heading">
+                        <div>
+                            <span class="section-kicker">Импорт выписки</span>
+                            <h2 id="transaction-csv-title">Добавить операции из CSV</h2>
+                            <p>Файл сначала проверяется только в браузере. На сервер отправятся нормализованные строки после отдельного подтверждения.</p>
+                        </div>
+                        <div class="finance-import__actions">
+                            <input class="sr-only" id="transaction-csv-file" type="file" accept=".csv,text/csv,text/plain" tabindex="-1">
+                            <button class="secondary-button file-picker" id="transaction-csv-picker" type="button">Выбрать CSV</button>
+                            <button class="text-button csv-template-button" id="transaction-csv-template" type="button">Скачать шаблон</button>
+                        </div>
+                    </div>
+                    <p class="csv-import-status" id="transaction-csv-status" role="status" aria-live="polite">Нужны столбцы: дата, описание, сумма и тип доход/расход.</p>
+                    <div class="csv-import-preview" id="transaction-csv-preview"></div>
+                    <div class="csv-import-submit">
+                        <span>До 300 операций за один импорт · файл до 1 МБ</span>
+                        <button class="primary-button" id="transaction-csv-submit" type="button" disabled>Импортировать</button>
+                    </div>
+                </section>
                 <div class="record-layout">
                     <div class="records-panel panel">
                         <div class="records-toolbar"><div><span class="section-kicker">Операции</span><h2>История</h2></div><select id="transaction-filter" aria-label="Фильтр операций"><option value="all">Все</option><option value="expense">Расходы</option><option value="income">Доходы</option></select></div>
                         <div class="transaction-list" id="transactions-list" aria-live="polite" aria-busy="true"><div class="loading-block"><span class="loader"></span><span>Загружаю операции…</span></div></div>
                     </div>
                     <aside class="record-form-wrap panel" id="transaction-form-wrap">
-                        <div class="form-heading"><div><span class="eyebrow">Вручную</span><h2>Новая операция</h2></div><button class="icon-button close-form" type="button" data-close-form="transaction-form-wrap" aria-label="Закрыть">×</button></div>
+                        <div class="form-heading"><div><span class="eyebrow">Вручную</span><h2 id="transaction-form-title">Новая операция</h2></div><button class="icon-button close-form" type="button" data-close-form="transaction-form-wrap" aria-label="Закрыть">×</button></div>
                         <form class="record-form" id="transaction-form">
                             <input type="hidden" name="id">
                             <div class="type-switch" role="group" aria-label="Тип операции"><label><input type="radio" name="type" value="expense" checked><span>Расход</span></label><label><input type="radio" name="type" value="income"><span>Доход</span></label></div>
@@ -265,13 +285,13 @@
 
             <section class="hub-view" id="view-connections" data-view="connections" aria-labelledby="connections-title" hidden>
                 <div class="view-heading">
-                    <div><span class="eyebrow">Настройка магии</span><h1 id="connections-title">Связи</h1><p>Выберите мозг агента и подключите Telegram. Ключи отправляются только на сервер и не показываются снова.</p></div>
+                    <div><span class="eyebrow">Настройка магии</span><h1 id="connections-title">Связи</h1><p>Выберите мозг агента, подключите Telegram и синхронизируйте календарь. Секреты хранятся только на сервере.</p></div>
                 </div>
                 <div class="connections-grid">
                     <article class="connection-card panel connection-wide">
                         <div class="connection-head"><span class="connection-logo agent-logo">S</span><div><span class="eyebrow">Поведение</span><h2>Ваш агент</h2></div><span class="connection-state is-on">Активен</span></div>
                         <form class="record-form profile-form" id="profile-form">
-                            <div class="field-row profile-basics"><label>Имя агента<input name="name" type="text" maxlength="80" placeholder="Например, Ayan"></label><label>Язык<select name="language" id="profile-language"><option value="ru">Русский</option><option value="kk">Қазақша</option></select></label></div>
+                            <div class="field-row profile-basics"><label>Имя агента<input name="name" type="text" maxlength="80" placeholder="Например, Ayan"></label><label>Язык ответов<select name="language" id="profile-language"><option value="ru">Русский</option><option value="kk">Қазақша</option></select></label></div>
                             <fieldset class="role-presets">
                                 <legend>Выберите роль — инструкции заполнятся сами</legend>
                                 <div class="preset-grid">
@@ -312,13 +332,35 @@
                             <label id="telegram-token-label">Токен от @BotFather<input name="botToken" type="password" autocomplete="off" placeholder="123456:ABC…"></label>
                             <div class="telegram-link-box" id="telegram-link-box" hidden>
                                 <span class="section-kicker">Код привязки</span>
-                                <strong id="telegram-link-code">—</strong>
-                                <p>Откройте бота и отправьте этот код. Он действует ограниченное время.</p>
-                                <a class="secondary-button" id="telegram-open-link" href="#" target="_blank" rel="noopener" hidden>Открыть Telegram</a>
+                                <div class="telegram-code-row">
+                                    <strong id="telegram-link-code">—</strong>
+                                    <button class="telegram-copy-button" id="telegram-copy" type="button" aria-label="Скопировать код привязки">Копировать</button>
+                                </div>
+                                <p id="telegram-link-status" role="status">Откройте бота и отправьте этот код.</p>
+                                <div class="telegram-link-actions">
+                                    <a class="secondary-button" id="telegram-open-link" href="#" target="_blank" rel="noopener" hidden>Открыть Telegram</a>
+                                    <button class="secondary-button" id="telegram-check" type="button">Проверить связь</button>
+                                </div>
                             </div>
                             <div class="form-actions"><button class="danger-button" id="telegram-disconnect" type="button" hidden>Отключить</button><button class="secondary-button" id="telegram-regenerate" type="button" hidden>Новый код</button><button class="primary-button" id="telegram-connect" type="submit">Подключить</button></div>
                             <p class="form-feedback" role="status"></p>
                         </form>
+                    </article>
+
+                    <article class="connection-card connection-wide google-calendar-card panel" id="google-calendar-card">
+                        <div class="connection-head"><span class="connection-logo google-calendar-logo">G</span><div><span class="eyebrow">Календарь</span><h2>Google Calendar</h2></div><span class="connection-state" id="google-calendar-state">Проверяю…</span></div>
+                        <div class="google-calendar-content">
+                            <div>
+                                <p id="google-calendar-copy">Проверяю, доступно ли подключение Google Calendar.</p>
+                                <span class="calendar-scope">Только события календаря · без почты, файлов и контактов</span>
+                            </div>
+                            <div class="google-calendar-actions">
+                                <button class="danger-button" id="google-calendar-disconnect" type="button" hidden>Отключить</button>
+                                <button class="secondary-button" id="google-calendar-sync" type="button" hidden>Синхронизировать</button>
+                                <button class="primary-button" id="google-calendar-connect" type="button" disabled>Подключить Google</button>
+                            </div>
+                        </div>
+                        <p class="form-feedback" id="google-calendar-feedback" role="status" aria-live="polite"></p>
                     </article>
                 </div>
                 <div class="security-note panel">
@@ -329,6 +371,8 @@
         </main>
     </div>
 
+    <button class="form-overlay" id="form-overlay" type="button" aria-label="Закрыть форму" hidden></button>
+
     <nav class="mobile-dock" aria-label="Разделы Agent Hub" data-hub-navigation>
         <a class="dock-link is-active" href="#agent" data-view-target="agent"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5M20 12a8 8 0 1 1-3-6.32L20 4v5h-5"/></svg><span>Агент</span></a>
         <a class="dock-link" href="#notes" data-view-target="notes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8"/></svg><span>Заметки</span></a>
@@ -338,6 +382,6 @@
     </nav>
 
     <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
-    <script type="module" src="./js/hub.js?v=20261023c"></script>
+    <script type="module" src="./js/hub.js?v=20261023e"></script>
 </body>
 </html>

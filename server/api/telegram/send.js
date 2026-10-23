@@ -1,11 +1,12 @@
 import { db, telegram, escapeHtml, readJsonBody } from '../_lib.js';
-import { requireLegacyDashboardSession } from '../_auth.js';
+import { requireLegacyDashboardSession, requireSameOrigin } from '../_auth.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
-    if (!await requireLegacyDashboardSession(req, res)) return;
+    if (!await requireLegacyDashboardSession(req, res, ['owner'])) return;
+    if (!requireSameOrigin(req, res)) return;
 
     try {
         const { id, chatId, text } = await readJsonBody(req);

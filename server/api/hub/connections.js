@@ -16,15 +16,30 @@ function requestOrigin(req) {
     if (configured) {
         try {
             const url = new URL(configured);
-            if (url.protocol !== 'https:' && process.env.NODE_ENV === 'production') throw new Error('HTTPS required');
+            if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
+                throw new Error('Invalid public origin');
+            }
+            if ((process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV) && url.protocol !== 'https:') {
+                throw new Error('HTTPS required');
+            }
             return url.origin;
         } catch {
             throw Object.assign(new Error('PUBLIC_SITE_URL is invalid.'), { status: 503 });
         }
     }
+
+    // Telegram stores this URL outside the request lifecycle. In production it
+    // must never be derived from proxy-controlled host headers.
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV) {
+        throw Object.assign(new Error('PUBLIC_SITE_URL is required.'), { status: 503 });
+    }
     const proto = req.headers?.['x-forwarded-proto'] || (process.env.NODE_ENV === 'production' ? 'https' : 'http');
     const host = req.headers?.['x-forwarded-host'] || req.headers?.host;
-    if (!host) throw Object.assign(new Error('Public site address is unavailable.'), { status: 503 });
+    if (!host
+        || !/^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/.test(host)
+        || !['http', 'https'].includes(proto)) {
+        throw Object.assign(new Error('Public site address is unavailable.'), { status: 503 });
+    }
     return `${proto}://${host}`;
 }
 
