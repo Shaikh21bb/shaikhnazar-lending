@@ -1,4 +1,4 @@
-const VERSION = 'shaikh-sys-v14-agent-integrations';
+const VERSION = 'shaikh-sys-v15-client-glass';
 const CORE = [
     '/login.html',
     '/dashboard.html',
@@ -11,6 +11,8 @@ const CORE = [
     '/css/app.css',
     '/css/sales-studio.css',
     '/css/hub.css',
+    '/css/client-glass.css',
+    '/css/login.css',
     '/js/lang.js',
     '/js/supabase.js',
     '/js/shyraq.js',
@@ -25,6 +27,7 @@ const CORE = [
     '/js/toasts.js',
     '/js/admin.js',
     '/js/hub.js',
+    '/js/client-glass.js',
     '/js/transaction-csv.js'
 ];
 

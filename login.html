@@ -7,60 +7,84 @@
     <meta name="description" content="Закрытый клиентский кабинет SHAIKH Agent Hub: ИИ-агент, заметки, календарь и учет расходов.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="stylesheet" href="./css/app.css">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/client-glass.css?v=20261027b">
+    <link rel="stylesheet" href="./css/login.css?v=20261027b">
+    <script src="./js/client-glass.js?v=20261027b" defer></script>
     <link rel="manifest" href="/manifest.webmanifest">
-    <meta name="theme-color" content="#0A0A0C">
+    <meta name="theme-color" content="#090b0b">
     <link rel="icon" href="/icons/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 </head>
-<body>
+<body class="client-page login-page">
+    <a class="auth-skip" href="#auth-main" data-i18n="skip">Перейти ко входу</a>
+    <div class="client-ambient" aria-hidden="true"><span></span><span></span><span></span></div>
 
-    <div class="glass-orb orb-1"></div>
-    <div class="glass-orb orb-2"></div>
-    <div class="glass-orb orb-3"></div>
+    <header class="client-island auth-island">
+        <div class="client-island__inner">
+            <a class="client-brand" href="index.html" aria-label="SHAIKH — главная">
+                <span class="client-brand__mark" aria-hidden="true">S</span>
+                <span class="client-brand__name">SHAIKH</span>
+            </a>
+            <div class="client-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="auth-lang" role="group" aria-label="Выбор языка">
+                <button type="button" class="lang-btn active" data-lang="ru" aria-pressed="true" aria-label="Русский">RU</button>
+                <button type="button" class="lang-btn" data-lang="kk" aria-pressed="false" aria-label="Қазақша">KZ</button>
+            </div>
+        </div>
+    </header>
 
-    <div class="auth-wrap">
-        <div class="auth-card glass">
-            <div class="auth-logo">
-                <span class="auth-logo-pill">shaikh</span>
+    <main class="auth-wrap" id="auth-main" tabindex="-1">
+        <section class="auth-card client-glass-panel" aria-labelledby="auth-title" data-glass-reveal>
+            <div class="auth-card__identity">
+                <span class="auth-symbol" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="m16 4 2.7 9.3L28 16l-9.3 2.7L16 28l-2.7-9.3L4 16l9.3-2.7L16 4Z" stroke="currentColor" stroke-width="1.4"/><path d="m25 3 .9 3.1L29 7l-3.1.9L25 11l-.9-3.1L21 7l3.1-.9L25 3Z" fill="currentColor"/></svg></span>
+                <span class="auth-kicker">SHAIKH / AGENT HUB</span>
+                <span class="auth-private"><span aria-hidden="true"></span><span data-i18n="private">Личный доступ</span></span>
             </div>
-            <div class="auth-lang">
-                <button type="button" class="lang-btn active" data-lang="ru">RU</button>
-                <button type="button" class="lang-btn" data-lang="kk">Қазақша</button>
-            </div>
-            <h1 data-i18n="title">Вход в SHAIKH Agent Hub</h1>
+            <h1 id="auth-title" data-i18n="title">Вход в SHAIKH Agent Hub</h1>
             <p class="auth-sub" data-i18n="subtitle">Закрытый клиентский кабинет: ИИ-агент, заметки, календарь и расходы — в одном месте.</p>
 
             <div id="auth-error" role="alert" aria-live="polite"></div>
 
             <form id="auth-form" class="auth-form">
                 <label for="email" data-i18n="login">Логин (Email)</label>
-                <input type="text" id="email" required placeholder="name@company.com" autocomplete="username">
+                <input type="text" id="email" name="login" required placeholder="name@company.com" autocomplete="username" autocapitalize="none" spellcheck="false">
                 <label for="password" data-i18n="pass">Пароль</label>
                 <div class="password-wrap">
-                    <input type="password" id="password" class="pw-input" required placeholder="••••••••" autocomplete="current-password">
+                    <input type="password" id="password" name="password" class="pw-input" required placeholder="••••••••" autocomplete="current-password">
                     <button type="button" class="toggle-password" id="toggle-password" aria-label="Показать пароль" title="Показать пароль">
-                        <svg viewBox="0 0 24 24" width="17" height="17" stroke="currentColor" fill="none" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="1.6" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                 </div>
-                <button type="submit" class="island island-primary auth-submit" id="submit-btn" data-i18n="enter">Войти</button>
+                <button type="submit" class="auth-submit" id="submit-btn" data-i18n="enter">Войти</button>
             </form>
 
+            <div class="auth-capabilities" aria-label="Возможности кабинета">
+                <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9h10M7 13h6M20 11a8 8 0 0 1-8 8H4v-5a8 8 0 1 1 16-3Z"/></svg><span data-i18n="agent">AI-агент</span></span>
+                <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4zM8 3v4M16 3v4M4 10h16M8 14h3"/></svg><span data-i18n="plans">Планы</span></span>
+                <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v14H3zM3 10h18M16 15h5M7 3h10"/></svg><span data-i18n="money">Расходы</span></span>
+            </div>
+            <p class="auth-access-note" data-i18n="accessNote">Доступ выдаётся подключённым клиентам.</p>
             <div class="auth-footer" id="toggle-wrap">
                 <a href="index.html" data-i18n="back">← Вернуться на сайт</a>
                 <span aria-hidden="true">·</span>
                 <a href="admin.html" data-i18n="owner">Панель владельца</a>
             </div>
-        </div>
-    </div>
+        </section>
+        <span class="auth-signature" aria-hidden="true">YOUR IDEAS. YOUR AGENT. YOUR SPACE.</span>
+    </main>
 
     <script>
         const LOGIN_I18N = {
             ru: {
                 pageTitle: 'SHAIKH Agent Hub — Вход в личный кабинет',
                 description: 'Закрытый клиентский кабинет SHAIKH Agent Hub: ИИ-агент, заметки, календарь и учет расходов.',
+                skip: 'Перейти ко входу',
+                private: 'Личный доступ',
+                agent: 'AI-агент',
+                plans: 'Планы',
+                money: 'Расходы',
+                accessNote: 'Доступ выдаётся подключённым клиентам.',
                 title: 'Вход в SHAIKH Agent Hub',
                 subtitle: 'Закрытый клиентский кабинет: ИИ-агент, заметки, календарь и расходы — в одном месте.',
                 login: 'Логин (Email)',
@@ -78,6 +102,12 @@
             kk: {
                 pageTitle: 'SHAIKH Agent Hub — Жеке кабинетке кіру',
                 description: 'SHAIKH Agent Hub жабық клиенттік кабинеті: AI-агент, жазбалар, күнтізбе және шығындарды есепке алу.',
+                skip: 'Кіруге өту',
+                private: 'Жеке қолжетімділік',
+                agent: 'AI-агент',
+                plans: 'Жоспарлар',
+                money: 'Шығындар',
+                accessNote: 'Қолжетімділік қосылған клиенттерге беріледі.',
                 title: 'SHAIKH Agent Hub жүйесіне кіру',
                 subtitle: 'Жабық клиенттік кабинетіңіз: AI-агент, жазбалар, күнтізбе және шығындар — бір жерде.',
                 login: 'Логин (Email)',
@@ -93,7 +123,8 @@
                 conn: 'Деректер базасымен байланыста қате орын алды.'
             }
         };
-        let loginLang = localStorage.getItem('shaikh_lang') === 'kz' ? 'kk' : (localStorage.getItem('shaikh_lang') || 'ru');
+        const savedLoginLang = localStorage.getItem('shaikh_lang') || localStorage.getItem('shaikh-portfolio-lang');
+        let loginLang = savedLoginLang === 'kk' || savedLoginLang === 'kz' ? 'kk' : 'ru';
         function applyLoginLang(lang) {
             const t = LOGIN_I18N[lang] || LOGIN_I18N.ru;
             document.documentElement.lang = lang;
@@ -104,6 +135,8 @@
                 const k = el.getAttribute('data-i18n');
                 if (t[k]) el.textContent = t[k];
             });
+            const submitButton = document.getElementById('submit-btn');
+            if (submitButton?.disabled) submitButton.textContent = t.loading;
             const togglePassword = document.getElementById('toggle-password');
             const passwordInput = document.getElementById('password');
             if (togglePassword && passwordInput) {
@@ -113,7 +146,11 @@
             }
             const err = document.getElementById('auth-error');
             if (err) err.style.display = 'none';
-            document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+            document.querySelectorAll('.lang-btn').forEach(b => {
+                const active = b.dataset.lang === lang;
+                b.classList.toggle('active', active);
+                b.setAttribute('aria-pressed', String(active));
+            });
         }
         applyLoginLang(loginLang);
         document.querySelectorAll('.lang-btn').forEach(b => {
@@ -176,7 +213,7 @@
                 }
 
                 submitBtn.disabled = true;
-                const originalText = submitBtn.textContent;
+                submitBtn.setAttribute('aria-busy', 'true');
                 submitBtn.textContent = t.loading;
                 if (authError) authError.style.display = 'none';
 
@@ -210,7 +247,8 @@
                     }
                 } finally {
                     submitBtn.disabled = false;
-                    submitBtn.textContent = originalText;
+                    submitBtn.removeAttribute('aria-busy');
+                    submitBtn.textContent = (LOGIN_I18N[loginLang] || LOGIN_I18N.ru).enter;
                 }
             });
         });

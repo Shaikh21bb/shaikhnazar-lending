@@ -209,7 +209,15 @@ test('client-facing labels describe the implemented search, ledger, and language
     assert.match(html, /Учтённый баланс/);
     assert.match(html, /по записанным операциям/);
     assert.match(html, /Язык ответов/);
-    assert.match(css, /--faint: #7f7f8c/);
+    const rgb = name => {
+        const hex = css.match(new RegExp(`--${name}:\\s*#([0-9a-f]{6})`, 'i'))?.[1];
+        assert.ok(hex, `${name} must define an opaque fallback color`);
+        return hex.match(/../g).map(value => parseInt(value, 16) / 255);
+    };
+    const luminance = color => color.map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+        .reduce((total, value, index) => total + value * [0.2126, 0.7152, 0.0722][index], 0);
+    const contrast = (luminance(rgb('faint')) + 0.05) / (luminance(rgb('surface-solid')) + 0.05);
+    assert.ok(contrast >= 4.5, 'secondary labels must remain readable on the panel fallback');
     assert.doesNotMatch(css, /font-size:\s*0\.[0-6](?:[0-9])?rem/);
 });
 
