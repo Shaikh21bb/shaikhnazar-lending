@@ -138,9 +138,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuButton = document.getElementById('menu-toggle');
     const mobileMenu = document.getElementById('mobile-menu');
     const siteHeader = document.getElementById('site-header');
+    const heroShowcase = document.querySelector('.hero-showcase');
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
     let currentLang = localStorage.getItem('shaikh-portfolio-lang') === 'kk' ? 'kk' : 'ru';
     let currentProjectId = null;
     let revealObserver;
+    let menuAnimation;
 
     const tr = (key) => UI_TRANSLATIONS[currentLang][key] || UI_TRANSLATIONS.ru[key] || key;
     const localized = (value) => value && typeof value === 'object' ? (value[currentLang] || value.ru || '') : (value || '');
@@ -236,12 +240,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentProjectId && dialog?.open) fillDialog(projects.find((item) => item.id === currentProjectId));
     }
 
-    function setMenu(open) {
+    function setMenu(open, { restoreFocus = false, focusFirst = false } = {}) {
+        const startHeight = siteHeader.getBoundingClientRect().height;
+        menuAnimation?.cancel();
         menuButton.classList.toggle('active', open);
         menuButton.setAttribute('aria-expanded', String(open));
         menuButton.setAttribute('aria-label', open ? tr('menu.close') : tr('menu.open'));
         mobileMenu.hidden = !open;
+        siteHeader.classList.toggle('menu-expanded', open);
         document.body.classList.toggle('menu-open', open);
+        const endHeight = siteHeader.getBoundingClientRect().height;
+        if (!motionPreference.matches && typeof siteHeader.animate === 'function' && Math.abs(startHeight - endHeight) > 1) {
+            menuAnimation = siteHeader.animate([
+                { height: `${startHeight}px` },
+                { height: `${endHeight}px` }
+            ], { duration: 480, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
+        }
+        if (open && focusFirst) mobileMenu.querySelector('a')?.focus({ preventScroll: true });
+        if (!open && restoreFocus) menuButton.focus({ preventScroll: true });
     }
 
     function observeReveals(root = document) {
@@ -267,10 +283,21 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click', () => applyLanguage(button.dataset.lang));
     });
 
-    menuButton.addEventListener('click', () => setMenu(!menuButton.classList.contains('active')));
+    menuButton.addEventListener('click', (event) => setMenu(!menuButton.classList.contains('active'), { focusFirst: event.detail === 0 }));
     mobileMenu.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setMenu(false)));
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 1100 && menuButton.classList.contains('active')) setMenu(false);
+    siteHeader.querySelectorAll('.brand, .desktop-nav a, .client-link').forEach((link) => {
+        link.addEventListener('click', () => setMenu(false));
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape' || !menuButton.classList.contains('active')) return;
+        event.preventDefault();
+        setMenu(false, { restoreFocus: true });
+    });
+    document.addEventListener('click', (event) => {
+        if (menuButton.classList.contains('active') && !siteHeader.contains(event.target)) setMenu(false);
+    });
+    siteHeader.addEventListener('focusout', (event) => {
+        if (event.relatedTarget && !siteHeader.contains(event.relatedTarget)) setMenu(false);
     });
 
     dialog?.querySelector('[data-dialog-close]')?.addEventListener('click', () => dialog.close());
@@ -279,13 +306,87 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     dialog?.addEventListener('close', () => { currentProjectId = null; });
 
-    window.addEventListener('scroll', () => siteHeader.classList.toggle('scrolled', window.scrollY > 24), { passive: true });
+    const updateHeader = () => siteHeader.classList.toggle('scrolled', window.scrollY > 24);
+    window.addEventListener('scroll', updateHeader, { passive: true });
+    updateHeader();
+
+    const sectionLinks = [...siteHeader.querySelectorAll('a[href^="#"]')].filter((link) => link.hash !== '#top');
+    if ('IntersectionObserver' in window) {
+        const sectionObserver = new IntersectionObserver((entries) => {
+            const visible = entries.filter((entry) => entry.isIntersecting);
+            if (!visible.length) return;
+            const sectionId = visible[visible.length - 1].target.id;
+            sectionLinks.forEach((link) => {
+                if (link.hash === `#${sectionId}`) link.setAttribute('aria-current', 'location');
+                else link.removeAttribute('aria-current');
+            });
+        }, { rootMargin: '-15% 0px -55% 0px', threshold: 0 });
+        ['top', 'projects', 'capabilities', 'platform', 'approach', 'contact'].forEach((id) => {
+            const section = document.getElementById(id);
+            if (section) sectionObserver.observe(section);
+        });
+    }
+
+    let pointerFrame = 0;
+    let pointerPosition = null;
+    let tiltFrame = 0;
+    let tiltPosition = null;
+    const motionAllowed = () => finePointer.matches && !motionPreference.matches;
+    const resetMotion = () => {
+        menuAnimation?.cancel();
+        if (pointerFrame) cancelAnimationFrame(pointerFrame);
+        if (tiltFrame) cancelAnimationFrame(tiltFrame);
+        pointerFrame = 0;
+        tiltFrame = 0;
+        pointerPosition = null;
+        tiltPosition = null;
+        document.documentElement.style.removeProperty('--pointer-x');
+        document.documentElement.style.removeProperty('--pointer-y');
+        heroShowcase?.style.setProperty('--tilt-x', '0deg');
+        heroShowcase?.style.setProperty('--tilt-y', '0deg');
+    };
+    window.addEventListener('pointermove', (event) => {
+        if (!motionAllowed() || event.pointerType === 'touch') return;
+        pointerPosition = { x: event.clientX, y: event.clientY };
+        if (pointerFrame) return;
+        pointerFrame = requestAnimationFrame(() => {
+            pointerFrame = 0;
+            if (!pointerPosition || !motionAllowed()) return;
+            document.documentElement.style.setProperty('--pointer-x', `${pointerPosition.x}px`);
+            document.documentElement.style.setProperty('--pointer-y', `${pointerPosition.y}px`);
+        });
+    }, { passive: true });
+    heroShowcase?.addEventListener('pointermove', (event) => {
+        if (!motionAllowed() || event.pointerType === 'touch') return;
+        tiltPosition = { x: event.clientX, y: event.clientY };
+        if (tiltFrame) return;
+        tiltFrame = requestAnimationFrame(() => {
+            tiltFrame = 0;
+            if (!tiltPosition || !motionAllowed()) return;
+            const rect = heroShowcase.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            const x = Math.max(-1, Math.min(1, (tiltPosition.x - rect.left) / rect.width * 2 - 1));
+            const y = Math.max(-1, Math.min(1, (tiltPosition.y - rect.top) / rect.height * 2 - 1));
+            heroShowcase.style.setProperty('--tilt-x', `${(-y * 3).toFixed(2)}deg`);
+            heroShowcase.style.setProperty('--tilt-y', `${(x * 3).toFixed(2)}deg`);
+        });
+    }, { passive: true });
+    heroShowcase?.addEventListener('pointerleave', () => {
+        if (tiltFrame) cancelAnimationFrame(tiltFrame);
+        tiltFrame = 0;
+        tiltPosition = null;
+        heroShowcase.style.setProperty('--tilt-x', '0deg');
+        heroShowcase.style.setProperty('--tilt-y', '0deg');
+    });
+    motionPreference.addEventListener('change', resetMotion);
+    finePointer.addEventListener('change', resetMotion);
+    window.addEventListener('blur', resetMotion);
 
     applyLanguage(currentLang);
     observeReveals();
     requestAnimationFrame(() => {
         document.querySelectorAll('.hero .reveal').forEach((element, index) => {
-            window.setTimeout(() => element.classList.add('is-visible'), index * 90);
+            window.setTimeout(() => element.classList.add('is-visible'), motionPreference.matches ? 0 : index * 90);
         });
     });
 

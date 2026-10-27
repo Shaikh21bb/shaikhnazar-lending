@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./css/style.css?v=20261023a">
+    <link rel="stylesheet" href="./css/style.css?v=20261027a">
     <meta name="theme-color" content="#080806">
     <link rel="icon" href="/icons/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -36,34 +36,26 @@
 </head>
 <body>
     <a class="skip-link" href="#main" data-i18n="a11y.skip">Перейти к содержанию</a>
+    <div class="ambient-field" aria-hidden="true"><span></span><span></span><span></span></div>
 
     <header class="site-header" id="site-header">
-        <div class="container header-inner">
+        <div class="header-inner">
             <a class="brand" href="#top" aria-label="SHAIKH — главная">
                 <span class="brand-mark" aria-hidden="true">S</span>
                 <span>SHAIKH</span>
             </a>
-            <nav class="desktop-nav" aria-label="Основная навигация">
-                <a href="#projects" data-i18n="nav.projects">Проекты</a>
-                <a href="#capabilities" data-i18n="nav.capabilities">Направления</a>
-                <a href="#approach" data-i18n="nav.approach">Подход</a>
-                <a href="#contact" data-i18n="nav.contact">Контакты</a>
-            </nav>
+            <div class="island-signal" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
             <div class="header-actions">
                 <div class="lang-switcher" aria-label="Выбор языка">
                     <button class="lang-btn active" type="button" data-lang="ru" aria-pressed="true">RU</button>
                     <button class="lang-btn" type="button" data-lang="kk" aria-pressed="false">KZ</button>
                 </div>
-                <a class="client-link" href="./login.html">
-                    <span data-i18n="nav.clients">Клиентам</span>
-                    <span aria-hidden="true">↗</span>
-                </a>
                 <button class="menu-toggle" id="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Открыть меню">
                     <span></span><span></span>
                 </button>
             </div>
         </div>
-        <nav class="mobile-menu" id="mobile-menu" aria-label="Мобильная навигация" hidden>
+        <nav class="mobile-menu" id="mobile-menu" aria-label="Навигация" hidden>
             <a href="#projects" data-i18n="nav.projects">Проекты</a>
             <a href="#capabilities" data-i18n="nav.capabilities">Направления</a>
             <a href="#approach" data-i18n="nav.approach">Подход</a>
@@ -212,6 +204,6 @@
     </dialog>
 
     <script src="./js/portfolio-data.js?v=20261022c"></script>
-    <script src="./js/main.js?v=20261023a"></script>
+    <script src="./js/main.js?v=20261027a"></script>
 </body>
 </html>
