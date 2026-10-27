@@ -2,10 +2,9 @@ import { timingSafeEqual } from 'node:crypto';
 import { db, telegram, escapeHtml, readJsonBody } from './_lib.js';
 import { runReminders } from './tasks/remind.js';
 import { handleSalesInbound } from './_agent/sales.js';
+import { enqueueTelegramThought } from './_agent/workspace.js';
 import {
-    completePersonalMessageDelivery,
     findPersonalAgentByWebhookSecret,
-    handlePersonalMessage,
     linkPersonalTelegramOwner,
     personalTelegramToken,
     telegramWebhookSecretHash
@@ -156,12 +155,12 @@ export async function replyToPersonalAgent(agent, message, deadlineAt = Date.now
                 chat_id: chatId,
                 text: alreadyLinked
                     ? 'Telegram уже привязан к вашему Agent Hub.'
-                    : 'Готово — Telegram привязан к вашему Agent Hub. Напишите, например: «Запиши расход 4500 ₸ на такси».'
+                    : 'Telegram привязан. Мысли отправляются зашифрованными на ваш Mac и сохраняются в Obsidian. Подключите Mac в разделе «Мой агент» → «Мой Mac».'
             }, telegramDeadlineOptions(deadlineAt));
             return;
         }
         const textReply = agent.telegram_owner_chat_id === chatId && agent.telegram_owner_user_id === userId
-            ? `Привет! Я ${agent.name}. Заметки, календарь и финансы на сайте и здесь — единая память.`
+            ? `Привет! Я ${agent.name}. Напиши мысль — её обработает локальный агент на Mac. Если Mac выключен, зашифрованное задание подождёт. Содержание базы Obsidian не передаётся облачной модели.`
             : 'Откройте «Подключения» в Agent Hub и используйте персональную ссылку привязки.';
         await telegram('sendMessage', token, { chat_id: chatId, text: textReply }, telegramDeadlineOptions(deadlineAt));
         return;
@@ -182,34 +181,18 @@ export async function replyToPersonalAgent(agent, message, deadlineAt = Date.now
         return;
     }
 
-    try { await telegram('sendChatAction', token, { chat_id: chatId, action: 'typing' }, telegramDeadlineOptions(deadlineAt, 5_000)); }
-    catch (error) { console.error('Personal sendChatAction error:', error.message); }
-
-    const result = await handlePersonalMessage({
-        agent,
-        channel: 'telegram',
-        chatId,
-        message: text,
+    // This authenticated personal channel is local-only. Never fall through to
+    // the old cloud note/chat handler, even while no Mac is paired or online.
+    const queued = await enqueueTelegramThought(agent, text, {
         externalMessageId: message.message_id ? String(message.message_id) : null,
-        deadlineAt
+        userId
     });
-    if (result.busy) throw retryableWebhookError('Telegram update is already being processed');
-    if (result.reply) {
-        try {
-            await telegram('sendMessage', token, { chat_id: chatId, text: result.reply }, telegramDeadlineOptions(deadlineAt));
-        } catch (error) {
-            throw retryableWebhookError('Telegram reply delivery failed', error);
-        }
-    }
-    if (result.delivery) {
-        let completed = false;
-        try {
-            completed = await completePersonalMessageDelivery(result.delivery);
-        } catch (error) {
-            throw retryableWebhookError('Telegram delivery acknowledgement failed', error);
-        }
-        if (!completed) throw retryableWebhookError('Telegram delivery acknowledgement failed');
-    }
+    await telegram('sendMessage', token, {
+        chat_id: chatId,
+        text: queued.queued
+            ? 'Мысль добавлена в зашифрованную очередь для Mac. Когда он будет включён, агент сохранит и оформит её в Obsidian.'
+            : 'Сначала подключи Mac в личном кабинете → «Мой агент» → «Мой Mac». До подключения мысль не отправляется облачной AI-модели.'
+    }, telegramDeadlineOptions(deadlineAt));
 }
 
 const STATUS_LABEL = { pending: '⏳ Запланировано', confirmed: '✅ Подтверждено', done: '🎉 Выполнено' };

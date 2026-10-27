@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#090b0b">
+    <meta name="robots" content="noindex, nofollow">
+    <title>SHAIKH — Моё пространство</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Syne:wght@600;700;800&amp;display=swap" rel="stylesheet">
+    <link rel="icon" href="/icons/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="./css/client-glass.css?v=20261027c">
+    <link rel="stylesheet" href="./css/workspace.css?v=20261027c">
+</head>
+<body class="client-page workspace-page">
+    <a class="ws-skip" href="#workspace-main">К содержанию</a>
+    <div class="client-ambient" aria-hidden="true"><span></span><span></span><span></span></div>
+
+    <header class="client-island ws-island">
+        <div class="client-island__inner">
+            <a class="client-brand" href="/hub.html" aria-label="SHAIKH — Agent Hub"><span class="client-brand__mark">S</span><span class="client-brand__name">shaikh</span></a>
+            <span class="client-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+            <button class="ws-device-pill" type="button" data-view="mac" id="island-device"><span class="ws-dot"></span><span id="island-status">Подключение…</span></button>
+            <button class="ws-icon-button" type="button" id="logout-button" aria-label="Выйти из аккаунта" title="Выйти"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/></svg></button>
+        </div>
+    </header>
+
+    <div class="ws-shell">
+        <aside class="ws-rail" aria-label="Навигация личного пространства">
+            <div class="ws-rail-heading"><span class="ws-label">Личное пространство</span><strong id="account-name">Мой кабинет</strong></div>
+            <nav class="ws-nav" aria-label="Разделы">
+                <a href="#thoughts" data-view="thoughts" class="is-active" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-4 12.74V19h8v-3.26A7 7 0 0 0 12 3ZM9 22h6M9 10h6M12 7v6"/></svg><span>Мысли<small>Из головы — в Obsidian</small></span></a>
+                <a href="#reminders" data-view="reminders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span>Напоминания<small>В нужный момент</small></span><b id="reminder-badge" class="ws-nav-badge" hidden>0</b></a>
+                <a href="#agents" data-view="agents"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v12H5zM12 3v4M8 12h.01M16 12h.01M9 16h6M2 11v4M22 11v4"/></svg><span>Мои агенты<small>Ваши правила и стиль</small></span><b id="approval-badge" class="ws-nav-badge" hidden>0</b></a>
+                <a href="#mac" data-view="mac"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H4zM2 20h20M9 16v4M15 16v4"/></svg><span>Мой Mac<small>Приватное ядро</small></span></a>
+            </nav>
+            <a class="ws-hub-link" href="/hub.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5-7 7 7 7M2 12h20"/></svg><span>Agent Hub<small>Календарь и финансы</small></span></a>
+            <div class="ws-rail-note"><span class="ws-lock" aria-hidden="true">↗</span><p>Ваши мысли.<br>Ваш Mac.<br>Ваш контроль.</p></div>
+        </aside>
+
+        <main class="ws-main" id="workspace-main" tabindex="-1">
+            <div class="ws-alert" id="workspace-alert" role="alert" hidden></div>
+            <section class="ws-view" id="view-thoughts" aria-labelledby="thoughts-title">
+                <div class="ws-heading"><div><span class="ws-label">Всё начинается с мысли</span><h1 id="thoughts-title">Освободите голову.</h1><p>Напишите как есть. Ваш агент оформит заметку, найдёт связи и заметит, что нужно сделать.</p></div><span class="ws-private-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10h14v11H5zM8 10V6a4 4 0 0 1 8 0v4M12 14v3"/></svg>Obsidian · только на Mac</span></div>
+
+                <div class="ws-thought-layout">
+                    <div class="ws-thought-main">
+                        <form class="ws-composer client-glass-panel" id="thought-form">
+                            <div class="ws-composer-top"><label for="thought-input"><span class="ws-spark" aria-hidden="true">✦</span> Ваша следующая мысль</label><span class="ws-count" id="thought-count">0 / 8 000</span></div>
+                            <textarea id="thought-input" name="thought" rows="6" maxlength="8000" placeholder="Идея для проекта, план на завтра или мысль, которую хочется сохранить…" required aria-describedby="thought-help" disabled></textarea>
+                            <div class="ws-context" id="clarification-context" hidden><span id="clarification-copy"></span><button type="button" id="clear-clarification" aria-label="Отменить уточнение">×</button></div>
+                            <div class="ws-composer-bottom"><p id="thought-help">Текст шифруется в браузере. Расшифровать его может только ваш Mac.</p><button class="ws-primary" id="thought-submit" type="submit" disabled><span>Сохранить мысль</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 17 10-10M7 7h10v10"/></svg></button></div>
+                        </form>
+                        <div class="ws-offline-note" id="thought-device-notice" role="status"><span class="ws-dot"></span><p>Проверяю подключение вашего Mac…</p><button class="ws-text-button" type="button" data-view="mac">Настроить →</button></div>
+                        <div class="ws-section-heading"><h2>В работе и сохранено</h2><button class="ws-text-button" id="refresh-button" type="button">Обновить <span aria-hidden="true">↻</span></button></div>
+                        <div id="thought-results" class="ws-results" aria-live="polite" aria-busy="true"><div class="ws-empty"><span class="ws-loading-dot" aria-hidden="true"></span><p>Загружаю ваше пространство…</p></div></div>
+                    </div>
+                    <aside class="ws-intelligence client-glass-panel" aria-label="Как работает ваш личный агент">
+                        <div class="ws-orbit" aria-hidden="true"><span class="ws-orbit-ring"></span><span class="ws-orbit-ring"></span><span class="ws-orbit-core">S</span><i></i><i></i><i></i></div>
+                        <span class="ws-label">Меньше шума. Больше смысла.</span><h2>Мысль найдёт<br>своё место.</h2>
+                        <ol class="ws-flow"><li><span>01</span><div><strong>Скажите своими словами</strong><p>На сайте или в вашем Telegram-боте.</p></div></li><li><span>02</span><div><strong>Агент соберёт заметку</strong><p>Заголовок, темы и связи с вашей базой — локально.</p></div></li><li><span>03</span><div><strong>Важное вернётся вовремя</strong><p>Если срок не указан, агент его уточнит.</p></div></li></ol>
+                        <a class="ws-soft-link" href="/hub.html#connections">Подключить Telegram <span aria-hidden="true">↗</span></a>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="ws-view" id="view-reminders" aria-labelledby="reminders-title" hidden>
+                <div class="ws-heading"><div><span class="ws-label">Ничего важного не потеряется</span><h1 id="reminders-title">Вернуться вовремя.</h1><p>Задачи и сроки из ваших мыслей. Содержание заметок остаётся на Mac.</p></div></div>
+                <div class="ws-rhythm client-glass-panel"><div><span class="ws-label">Ваш ритм · Алматы</span><strong>09:00 <small>ежедневный обзор</small></strong></div><div><span class="ws-label">Перед встречей</span><strong>30 <small>минут до начала</small></strong></div><div><span class="ws-label">Тихие часы</span><strong>22:00 — 09:00</strong></div></div>
+                <div class="ws-section-heading"><h2>Ближайшие напоминания</h2><span class="ws-muted" id="reminder-total">Загружаю…</span></div>
+                <div id="reminders-list" class="ws-reminders"></div>
+                <p class="ws-footnote">Снаружи Mac хранится только время и нейтральное уведомление. Подробности — в вашей локальной заметке. Доставка зависит от подключённого Telegram и запущенного обработчика напоминаний.</p>
+            </section>
+
+            <section class="ws-view" id="view-agents" aria-labelledby="agents-title" hidden>
+                <div class="ws-heading"><div><span class="ws-label">Помощники под ваши задачи</span><h1 id="agents-title">Делегируйте по-своему.</h1><p>Создавайте агентов, задавайте им роль и учите отвечать на своих примерах.</p></div><button class="ws-primary" id="new-agent-button" type="button"><span aria-hidden="true">+</span> Создать агента</button></div>
+                <div class="ws-agents" id="agents-list"></div>
+                <div class="ws-approval-section" id="approval-section"><div class="ws-section-heading"><div><span class="ws-label">Решение остаётся за вами</span><h2>Нужно ваше согласование</h2></div><span class="ws-muted" id="approval-total"></span></div><p class="ws-section-copy">В первой версии агент сам отправляет приветствия и ваши готовые ответы при точном совпадении сообщения. Новые ответы AI, деньги, обещания, встречи и личные конфликты требуют вашего согласования.</p><div id="approvals-list" class="ws-approvals"></div></div>
+                <div class="ws-whatsapp-note client-glass-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.66 15L2 22l5-1.34A10 10 0 1 0 12 2ZM8 8c0 4 4 8 8 8M8 8l2 2-1 2M16 16l-2-2-2 1"/></svg><div><strong>Ваш WhatsApp остаётся с вами</strong><p>Номер и обычное приложение сохраняются. Для тестового подключения понадобится ваш QR-скан с телефона. Агент работает, пока Mac включён и не спит. Неофициальное подключение несёт риск блокировки номера.</p></div></div>
+            </section>
+
+            <section class="ws-view" id="view-mac" aria-labelledby="mac-title" hidden>
+                <div class="ws-heading"><div><span class="ws-label">Всё личное — рядом с вами</span><h1 id="mac-title">Ваш Mac — ядро.</h1><p>Локальный помощник читает Obsidian и обрабатывает мысли на вашем компьютере.</p></div><span class="ws-private-label">Без платных сервисов</span></div>
+                <div class="ws-mac-grid">
+                    <article class="ws-device-card client-glass-panel"><div class="ws-device-illustration" aria-hidden="true"><div><span>S</span><i></i></div><b></b></div><div class="ws-device-card-copy"><span class="ws-label">Локальный помощник</span><h2 id="device-name">Mac ещё не подключён</h2><p id="device-detail">Привяжите этот компьютер, чтобы мысли попадали в вашу базу Obsidian.</p><span class="ws-state" id="device-state">Не подключён</span></div><dl class="ws-device-facts"><div><dt>Обработка заметок</dt><dd>Только на Mac</dd></div><div><dt>Модель</dt><dd id="device-model">Не определена</dd></div><div><dt>Последний сигнал</dt><dd id="device-seen">—</dd></div></dl><button class="ws-secondary" id="pairing-button" type="button">Подключить мой Mac</button></article>
+                    <article class="ws-setup-card client-glass-panel"><span class="ws-label">Настройка один раз</span><h2>Три шага к своей базе.</h2><ol class="ws-setup-steps"><li><span>1</span><div><strong>Подготовьте Mac</strong><p>Откройте вашу базу в Obsidian. Для AI-обработки запустите локальную модель Ollama; платный API не нужен.</p></div></li><li><span>2</span><div><strong>Свяжите с кабинетом</strong><p>Нажмите «Подключить мой Mac» и выполните команду в папке проекта на этом компьютере.</p></div></li><li><span>3</span><div><strong>Оставьте помощника включённым</strong><p>Пока Mac бодрствует, агент обрабатывает мысли и WhatsApp. При выключении новые мысли ждут в зашифрованной очереди.</p></div></li></ol><div class="ws-pairing" id="pairing-panel" hidden><div class="ws-pairing-top"><strong>Команда привязки</strong><span id="pairing-expiry"></span></div><p>Запустите в Терминале из папки проекта. Код одноразовый; не передавайте его другим людям.</p><code id="pairing-command"></code><button class="ws-secondary" id="copy-pairing-button" type="button">Скопировать команду</button></div></article>
+                </div>
+                <div class="ws-privacy-grid"><article><span aria-hidden="true">✦</span><h3>Ваша база остаётся вашей</h3><p>Тексты, связи, резервные копии и анализ Obsidian хранятся на Mac. Удаление заметок требует отдельного подтверждения.</p></article><article><span aria-hidden="true">⌁</span><h3>Очередь зашифрована</h3><p>Сайт передаёт мысль в запечатанном виде. Telegram хранит только то, что вы сами отправили в чат боту.</p></article><article><span aria-hidden="true">↗</span><h3>Отдельные правила для WhatsApp</h3><p>Для переписок можно использовать бесплатную облачную модель. Агент учится стилю только на ваших правилах и примерах.</p></article></div>
+            </section>
+        </main>
+    </div>
+
+    <nav class="ws-dock" aria-label="Разделы на телефоне"><a href="#thoughts" data-view="thoughts" class="is-active" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-4 12.74V19h8v-3.26A7 7 0 0 0 12 3ZM9 22h6"/></svg><span>Мысли</span></a><a href="#reminders" data-view="reminders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span>Напомнить</span></a><a href="#agents" data-view="agents"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v12H5zM12 3v4M8 12h.01M16 12h.01M9 16h6"/></svg><span>Агенты</span><i id="mobile-approval-dot" hidden></i></a><a href="#mac" data-view="mac"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H4zM2 20h20M9 16v4M15 16v4"/></svg><span>Мой Mac</span></a></nav>
+
+    <dialog class="ws-dialog" id="agent-dialog" aria-labelledby="agent-dialog-title"><form id="agent-form"><div class="ws-dialog-heading"><div><span class="ws-label">Ваш новый помощник</span><h2 id="agent-dialog-title">Создать агента</h2></div><button class="ws-icon-button" type="button" id="close-agent-dialog" aria-label="Закрыть форму">×</button></div><input type="hidden" id="agent-id"><label for="agent-name">Имя агента<input id="agent-name" name="name" maxlength="80" placeholder="Например, мой ассистент WhatsApp" required></label><label for="agent-type">Задача<select id="agent-type" name="type"><option value="whatsapp">Отвечать за меня в WhatsApp</option><option value="personal">Помогать с Obsidian на Mac</option></select></label><label for="agent-rules">Как ему действовать<textarea id="agent-rules" name="rules" rows="4" maxlength="6000" placeholder="Пиши кратко и дружелюбно. На «ты». Не придумывай факты о моих планах…"></textarea></label><label for="agent-examples">Ваши готовые ответы<textarea id="agent-examples" name="examples" rows="4" maxlength="12000" placeholder="Сообщение: Как тебя зовут?&#10;Мой ответ: Бекжан.&#10;&#10;Сообщение: Чем ты занимаешься?&#10;Мой ответ: Делаю сайты и помогаю бизнесу с автоматизацией."></textarea></label><p class="ws-form-hint">Записывайте пары с новой строки: «Сообщение: …», затем «Мой ответ: …». При точном совпадении сообщения агент может отправить ваш готовый ответ сам. Новые ответы AI и важные решения сначала согласовываются с вами.</p><label class="ws-checkbox"><input id="agent-enabled" type="checkbox"><span>Включить агента после сохранения</span></label><p class="ws-form-feedback" id="agent-form-feedback" role="status"></p><button class="ws-primary" type="submit" id="save-agent-button">Сохранить агента</button></form></dialog>
+    <dialog class="ws-dialog ws-qr-dialog" id="qr-dialog" aria-labelledby="qr-title"><div class="ws-dialog-heading"><div><span class="ws-label">Связать устройство</span><h2 id="qr-title">WhatsApp на вашем Mac</h2></div><button class="ws-icon-button" type="button" id="close-qr-dialog" aria-label="Закрыть QR-код">×</button></div><div id="qr-content" class="ws-qr-content"></div><p class="ws-form-hint">В WhatsApp на телефоне откройте «Связанные устройства» → «Привязка устройства» и отсканируйте код самостоятельно. Если код истёк, запросите новый.</p><button class="ws-secondary ws-qr-refresh" id="refresh-qr-button" type="button">Обновить QR-код</button></dialog>
+    <div class="ws-toast" id="workspace-toast" role="status" aria-live="polite" hidden></div>
+    <noscript><p class="ws-noscript">Для работы личного пространства нужен JavaScript. Включите его в настройках браузера.</p></noscript>
+    <script src="./js/client-glass.js?v=20261027c" defer></script>
+    <script type="module" src="./js/workspace.js?v=20261027c"></script>
+</body>
+</html>

@@ -5,3 +5,4 @@ node_modules/
 worker/.wa-session/
 .ollama-started-by-sales-agent
 supabase/.temp/
+/outputs/

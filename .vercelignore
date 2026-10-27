@@ -1,0 +1,12 @@
+.git
+.vercel
+.env*
+**/node_modules
+**/.wa-session
+outputs
+test
+companion
+worker
+supabase
+n8n
+*.command

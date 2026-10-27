@@ -1,8 +1,9 @@
-const VERSION = 'shaikh-sys-v15-client-glass';
+const VERSION = 'shaikh-sys-v16-private-workspace';
 const CORE = [
     '/login.html',
     '/dashboard.html',
     '/hub.html',
+    '/workspace.html',
     '/admin.html',
     '/manifest.webmanifest',
     '/icons/icon-192.png',
@@ -11,6 +12,7 @@ const CORE = [
     '/css/app.css',
     '/css/sales-studio.css',
     '/css/hub.css',
+    '/css/workspace.css',
     '/css/client-glass.css',
     '/css/login.css',
     '/js/lang.js',
@@ -27,6 +29,8 @@ const CORE = [
     '/js/toasts.js',
     '/js/admin.js',
     '/js/hub.js',
+    '/js/workspace.js',
+    '/lib/private-envelope.mjs',
     '/js/client-glass.js',
     '/js/transaction-csv.js'
 ];

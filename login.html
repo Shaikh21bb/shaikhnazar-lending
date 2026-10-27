@@ -182,7 +182,12 @@
                 });
             }
 
-            const destinationFor = role => role === 'client' ? 'hub.html' : 'dashboard.html';
+            const requestedPage = new URLSearchParams(window.location.search).get('next');
+            const safePages = new Set(['workspace', 'workspace.html', 'hub', 'hub.html']);
+            const safeNext = typeof requestedPage === 'string' && safePages.has(requestedPage.replace(/^\//, ''))
+                ? `${requestedPage.replace(/^\//, '').replace(/\.html$/, '')}.html` : null;
+            const destinationFor = role => safeNext && ['owner', 'client'].includes(role)
+                ? safeNext : role === 'client' ? 'hub.html' : 'dashboard.html';
             if (localStorage.getItem('auth_token')) {
                 try {
                     const response = await fetch('/api/auth/session', { cache: 'no-store' });

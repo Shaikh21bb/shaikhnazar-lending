@@ -55,6 +55,10 @@
         <aside class="desktop-rail" aria-label="Разделы Agent Hub">
             <div class="rail-label">Рабочее пространство</div>
             <nav class="rail-nav" data-hub-navigation>
+                <a class="rail-link" href="/workspace.html">
+                    <span class="rail-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-4 12.74V19h8v-3.26A7 7 0 0 0 12 3ZM9 22h6"/></svg></span>
+                    <span><strong>Моё пространство</strong><small>Obsidian и мои агенты</small></span>
+                </a>
                 <a class="rail-link is-active" href="#agent" data-view-target="agent">
                     <span class="rail-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5M20 12a8 8 0 1 1-3-6.32L20 4v5h-5"/></svg></span>
                     <span><strong>Агент</strong><small>Спросить и выполнить</small></span>
@@ -84,6 +88,11 @@
 
         <main class="hub-main" id="hub-main" tabindex="-1">
             <div class="global-alert" id="global-alert" role="alert" hidden></div>
+
+            <a class="security-note panel" href="/workspace.html" aria-label="Открыть личное пространство: Obsidian, напоминания и мои агенты">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10h14v11H5zM8 10V6a4 4 0 0 1 8 0v4M12 14v3"/></svg>
+                <div><strong>Моё пространство →</strong><p>Мысли в Obsidian, личные напоминания и агенты на вашем Mac.</p></div>
+            </a>
 
             <section class="hub-view is-active" id="view-agent" data-view="agent" aria-labelledby="agent-title">
                 <div class="view-heading agent-heading">

@@ -14,6 +14,9 @@ import hubGoogleCalendar, {
 import hubImport from '../server/api/hub/import.js';
 import hubOverview from '../server/api/hub/overview.js';
 import hubRecords from '../server/api/hub/records.js';
+import hubWorkspace from '../server/api/hub/workspace.js';
+import hubDevice from '../server/api/hub/device.js';
+import hubRemind from '../server/api/hub/remind.js';
 import legacyData from '../server/api/legacy/data.js';
 import messagesSend from '../server/api/messages/send.js';
 import salesSimulate from '../server/api/sales/simulate.js';
@@ -48,6 +51,9 @@ const routes = new Map([
     ['hub/import', hubImport],
     ['hub/overview', hubOverview],
     ['hub/records', hubRecords],
+    ['hub/workspace', hubWorkspace],
+    ['hub/device', hubDevice],
+    ['hub/remind', hubRemind],
     ['legacy/data', legacyData],
     ['messages/send', messagesSend],
     ['sales/simulate', salesSimulate],
@@ -80,7 +86,13 @@ export default async function handler(req, res) {
         try {
             if (typeof req.body === 'undefined') {
                 const chunks = [];
-                for await (const chunk of req) chunks.push(Buffer.from(chunk));
+                let size = 0;
+                for await (const chunk of req) {
+                    const buffer = Buffer.from(chunk);
+                    size += buffer.length;
+                    if (size > 1024 * 1024) return res.status(413).json({ error: 'Request too large' });
+                    chunks.push(buffer);
+                }
                 req.rawBody = Buffer.concat(chunks).toString('utf8');
                 req.body = req.rawBody ? JSON.parse(req.rawBody) : {};
             }
