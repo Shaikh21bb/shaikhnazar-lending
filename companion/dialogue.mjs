@@ -1,11 +1,20 @@
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { splitTelegramReply } from './telegram.mjs';
+import { dialogueIntent, saveRequest, isSaveConfirmation, isSaveRejection, isDiscussionConfirmation, isDialogueFollowup } from './dialogue-intent.mjs';
 
 const keyFor = payload => /^[a-f0-9]{64}$/u.test(payload?.conversationKey || '') ? payload.conversationKey : null;
 const archiveId = value => createHash('sha256').update(String(value)).digest('hex');
 const dateReply = text => !String(text).includes('?') && String(text).length <= 200
     && /^(?:(?:давай|поставь|напомни|перенеси)\s+)?(?:сегодня|завтра|послезавтра|\d{2}\.\d{2}\.\d{4}|\d{4}-\d{2}-\d{2}|(?:в\s+)?\d{1,2}:\d{2})(?=$|[\s,.])/iu.test(String(text).trim());
+
+function readableSourceTitle(source, title) {
+    const fallback = path.basename(source, '.md');
+    const value = String(title || fallback).normalize('NFKC').replace(/[\u0000-\u001f\u202a-\u202e\u2066-\u2069]/gu, '')
+        .replace(/^#+\s*/u, '').replace(/\s+/gu, ' ').trim().slice(0, 100);
+    if (!value || /^[a-f0-9]{16,}$/iu.test(value) || value.includes('/') || value.includes('\\')) return 'Сохранённая мысль';
+    return value.replace(/\.md$/iu, '');
+}
 
 export class LocalDialogueRuntime {
     constructor(runtime, { writePrivateJSON, delivery }) {
@@ -33,7 +42,7 @@ export class LocalDialogueRuntime {
         if (record.dialogueEpoch !== conversation.epoch) return;
         if (conversation.history.some(turn => turn.jobId === job.id)) return;
         const messages = [
-            { role: 'user', content: record.clarificationText || record.thought || '', jobId: job.id },
+            { role: 'user', content: record.dialogueInput || record.clarificationText || record.thought || '', jobId: job.id },
             { role: 'assistant', content: answer, jobId: job.id },
         ];
         await this.write(path.join(this.runtime.stateDirectory, 'dialogue', key, `${archiveId(job.id)}.json`), {
@@ -45,22 +54,24 @@ export class LocalDialogueRuntime {
         if (sources.length) conversation.sources = sources.slice(0, 6);
     }
 
-    async queueReply(job, record, answer, sources = [], { remember = true } = {}) {
+    async queueReply(job, record, answer, sources = [], { remember = true, sourceTitles = {}, showSources = true } = {}) {
         if (record.dialogue) return;
-        const footer = sources.length ? `\n\nИсточники Obsidian:\n${sources.map(source => `• ${source}`).join('\n')}` : '';
+        const selected = [...new Set(sources)].slice(0, 2);
+        const titles = selected.map(source => readableSourceTitle(source, sourceTitles[source]));
+        const footer = showSources && titles.length ? `\n\n${titles.length === 1 ? 'Источник' : 'Источники'}: ${titles.map(title => `«${title}»`).join(', ')}.` : '';
         record.dialogue = {
             conversationKey: record.conversationKey, replyToMessageId: record.telegramMessageId,
-            response: answer, sources,
+            response: answer, sources: selected,
             outbox: splitTelegramReply(`${answer}${footer}`).map(text => ({ text, status: 'pending' })),
         };
-        if (remember) await this.remember(job, record, answer, sources);
+        if (remember) await this.remember(job, record, answer, selected);
     }
 
     async finishNote(job, record) {
         if (!this.runtime.telegramDialogueEnabled || !record.conversationKey || record.pending || record.dialogueCancelled) return;
         const conversation = this.conversation(record.conversationKey);
         if (record.dialogueEpoch !== conversation.epoch) return;
-        const parts = [`Сохранил в Obsidian: ${record.note.title}.`];
+        const parts = [`Сохранил мысль в Obsidian: «${readableSourceTitle(record.note.path, record.note.title)}».`];
         if (record.tasks?.length) {
             const dateFormat = new Intl.DateTimeFormat('ru-RU', { timeZone: 'Asia/Almaty', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
             parts.push(`Напоминание: ${record.tasks.map(task => dateFormat.format(new Date(task.notifyAt))).join('; ')} — Алматы.`);
@@ -69,7 +80,7 @@ export class LocalDialogueRuntime {
             conversation.awaiting = job.id;
             parts.push(`${record.clarification[0].question}\nМожно ответить обычным сообщением, например «Завтра в 12:00», или /when ${job.id} дата и время.`);
         } else if (record.relatedJobId === conversation.awaiting) conversation.awaiting = null;
-        await this.queueReply(job, record, parts.join('\n\n'), [record.note.path]);
+        await this.queueReply(job, record, parts.join('\n\n'), [record.note.path], { showSources: false });
     }
 
     async reset(job, payload, record) {
@@ -79,6 +90,7 @@ export class LocalDialogueRuntime {
         conversation.history = [];
         conversation.sources = [];
         conversation.awaiting = null;
+        conversation.pendingIntent = null;
         for (const previous of Object.values(this.runtime.journal.jobs)) {
             if (previous.conversationKey !== record.conversationKey) continue;
             if (previous.pendingDialogue) { previous.pendingDialogue = false; previous.dialogueCancelled = true; }
@@ -95,6 +107,7 @@ export class LocalDialogueRuntime {
     async process(job, payload, modelReady, existing = null) {
         const key = keyFor(payload);
         if (!key) throw new Error('Не удалось проверить локальный диалог.');
+        const readOnly = ['ask', 'answer'].includes(payload.mode);
         const conversation = this.conversation(key);
         let record = existing || {
             thought: String(payload.text || '').trim(), thoughtAt: job.created_at || this.runtime.now().toISOString(),
@@ -121,7 +134,7 @@ export class LocalDialogueRuntime {
             return { record, result: { message: 'Диалог ожидает локальную модель на Mac.' }, reminders: [] };
         }
         try {
-            const relatedJobId = payload.mode !== 'ask' && dateReply(record.thought) ? conversation.awaiting : null;
+            const relatedJobId = !readOnly && dateReply(record.thought) ? conversation.awaiting : null;
             if (relatedJobId && this.runtime.journal.jobs[relatedJobId]?.note) {
                 const processed = await this.runtime.processThought(job, { ...payload, intent: 'clarify', relatedJobId }, true);
                 record = { ...processed.record, conversationKey: key, dialogueEpoch: conversation.epoch,
@@ -130,23 +143,65 @@ export class LocalDialogueRuntime {
                 await this.finishNote(job, record);
                 return { ...processed, record };
             }
-            const related = await this.runtime.vault.search(record.thought, { history: conversation.history, sourcePaths: conversation.sources });
-            const decision = await this.runtime.model.converse(record.thought, related, {
-                history: conversation.history, mode: payload.mode === 'ask' ? 'answer' : 'auto',
-            });
-            if (decision.action === 'save' && payload.mode !== 'ask') {
-                const processed = await this.runtime.processThought(job, { ...payload, intent: 'thought' }, true);
+            const pendingIntent = conversation.pendingIntent;
+            let route = record.dialogueIntent || dialogueIntent(record.thought, { mode: payload.mode, hasContext: conversation.history.length > 0 });
+            if (!readOnly && pendingIntent && isSaveConfirmation(record.thought)) {
+                record.dialogueInput = record.thought;
+                record.thought = pendingIntent.text;
+                record.confirmedThoughtAt = pendingIntent.thoughtAt;
+                if (pendingIntent.fromVoice) {
+                    record.fromVoice = true;
+                    record.voiceTranscribedAt = pendingIntent.voiceTranscribedAt;
+                    record.confirmedVoiceJobId = pendingIntent.jobId;
+                }
+                payload = { ...payload, text: record.thought };
+                route = 'save';
+            } else if (!readOnly && pendingIntent && isSaveRejection(record.thought)) {
+                conversation.pendingIntent = null;
+                record.pendingDialogue = false;
+                await this.queueReply(job, record, 'Хорошо, эту мысль не сохраняю.');
+                return { record, result: { message: 'Сохранение мысли отменено владельцем.' }, reminders: [] };
+            } else if (pendingIntent && isDiscussionConfirmation(record.thought)) {
+                record.dialogueInput = record.thought;
+                record.thought = `Давай обсудим эту мысль: ${pendingIntent.text}`;
+                payload = { ...payload, text: record.thought };
+                route = 'answer';
+            }
+            if (route === 'clarify') {
+                const requested = saveRequest(record.thought);
+                if (!requested.requested) conversation.pendingIntent = { jobId: job.id, text: record.thought, thoughtAt: record.thoughtAt,
+                    ...(record.fromVoice ? { fromVoice: true, voiceTranscribedAt: record.voiceTranscribedAt } : {}) };
+                conversation.sources = [];
+                const answer = requested.requested
+                    ? 'Какую мысль сохранить? Напиши или продиктуй её после «Запомни». '
+                    : `Сохранить эту мысль в Obsidian?\n\n«${record.thought.slice(0, 450)}${record.thought.length > 450 ? '…' : ''}»`;
+                record.pendingDialogue = false;
+                await this.queueReply(job, record, answer.trim());
+                return { record, result: { message: 'На Mac запрошено уточнение действия.' }, reminders: [] };
+            }
+            if (route === 'save') {
+                record.dialogueIntent = 'save';
+                conversation.pendingIntent = null;
+                const effectiveJob = record.confirmedThoughtAt ? { ...job, created_at: record.confirmedThoughtAt } : job;
+                const processed = await this.runtime.processThought(effectiveJob, { ...payload, text: record.thought, intent: 'thought' }, true);
                 record = { ...processed.record, conversationKey: key, dialogueEpoch: conversation.epoch,
-                    telegramMessageId: payload.telegramMessageId,
+                    telegramMessageId: payload.telegramMessageId, ...(record.dialogueInput ? { dialogueInput: record.dialogueInput } : {}),
+                    ...(record.confirmedVoiceJobId ? { confirmedVoiceJobId: record.confirmedVoiceJobId } : {}),
                     ...(record.fromVoice ? { fromVoice: true, voiceTranscribedAt: record.voiceTranscribedAt } : {}) };
                 await this.finishNote(job, record);
                 return { ...processed, record };
             }
+            if (!isDialogueFollowup(record.thought)) conversation.pendingIntent = null;
+            const related = await this.runtime.vault.search(record.thought, { history: conversation.history, sourcePaths: conversation.sources });
+            const decision = await this.runtime.model.converse(record.thought, related, {
+                history: conversation.history, mode: 'answer',
+            });
             const allowed = new Set(related.map(note => note.path));
-            const sources = [...new Set((decision.sources || []).filter(source => allowed.has(source)))].slice(0, 6);
-            const answer = String(decision.answer || '').trim().slice(0, 8000) || 'Уточни, пожалуйста, вопрос. В режиме /ask заметки не создаются.';
+            const sources = [...new Set((decision.sources || []).filter(source => allowed.has(source)))].slice(0, 2);
+            const sourceTitles = Object.fromEntries(related.map(note => [note.path, note.title]));
+            const answer = decision.action === 'answer' && String(decision.answer || '').trim().slice(0, 8000) || 'Уточни, пожалуйста, вопрос. Вопросы не создают заметки.';
             record.pendingDialogue = false;
-            await this.queueReply(job, record, answer, sources);
+            await this.queueReply(job, record, answer, sources, { sourceTitles });
             return { record, result: { message: 'Ответ подготовлен локально на Mac.' }, reminders: [] };
         } catch {
             record.pendingDialogue = true;

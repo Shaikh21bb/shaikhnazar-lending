@@ -43,7 +43,8 @@ test('question answers locally with sources, without note writes or plaintext pl
     assert.equal((await f.runtime.vault.notes()).length, 1);
     assert.equal(f.sent.length, 1);
     assert.match(f.sent[0].text, /Янтарь/);
-    assert.match(f.sent[0].text, /Проект.md/);
+    assert.match(f.sent[0].text, /Источник: «Проект»/u);
+    assert.ok(!f.sent[0].text.includes('Проект.md'));
     for (const marker of ['Какой код', 'Янтарь', 'Проект.md']) {
         assert.ok(!JSON.stringify(f.requests).includes(marker));
         assert.ok(!JSON.stringify(f.logs).includes(marker));
@@ -88,11 +89,11 @@ test('offline questions stay local and never become fallback notes', async t => 
 test('offline turns with identical timestamps resume in their original order', async t => {
     const order = [];
     const f = await fixture(t, { model: { converse: async text => { order.push(text); return { action: 'answer', answer: `Ответ: ${text}`, sources: [] }; } } });
-    await f.runtime.handleJob(await f.job('Первый вопрос'), false);
-    await f.runtime.handleJob(await f.job('Второй вопрос'), false);
+    await f.runtime.handleJob(await f.job('Первый вопрос?'), false);
+    await f.runtime.handleJob(await f.job('Второй вопрос?'), false);
     await f.runtime.dialogue.retry(true);
     await f.runtime.dialogue.flush();
-    assert.deepEqual(order, ['Первый вопрос', 'Второй вопрос']);
+    assert.deepEqual(order, ['Первый вопрос?', 'Второй вопрос?']);
     assert.equal(f.sent.length, 2);
 });
 

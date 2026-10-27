@@ -168,10 +168,10 @@ test('restart after transcription reuses the transcript and does not redownload 
 test('a later text waits behind an earlier voice, including equal timestamps', async t => {
     const f = await runtime(t);
     await f.value.handleJob(await f.job(), true);
-    await f.value.handleJob(await f.job({ text: 'А потом второй вопрос' }), true);
+    await f.value.handleJob(await f.job({ text: 'А потом второй вопрос?' }), true);
     assert.equal(f.generations.length, 0);
     await f.value.tick();
-    assert.deepEqual(f.generations, ['Как работает проверка?', 'А потом второй вопрос']);
+    assert.deepEqual(f.generations, ['Как работает проверка?', 'А потом второй вопрос?']);
     assert.equal(f.replies.length, 2);
 });
 

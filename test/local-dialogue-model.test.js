@@ -84,7 +84,7 @@ test('search is bounded and never includes hidden files or symlinks outside the 
 });
 
 test('conversation uses only a verified loopback model and accepts sources only from retrieved notes', async () => {
-    const f = modelFixture({ action: 'answer', answer: 'Сдача запланирована на 17 ноября.', sources: ['Plan.md', '../Secret.md', 'Invented.md', 'Plan.md'] });
+    const f = modelFixture({ action: 'answer', answer: 'Сдача запланирована на 17 ноября.', sources: ['Plan.md', '../Secret.md', 'Invented.md', 'Plan.md'], evidence: [{ source: 'S1', quote: 'Сдача 17 ноября.' }] });
     const answer = await f.model.converse('Когда сдача в моих заметках?', [{ path: 'Plan.md', title: 'План', excerpt: 'Сдача 17 ноября.' }]);
     assert.deepEqual(answer.sources, ['Plan.md']);
     assert.equal(answer.action, 'answer');

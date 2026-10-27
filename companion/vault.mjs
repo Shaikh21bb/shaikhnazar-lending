@@ -9,9 +9,34 @@ const tokens = value => new Set(normalize(value).match(/[\p{L}\p{N}]{3,}/gu) || 
 
 // These are navigation words, not evidence that two private notes discuss the same subject.
 const SEARCH_STOP_WORDS = new Set(('а и в во на по с со из к ко у о об от до для при про за же бы ли или но не ни это этого этой этот эти том тут там тот как что какие какой какая каких когда где кто почему зачем сколько мне меня мной мой моя мои моего моих мое моё тебе ты я мы вы он она они его ее её их себя есть был была было были быть будет будут уже ещё еще только тоже пожалуйста да нет ну вот все всё весь всех свои свой свою свои наши наш это так such the a an and or in on at for from to of is are was were be been my me i you your our this that these those it its tell about what which who how when where why please did do does have has had with without more мен менің маған сен және туралы не қандай қай қалай қашан осы сол бар ғой еді керек база базу базы базой базе заметка заметки заметку заметках заметок мысль мысли мыслей мыслях obsidian покажи расскажи найди помнишь вспомни напомни подробнее подробней объясни продолжи писал писала сохранял сохранил записывал думал говорил помню wrote saved remember recent latest последние недавние').split(/\s+/u));
+for (const word of 'через куда откуда какую каким какими какой-либо известно известны указано написано содержится говорится md regarding related more details about'.split(/\s+/u)) SEARCH_STOP_WORDS.add(word);
+
+const DETAIL_WORDS = new Set('срок сдач дедлайн дат время бюджет стоимост цен код назван им канал мест цел причин результат риск провер сохран запис использ работ тест'.split(' '));
+const GENERIC_TOPICS = new Set('проект задач план тем вопрос ответ информация информац подробност проверк тестов'.split(' '));
+
+function topicAlias(word) {
+    if (/^телеграм(?:м)?(?:а|е|у|ом|ме)?$/u.test(word)) return 'telegram';
+    if (/^обсидиан(?:а|е|у|ом)?$/u.test(word) || word === 'obsidian') return 'obsidian';
+    if (/^(?:мак|макбук)(?:а|е|у|ом)?$/u.test(word) || ['mac', 'macbook'].includes(word)) return 'mac';
+    return null;
+}
+
+function workflowWord(word) {
+    if (/^провер(?:к|я|и|е)/u.test(word)) return 'провер';
+    if (/^сохран|^сохраня/u.test(word)) return 'сохран';
+    if (/^запис(?:ь|и|к|а|ыва)/u.test(word)) return 'запис';
+    if (/^использ/u.test(word)) return 'использ';
+    if (/^работ/u.test(word)) return 'работ';
+    if (/^тест(?:$|[а-я]{1,3}$|иров)|^(?:test|testing|tested)$/u.test(word)) return 'тест';
+    return null;
+}
 
 function searchStem(word) {
     const value = normalize(word).replace(/ё/g, 'е');
+    const alias = topicAlias(value);
+    if (alias) return alias;
+    const workflow = workflowWord(value);
+    if (workflow) return workflow;
     if (!/^[а-я]+$/u.test(value) || value.length < 4) return value;
     const stem = value.replace(/(?:иями|ями|ами|иях|ах|ого|его|ому|ему|ыми|ими|ий|ый|ой|ая|яя|ое|ее|ые|ие|ую|юю|ов|ев|ам|ям|ом|ем|ях|ы|и|а|я|у|ю|е|о|ь)$/u, '');
     return stem.length >= 3 ? stem : value;
@@ -19,7 +44,7 @@ function searchStem(word) {
 
 function searchWords(value) {
     return (normalize(value).replace(/ё/g, 'е').match(/[\p{L}\p{N}]{2,}/gu) || [])
-        .filter(word => !SEARCH_STOP_WORDS.has(word)).map(searchStem).filter(word => word.length >= 2);
+        .filter(word => workflowWord(word) || topicAlias(word) || !SEARCH_STOP_WORDS.has(word)).map(searchStem).filter(word => word.length >= 2);
 }
 
 function searchNote(note) {
@@ -28,7 +53,17 @@ function searchNote(note) {
     const heading = body.match(/^#\s+(.+)$/mu)?.[1]?.trim();
     const aliases = frontmatter?.[1].match(/^(?:aliases|alias):[ \t]*(.*(?:\n[ \t]*-[^\n]*)*)/mu)?.[1] || '';
     const created = frontmatter?.[1].match(/^created:\s*["']?([^\n"']+)/mu)?.[1];
-    return { ...note, body, title: heading || note.title, aliases, created: Number.isFinite(Date.parse(created || '')) ? Date.parse(created) : 0 };
+    const originalThought = body.match(/^##\s+(?:Исходная мысль|Распознанная речь)\s*\n([\s\S]*?)(?=^##?\s|(?![\s\S]))/mu)?.[1]?.trim();
+    const sourceField = frontmatter?.[1].match(/^source:[ \t]*(?:"([^"\n]+)"|'([^'\n]+)'|([a-z_-]+))[ \t]*$/mu);
+    const source = sourceField && (sourceField[1] || sourceField[2] || sourceField[3]);
+    const sourceLabel = source === 'website' ? 'сайт' : ['telegram', 'telegram_voice', 'telegram-voice'].includes(source) ? 'Telegram' : null;
+    const capturedId = frontmatter?.[1].match(/^shaikh_id:[ \t]*(?:"([A-Za-z0-9_-]{1,128})"|'([A-Za-z0-9_-]{1,128})'|([A-Za-z0-9_-]{1,128}))[ \t]*$/mu);
+    // notes() has already read this file from the selected local vault. These
+    // facts describe storage/transport, not whether an intended task was done.
+    const provenance = originalThought && capturedId && sourceLabel
+        ? `Место сохранения: Obsidian.\nКанал записи: ${sourceLabel}.\n` : '';
+    return { ...note, body, title: heading || note.title, aliases, originalThought, provenance,
+        created: Number.isFinite(Date.parse(created || '')) ? Date.parse(created) : 0 };
 }
 
 function passage(body, wanted, max = 2600) {
@@ -159,36 +194,111 @@ export class LocalVault {
             .map(note => ({ path: note.path, title: note.title, excerpt: note.body.slice(0, 3500) }));
     }
 
-    async search(text, { limit = 6, history = [], sourcePaths = [] } = {}) {
+    async search(text, { limit = 3, history = [], sourcePaths = [] } = {}) {
         const query = String(text || '').trim().slice(0, 20000);
         const wanted = new Set(searchWords(query));
-        const followup = /^(?:а|и|ещ[её]|подробнее|продолжи|почему|and|more)(?![\p{L}\p{N}])|(?:^|\s)(?:это|этого|этой|этом|него|не[её]|них|они|там|того|об этом|о н[её]м|that|those|it)(?=\s|[?.!,]|$)/iu.test(query);
-        const previous = new Set();
-        if (followup) {
-            const recent = (Array.isArray(history) ? history : []).filter(item => item?.role === 'user' && typeof item.content === 'string').slice(-2);
-            for (const item of recent) for (const word of searchWords(item.content.slice(0, 4000))) previous.add(word);
-        }
-        const recentSources = new Set(followup && Array.isArray(sourcePaths) ? sourcePaths.slice(-12) : []);
+        const topics = words => new Set([...words].filter(word => !DETAIL_WORDS.has(word) && !GENERIC_TOPICS.has(word)));
+        const currentTopics = topics(wanted);
         const recall = /(?:что|о ч[её]м).*(?:писал|сохранял|записывал|думал|помни|говорил)|мои\s+(?:мысли|заметки)|(?:последние|недавние)\s+(?:мысли|заметки)|what.*(?:remember|saved|wrote)|my\s+(?:thoughts|notes)/iu.test(query);
-        const matches = [];
-        for (const original of await this.notes()) {
+        const referentialRecall = /(?:^|\s)(?:это|этого|этой|этом|него|не[её]|них|они|там|того|об этом|о н[её]м|that|those|it)(?=\s|[?.!,]|$)/iu.test(query);
+        const broadRecallQuery = recall && !currentTopics.size && !referentialRecall;
+        let previous = new Set(), previousTopics = new Set(), previousText = '';
+        // Resolve an elliptical follow-up against one subject, never a union of old subjects.
+        for (const item of (Array.isArray(history) ? history : []).filter(item => item?.role === 'user' && typeof item.content === 'string').slice(-6).reverse()) {
+            const terms = new Set(searchWords(item.content.slice(0, 4000)));
+            const subject = topics(terms);
+            if (subject.size) { previous = terms; previousTopics = subject; previousText = item.content; break; }
+        }
+        const elliptical = /^(?:а|и|ещ[её]|подробнее|продолжи|почему|and|more)(?![\p{L}\p{N}])|(?:^|\s)(?:это|этого|этой|этом|него|не[её]|них|они|там|того|об этом|о н[её]м|that|those|it)(?=\s|[?.!,]|$)/iu.test(query)
+            || (!currentTopics.size && [...wanted].some(word => DETAIL_WORDS.has(word)));
+        const sameSubject = !currentTopics.size || [...currentTopics].some(word => previousTopics.has(word));
+        const availableContext = previousTopics.size || (Array.isArray(sourcePaths) && sourcePaths.length);
+        const followup = Boolean(elliptical && sameSubject && availableContext && !broadRecallQuery);
+        if (!followup) { previous = new Set(); previousTopics = new Set(); previousText = ''; }
+        const recentSources = new Set(followup && Array.isArray(sourcePaths) ? sourcePaths.slice(-3) : []);
+        const activityQuery = value => /(?:^|[^\p{L}])(?:я|мы)(?=$|[^\p{L}]).*(?:провер|тестир|сохран|запис|использ)/iu.test(value);
+        const activity = activityQuery(query) || (followup && activityQuery(previousText));
+        const activityTerms = new Set([...wanted].filter(word => ['провер', 'тест', 'сохран', 'запис', 'использ'].includes(word)));
+        const documents = (await this.notes()).map(original => {
             const note = searchNote(original);
             const titleWords = new Set(searchWords(`${note.title} ${note.path}`));
             const aliasWords = new Set(searchWords(note.aliases));
             const bodyWords = new Set(searchWords(note.body));
+            const originalWords = new Set(searchWords(note.originalThought || ''));
+            return { ...note, titleWords, aliasWords, bodyWords, originalWords, allWords: new Set([...titleWords, ...aliasWords, ...bodyWords]) };
+        });
+        const frequencies = new Map();
+        for (const note of documents) for (const word of note.allWords) frequencies.set(word, (frequencies.get(word) || 0) + 1);
+        const weight = word => (1 + Math.log((documents.length + 1) / ((frequencies.get(word) || 0) + 1)))
+            * (DETAIL_WORDS.has(word) || GENERIC_TOPICS.has(word) ? 0.65 : 1);
+        const support = (note, word) => note.titleWords.has(word) ? 5 : note.aliasWords.has(word) ? 4 : note.bodyWords.has(word) ? 1 : 0;
+        const weightedCoverage = (note, terms) => {
+            let available = 0, total = 0;
+            for (const word of terms) { const value = weight(word); total += value; if (note.allWords.has(word)) available += value; }
+            return total ? available / total : 0;
+        };
+        const currentDetails = new Set([...wanted].filter(word => DETAIL_WORDS.has(word)));
+        const knownEvidence = followup && documents.some(note => recentSources.has(note.path)
+            && (!previousTopics.size || [...previousTopics].some(word => note.allWords.has(word)))
+            && (!wanted.size || (currentDetails.size ? [...currentDetails] : [...wanted]).some(word => note.allWords.has(word))));
+        const datedThoughtsAvailable = documents.some(note => note.created || note.originalThought);
+        const matches = [];
+        for (const note of documents) {
+            const normalizedQuery = normalize(query);
+            const normalizedTitle = normalize(note.title);
+            const explicitlyNamed = normalizedQuery.includes(normalize(note.path)) || normalizedQuery.includes(normalize(path.basename(note.path)))
+                || (normalizedTitle.length >= 4 && [`«${normalizedTitle}»`, `"${normalizedTitle}"`, `“${normalizedTitle}”`].some(title => normalizedQuery.includes(title)));
+            const coverage = weightedCoverage(note, wanted);
+            const topicHit = !currentTopics.size || [...currentTopics].some(word => note.allWords.has(word));
+            const previousHit = !previousTopics.size || [...previousTopics].some(word => note.allWords.has(word));
+            const knownSource = recentSources.has(note.path) && previousHit;
+            const detailHit = [...wanted].some(word => DETAIL_WORDS.has(word) && note.allWords.has(word));
+            const broadRecall = broadRecallQuery;
+            const capturedSaving = Boolean(note.originalThought && [...activityTerms].some(word => ['сохран', 'запис'].includes(word)));
+            if (broadRecall && datedThoughtsAvailable && !note.created && !note.originalThought) continue;
+            if (!explicitlyNamed && !broadRecall) {
+                if (followup) {
+                    // New evidence may extend the same subject; a generic matching word cannot change it.
+                    if (!previousHit || (!knownSource && !(previousTopics.size && detailHit))) continue;
+                    if (knownEvidence && !knownSource) continue;
+                } else {
+                    if (!wanted.size || !topicHit || coverage < 0.5) continue;
+                    if (activity && activityTerms.size && !capturedSaving
+                        && ![...activityTerms].some(word => (note.originalThought ? note.originalWords : note.allWords).has(word))) continue;
+                }
+            }
             let score = 0;
-            for (const word of wanted) score += (titleWords.has(word) ? 10 : 0) + (aliasWords.has(word) ? 8 : 0) + (bodyWords.has(word) ? 2 : 0);
-            let contextScore = 0;
-            for (const word of previous) contextScore += (titleWords.has(word) ? 4 : 0) + (aliasWords.has(word) ? 3 : 0) + (bodyWords.has(word) ? 0.5 : 0);
-            if (followup) score += Math.min(contextScore, 20) + (recentSources.has(note.path) ? 15 : 0);
-            if (score || (recall && !wanted.size)) matches.push({ ...note, score });
+            for (const word of wanted) score += weight(word) * support(note, word);
+            score += coverage * 8;
+            if (followup) {
+                for (const word of previousTopics) score += Math.min(3, support(note, word)) * weight(word);
+                if (knownSource) score += 4;
+            }
+            if (explicitlyNamed) score += 20;
+            if (activity && note.originalThought) score += 8;
+            if (activity && !note.originalThought && /(?:агент|ассистент|ты).{0,60}(?:должен|обязан)|не\s+выдумывай|уточни|никогда/iu.test(note.body)) score *= 0.3;
+            matches.push({ ...note, score, explicitlyNamed, broadRecall });
         }
-        matches.sort((a, b) => b.score - a.score || b.created - a.created || a.path.localeCompare(b.path));
-        const count = Math.max(1, Math.min(8, Number.isFinite(Number(limit)) ? Math.floor(Number(limit)) : 6));
+        matches.sort((a, b) => Number(b.explicitlyNamed) - Number(a.explicitlyNamed) || b.score - a.score || b.created - a.created || a.path.localeCompare(b.path));
+        const count = Math.max(1, Math.min(3, Number.isFinite(Number(limit)) ? Math.floor(Number(limit)) : 3));
+        const top = matches[0]?.score || 0;
+        const named = matches.filter(note => note.explicitlyNamed);
+        const relevant = named.length ? named : matches.filter(note => note.broadRecall || note.score >= top * 0.65);
         const terms = new Set([...wanted, ...previous]);
-        let remaining = 12000;
-        return matches.slice(0, count).map(note => {
-            const excerpt = passage(note.body, terms, Math.min(2600, remaining));
+        let remaining = 7800;
+        return relevant.slice(0, count).map(note => {
+            const subject = currentTopics.size ? currentTopics : previousTopics;
+            const capturedSaving = note.originalThought && [...activityTerms].some(word => ['сохран', 'запис'].includes(word));
+            const originalMatches = note.originalThought && (!subject.size || [...subject].some(word => note.originalWords.has(word)))
+                && (!activity || !activityTerms.size || capturedSaving || [...activityTerms].some(word => note.originalWords.has(word)));
+            // Captured user wording outranks an earlier AI paraphrase when recalling personal facts.
+            const useOriginal = originalMatches && (activity || recall || followup);
+            const evidenceBody = useOriginal ? note.originalThought : note.body;
+            // Add verified provenance only after ranking, so a generic Telegram
+            // source field cannot make every captured note match that topic.
+            const prefix = note.provenance ? `${note.provenance}\n${useOriginal ? 'Исходная мысль' : 'Отрывок заметки'}:\n` : '';
+            const budget = Math.min(2600, remaining);
+            const excerpt = `${prefix}${passage(evidenceBody, terms, Math.max(0, budget - prefix.length))}`.slice(0, budget);
             remaining -= excerpt.length;
             return { path: note.path, title: note.title.slice(0, 150), excerpt };
         }).filter(note => note.excerpt.length);
