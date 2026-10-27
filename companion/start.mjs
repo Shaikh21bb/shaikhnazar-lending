@@ -11,7 +11,7 @@ import { createCompanion, readPrivateJSON, writePrivateJSON, deviceRequest } fro
 export function parseArguments(argv) {
     const options = {};
     const valued = new Set(['--pair', '--url', '--vault', '--model', '--model-url', '--state-dir']);
-    const flags = new Set(['--once', '--status', '--help']);
+    const flags = new Set(['--once', '--status', '--help', '--telegram-dialogue', '--no-telegram-dialogue']);
     for (let index = 0; index < argv.length; index++) {
         const key = argv[index];
         if (valued.has(key)) {
@@ -20,6 +20,7 @@ export function parseArguments(argv) {
         } else if (flags.has(key)) options[key.slice(2)] = true;
         else throw new Error('Неизвестный параметр. Справка: node companion/start.mjs --help');
     }
+    if (options['telegram-dialogue'] && options['no-telegram-dialogue']) throw new Error('Выбери включение или выключение диалога Telegram.');
     return options;
 }
 
@@ -59,7 +60,7 @@ async function claimLock(stateDirectory) {
 export async function main(argv = process.argv.slice(2)) {
     const options = parseArguments(argv);
     if (options.help) {
-        console.log('SHAIKH — локальный личный агент\n\nПервое подключение:\n  node companion/start.mjs --pair КОД --url https://shaikh.digital\n\nДальше:\n  node companion/start.mjs\n\nПараметры: --vault "/папка/Obsidian", --model ИМЯ, --model-url http://127.0.0.1:11434, --once, --status\nМодель и заметки не отправляются в облачные AI-сервисы.');
+        console.log('SHAIKH — локальный личный агент\n\nПервое подключение:\n  node companion/start.mjs --pair КОД --url https://shaikh.digital\n\nДальше:\n  node companion/start.mjs\n\nПараметры: --vault "/папка/Obsidian", --model ИМЯ, --model-url http://127.0.0.1:11434, --once, --status\nДиалог: --telegram-dialogue / --no-telegram-dialogue. При включении ответы по заметкам отправляются владельцу в Telegram. База, история и AI-обработка остаются на Mac.\nМодель и заметки не отправляются в облачные AI-сервисы.');
         return;
     }
     const stateDirectory = options['state-dir'] ? path.resolve(options['state-dir']) : defaultStateDirectory();
@@ -67,6 +68,8 @@ export async function main(argv = process.argv.slice(2)) {
     await fs.chmod(stateDirectory, 0o700);
     const configPath = path.join(stateDirectory, 'config.json');
     const config = await readPrivateJSON(configPath, {});
+    if (options['telegram-dialogue']) config.telegramDialogueEnabled = true;
+    if (options['no-telegram-dialogue']) config.telegramDialogueEnabled = false;
     config.modelURL = localModelURL(options['model-url'] || config.modelURL || 'http://127.0.0.1:11434').toString().replace(/\/$/, '');
     config.model = options.model || config.model || '';
     if (options.status) {
@@ -100,7 +103,7 @@ export async function main(argv = process.argv.slice(2)) {
             Object.assign(config, { baseURL: base.origin, token: paired.token, deviceId: paired.deviceId, publicKey: keys.publicKey, privateKey: keys.privateKey });
             await writePrivateJSON(configPath, config);
             console.log('Mac подключён. Приватный ключ сохранён только на этом Mac.');
-        } else if (options.url || options.vault || options.model || options['model-url']) {
+        } else if (options.url || options.vault || options.model || options['model-url'] || options['telegram-dialogue'] || options['no-telegram-dialogue']) {
             if (options.url && new URL(options.url).origin !== config.baseURL) throw new Error('Для смены платформы создай новый код сопряжения.');
             await writePrivateJSON(configPath, config);
         }

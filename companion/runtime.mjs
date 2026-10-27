@@ -5,6 +5,8 @@ import { decryptEnvelope, encryptEnvelope, validatePublicKey } from '../lib/priv
 import { LocalVault } from './vault.mjs';
 import { LocalModel } from './model.mjs';
 import { normalizeTasks, nextDailyOverview, bindExplicitDeadline, TIMEZONE } from './reminders.mjs';
+import { LocalDialogueRuntime } from './dialogue.mjs';
+import { TelegramOwnerDelivery } from './telegram.mjs';
 
 export async function writePrivateJSON(filename, value) {
     await fs.mkdir(path.dirname(filename), { recursive: true, mode: 0o700 });
@@ -65,7 +67,7 @@ function resultFor(record) {
 }
 
 export class CompanionRuntime {
-    constructor({ config, stateDirectory, request, vault, model, adapter, now = () => new Date(), log = console.log }) {
+    constructor({ config, stateDirectory, request, vault, model, adapter, telegramDelivery, now = () => new Date(), log = console.log }) {
         this.config = config;
         this.stateDirectory = stateDirectory;
         this.request = request || deviceRequest({ baseURL: config.baseURL, token: config.token });
@@ -77,6 +79,9 @@ export class CompanionRuntime {
         this.journalPath = path.join(stateDirectory, 'journal.json');
         this.stopped = false;
         this.lastRetry = 0;
+        this.telegramDialogueEnabled = config.telegramDialogueEnabled === true;
+        this.dialogue = new LocalDialogueRuntime(this, { writePrivateJSON,
+            delivery: telegramDelivery || new TelegramOwnerDelivery({ privateKey: config.privateKey, request: this.request }) });
     }
 
     async initialize() {
@@ -84,6 +89,7 @@ export class CompanionRuntime {
         this.journal = await readPrivateJSON(this.journalPath, { jobs: {}, reminders: {}, daily: null });
         this.journal.jobs ||= {};
         this.journal.reminders ||= {};
+        this.dialogue.initialize();
         return this;
     }
 
@@ -121,6 +127,11 @@ export class CompanionRuntime {
             tasks: pending && original ? original.tasks || [] : taskData.local,
             clarification: pending && original ? original.clarification || [] : taskData.clarification,
             replyPublicKey: payload.replyPublicKey || null, source: job.kind, completedAt: this.now().toISOString(),
+            ...(this.telegramDialogueEnabled && job.kind === 'telegram_thought' && /^[a-f0-9]{64}$/u.test(payload.conversationKey || '') ? {
+                conversationKey: payload.conversationKey,
+                dialogueEpoch: this.dialogue.conversation(payload.conversationKey).epoch,
+                telegramMessageId: payload.telegramMessageId, relatedJobId: payload.relatedJobId,
+            } : {}),
         };
         for (const task of taskData.local) this.journal.reminders[task.id] = { ...task, notePath: note.path };
         return { record, result: resultFor(record), reminders: taskData.reminders };
@@ -142,12 +153,23 @@ export class CompanionRuntime {
             stored = { result, source: job.kind, completedAt: this.now().toISOString() };
             this.journal.jobs[job.id] = stored;
             await this.persist();
+        } else if (job.kind === 'telegram_thought' && payload.intent === 'dialogue') {
+            const processed = this.telegramDialogueEnabled
+                ? await this.dialogue.process(job, payload, modelReady)
+                : { record: { source: job.kind, dialogueCancelled: true, completedAt: this.now().toISOString() }, result: { message: 'Диалог по базе не разрешён на этом Mac.' }, reminders: [] };
+            stored = processed.record;
+            result = processed.result;
+            reminders = processed.reminders;
+            stored.result = result;
+            this.journal.jobs[job.id] = stored;
+            await this.persist();
         } else {
             const processed = await this.processThought(job, payload, modelReady);
             stored = processed.record;
             result = processed.result;
             reminders = processed.reminders;
             this.journal.jobs[job.id] = stored;
+            if (stored.conversationKey) await this.dialogue.finishNote(job, stored);
             // Write the local journal before acknowledging, so a retried leased job reuses the same note.
             await this.persist();
         }
@@ -156,9 +178,10 @@ export class CompanionRuntime {
         if (resultEnvelope) completion.resultEnvelope = resultEnvelope;
         if (stored.clarification?.length) completion.needsClarification = true;
         await this.request(completion);
-        if (job.kind === 'telegram_thought' && stored.clarification?.length) {
+        if (job.kind === 'telegram_thought' && stored.clarification?.length && !stored.conversationKey) {
             await this.request({ action: 'notify', kind: 'clarification', jobId: job.id });
         }
+        await this.dialogue.flush();
         this.log('Задание обработано на Mac. Содержимое заметки осталось локально.');
         return result;
     }
@@ -177,6 +200,7 @@ export class CompanionRuntime {
                 const note = await this.vault.write({ ...analysis, body: withOriginalThought(analysis.body, record.thought, record.clarificationText), jobId: record.noteJobId || id, updatePath: record.note.path, source: record.source === 'telegram_thought' ? 'telegram' : 'website' });
                 note.openUrl = record.note.openUrl;
                 Object.assign(record, { note, analysis, pending: false, tasks: taskData.local, clarification: taskData.clarification });
+                if (record.conversationKey) await this.dialogue.finishNote({ id, created_at: record.thoughtAt }, record);
                 for (const task of taskData.local) this.journal.reminders[task.id] = { ...task, notePath: note.path };
                 const resultEnvelope = record.replyPublicKey ? await encryptEnvelope(record.replyPublicKey, resultFor(record)) : undefined;
                 record.syncPending = { action: 'sync_reminders', jobId: id, reminders: taskData.reminders, ...(resultEnvelope ? { resultEnvelope } : {}), needsClarification: Boolean(record.clarification.length) };
@@ -194,7 +218,7 @@ export class CompanionRuntime {
         for (const [id, record] of Object.entries(this.journal.jobs)) {
             if (!record.syncPending) continue;
             await this.request(record.syncPending);
-            if (record.source === 'telegram_thought') await this.request({ action: 'notify', kind: record.clarification?.length ? 'clarification' : 'processed', jobId: id });
+            if (record.source === 'telegram_thought' && !record.conversationKey) await this.request({ action: 'notify', kind: record.clarification?.length ? 'clarification' : 'processed', jobId: id });
             delete record.syncPending;
             await this.persist();
         }
@@ -202,8 +226,11 @@ export class CompanionRuntime {
 
     async tick() {
         const status = await this.model.status();
+        await this.dialogue.retry(status.ready);
+        await this.retryPending(status.ready);
+        await this.dialogue.flush();
         const whatsapp = typeof this.adapter?.status === 'function' ? this.adapter.status() : this.adapter?.status;
-        const response = await this.request({ action: 'poll', status: { state: status.ready ? 'ready' : 'model_offline', model: status.model || '', modelReady: Boolean(status.ready), ...(whatsapp ? { whatsapp } : {}) } });
+        const response = await this.request({ action: 'poll', status: { state: status.ready ? 'ready' : 'model_offline', model: status.model || '', modelReady: Boolean(status.ready), telegramDialogue: this.telegramDialogueEnabled, ...(whatsapp ? { whatsapp } : {}) } });
         if (this.adapter?.onPoll) await this.adapter.onPoll(response);
         for (const job of response.jobs || []) {
             try { await this.handleJob(job, status.ready); }
@@ -214,6 +241,7 @@ export class CompanionRuntime {
             }
         }
         await this.retryPending(status.ready);
+        await this.dialogue.flush();
         return { modelReady: status.ready, processed: response.jobs?.length || 0 };
     }
 

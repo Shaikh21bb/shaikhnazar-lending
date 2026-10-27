@@ -155,12 +155,12 @@ export async function replyToPersonalAgent(agent, message, deadlineAt = Date.now
                 chat_id: chatId,
                 text: alreadyLinked
                     ? 'Telegram уже привязан к вашему Agent Hub.'
-                    : 'Telegram привязан. Мысли отправляются зашифрованными на ваш Mac и сохраняются в Obsidian. Подключите Mac в разделе «Мой агент» → «Мой Mac».'
+                    : 'Telegram привязан. Пишите сюда: личный агент на Mac ответит с учётом вашей базы Obsidian. База и её анализ остаются на Mac; ответы приходят в этот чат. Команды — /help.'
             }, telegramDeadlineOptions(deadlineAt));
             return;
         }
         const textReply = agent.telegram_owner_chat_id === chatId && agent.telegram_owner_user_id === userId
-            ? `Привет! Я ${agent.name}. Напиши мысль — её обработает локальный агент на Mac. Если Mac выключен, зашифрованное задание подождёт. Содержание базы Obsidian не передаётся облачной модели.`
+            ? `Привет! Я ${agent.name}. Пишите сюда — локальный агент на Mac ответит с учётом Obsidian. Для отдельной заметки используйте /note, для вопроса — /ask. Если Mac выключен, зашифрованное сообщение подождёт. База и её анализ остаются на Mac; ответы приходят в этот чат. Все команды — /help.`
             : 'Откройте «Подключения» в Agent Hub и используйте персональную ссылку привязки.';
         await telegram('sendMessage', token, { chat_id: chatId, text: textReply }, telegramDeadlineOptions(deadlineAt));
         return;
@@ -181,16 +181,29 @@ export async function replyToPersonalAgent(agent, message, deadlineAt = Date.now
         return;
     }
 
+    if (/^\/help(?:@[A-Za-z0-9_]+)?$/i.test(text)) {
+        await telegram('sendMessage', token, {
+            chat_id: chatId,
+            text: 'Пишите обычным сообщением — личный агент ответит с учётом Obsidian.\n/ask вопрос — спросить по базе\n/note мысль — сохранить отдельную заметку\n/when идентификатор дата и время — уточнить срок задачи\n/new — начать новый диалог на Mac\n/help — команды\n\nБаза, анализ и история диалога хранятся на Mac. Ответы приходят в этот личный чат. Если Mac выключен, сообщения ждут в зашифрованной очереди.'
+        }, telegramDeadlineOptions(deadlineAt));
+        return;
+    }
+
     // This authenticated personal channel is local-only. Never fall through to
     // the old cloud note/chat handler, even while no Mac is paired or online.
     const queued = await enqueueTelegramThought(agent, text, {
         externalMessageId: message.message_id ? String(message.message_id) : null,
+        telegramMessageId: message.message_id,
         userId
     });
     await telegram('sendMessage', token, {
         chat_id: chatId,
         text: queued.queued
-            ? 'Мысль добавлена в зашифрованную очередь для Mac. Когда он будет включён, агент сохранит и оформит её в Obsidian.'
+            ? !queued.dialogueEnabled
+                ? 'Мысль добавлена в зашифрованную очередь для Mac. Когда он будет включён, агент сохранит и оформит её в Obsidian.'
+                : queued.intent === 'thought'
+                    ? 'Мысль добавлена в зашифрованную очередь для Mac. Локальный агент сохранит её в Obsidian и ответит здесь.'
+                    : 'Сообщение добавлено в зашифрованную очередь для Mac. Локальный агент обработает его и ответит здесь.'
             : 'Сначала подключи Mac в личном кабинете → «Мой агент» → «Мой Mac». До подключения мысль не отправляется облачной AI-модели.'
     }, telegramDeadlineOptions(deadlineAt));
 }

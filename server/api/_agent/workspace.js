@@ -10,6 +10,7 @@ const JOB_KINDS = new Set(['thought', 'telegram_thought', 'whatsapp_connect', 'w
 const failure = (message, status = 400) => Object.assign(new Error(message), { status });
 const encode = value => encodeURIComponent(String(value));
 const hash = value => createHash('sha256').update(value).digest('hex');
+const telegramConversationKey = (root, device) => hash(`${root.id}:${device.id}:${root.telegram_owner_user_id}`);
 const clean = (value, max) => String(value ?? '').trim().slice(0, max);
 const first = value => Array.isArray(value) ? value[0] : value;
 const writeHeaders = { Prefer: 'return=representation' };
@@ -261,7 +262,7 @@ function safeRuntime(body) {
     const whatsapp = ['disconnected', 'qr', 'connected', 'paused'].includes(status.whatsapp) ? status.whatsapp : 'disconnected';
     const rawModel = String(body.model ?? status.model ?? '');
     const model = /^[A-Za-z0-9_./:@+-]{0,100}$/.test(rawModel) ? rawModel : '';
-    return { status: { state, whatsapp, modelReady: status.modelReady === true }, model, last_seen_at: new Date().toISOString() };
+    return { status: { state, whatsapp, modelReady: status.modelReady === true, telegramDialogue: status.telegramDialogue === true }, model, last_seen_at: new Date().toISOString() };
 }
 
 function safeReminders(input) {
@@ -297,6 +298,28 @@ async function notifyJob(root, device, body) {
 export async function workspaceDeviceMutation(context, body) {
     const { device, root } = context;
     switch (body.action) {
+    case 'telegram_credentials': {
+        if (!device || device.root_id !== root.id || device.revoked_at) throw failure('Подключение Mac отозвано.', 401);
+        const currentDevice = await workspaceDevice(root.id);
+        if (!currentDevice || currentDevice.id !== device.id) throw failure('Подключение Mac отозвано.', 401);
+        if (currentDevice.status?.telegramDialogue !== true) throw failure('Диалог Telegram не включён на этом Mac. Обновите локальный агент и включите диалог в его настройках.', 409);
+        const current = first(await rest(`personal_agents?select=id,telegram_connected,telegram_owner_chat_id,telegram_owner_user_id&id=eq.${encode(root.id)}&telegram_connected=eq.true&limit=1`));
+        if (!current?.telegram_connected || !current.telegram_owner_chat_id || !current.telegram_owner_user_id) {
+            throw failure('Сначала привяжите личный Telegram к этому кабинету.', 409);
+        }
+        const personal = first(await rest(`workspace_agents?select=id&root_id=eq.${encode(root.id)}&type=eq.personal&enabled=eq.true&limit=1`));
+        if (!personal) throw failure('Личный агент выключен.', 409);
+        if (body.jobId !== undefined) {
+            const job = first(await rest(`workspace_jobs?select=id&id=eq.${encode(requireUuid(body.jobId))}&root_id=eq.${encode(root.id)}&device_id=eq.${encode(device.id)}&kind=eq.telegram_thought&limit=1`));
+            if (!job) throw failure('Сообщение Telegram не найдено для этого Mac.', 404);
+        }
+        const token = await personalTelegramToken(current);
+        if (!token) throw failure('Подключите Telegram-бота заново.', 409);
+        return { telegramEnvelope: await encryptEnvelope(currentDevice.public_key, {
+            token, chatId: String(current.telegram_owner_chat_id), ownerUserId: String(current.telegram_owner_user_id),
+            conversationKey: telegramConversationKey(current, currentDevice)
+        }) };
+    }
     case 'runtime':
         await rest(`workspace_devices?id=eq.${encode(device.id)}&revoked_at=is.null`, { method: 'PATCH', body: JSON.stringify(safeRuntime(body)) });
         return { ok: true };
@@ -377,19 +400,37 @@ export async function enqueueTelegramThought(root, text, options = {}) {
     const device = await workspaceDevice(root.id);
     if (!device) return { queued: false, reason: 'missing-device' };
     const raw = String(text || '').trim();
-    if (!raw || raw.length > 20000) throw failure('Мысль должна содержать от 1 до 20 000 символов.');
+    if (!raw || raw.length > 20000) throw failure('Сообщение должно содержать от 1 до 20 000 символов.');
+    const messageId = Number(options.telegramMessageId ?? options.externalMessageId);
+    if (!Number.isSafeInteger(messageId) || messageId < 1) throw failure('Не удалось проверить идентификатор сообщения Telegram.');
+    const conversationKey = telegramConversationKey(root, device);
+    const dialogueEnabled = device.status?.telegramDialogue === true;
     const clarification = raw.match(/^\/when(?:@\w+)?\s+([a-f0-9-]{36})\s+([\s\S]+)$/i);
-    let payload = { intent: 'thought', text: raw, source: 'telegram' };
+    const command = raw.match(/^\/(ask|note|new|when)(?:@\w+)?(?:\s+([\s\S]*))?$/i);
+    let payload = { intent: dialogueEnabled ? 'dialogue' : 'thought', text: raw, source: 'telegram', telegramMessageId: messageId, conversationKey };
     if (clarification) {
         const relatedJobId = requireUuid(clarification[1]);
         const related = first(await rest(`workspace_jobs?select=id&id=eq.${encode(relatedJobId)}&root_id=eq.${encode(root.id)}&device_id=eq.${encode(device.id)}&limit=1`));
         if (!related) throw failure('Задача для уточнения не найдена.', 404);
-        payload = { intent: 'clarify', relatedJobId, text: clarification[2], source: 'telegram' };
+        payload = { ...payload, intent: 'clarify', relatedJobId, text: clarification[2] };
+    } else if (command) {
+        const name = command[1].toLowerCase();
+        const content = String(command[2] || '').trim();
+        if (!dialogueEnabled && ['ask', 'new'].includes(name)) throw failure('Диалог Telegram не включён на этом Mac. Обновите локальный агент и включите диалог в его настройках.', 409);
+        if (name === 'new') {
+            if (content) throw failure('Чтобы начать новый диалог, отправьте /new без дополнительного текста.');
+            payload = { ...payload, text: '', mode: 'reset' };
+        } else if (name === 'when') {
+            throw failure('Укажите задачу и срок: /when идентификатор дата и время.');
+        } else {
+            if (!content) throw failure(name === 'ask' ? 'Добавьте вопрос после /ask.' : 'Добавьте мысль после /note.');
+            payload = { ...payload, text: content, ...(name === 'ask' ? { mode: 'ask' } : { intent: 'thought' }) };
+        }
     }
     const envelope = await encryptEnvelope(device.public_key, payload);
-    const external = options.externalMessageId ? `tg_${hash(String(options.externalMessageId))}` : randomUUID();
+    const external = `tg_${hash(`${conversationKey}:${root.telegram_bot_id || ''}:${messageId}`)}`;
     const result = await insertJob(root, device, { kind: 'telegram_thought', request_id: external, envelope });
-    return { queued: true, jobId: result.job.id };
+    return { queued: true, jobId: result.job.id, intent: payload.intent, dialogueEnabled, ...(payload.mode ? { mode: payload.mode } : {}) };
 }
 
 export function isWorkspaceQuietTime(now = new Date()) {
