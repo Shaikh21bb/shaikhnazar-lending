@@ -46,6 +46,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     let waiters = [];
     let chain = Promise.resolve();
     let journalWrites = Promise.resolve();
+    let activeWrites = Promise.resolve();
     const counts = [];
     let localDraftModel;
     const draftLocally = localGenerate || (payload => {
@@ -55,6 +56,10 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     const persist = () => {
         journalWrites = journalWrites.catch(() => {}).then(() => writePrivateJSON(journalPath, journal));
         return journalWrites;
+    };
+    const rememberActive = value => {
+        activeWrites = activeWrites.catch(() => {}).then(() => writePrivateJSON(activePath, value));
+        return activeWrites;
     };
     const activeAgent = () => {
         const enabled = agents.filter(agent => agent.type === 'whatsapp' && agent.enabled);
@@ -161,6 +166,20 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         connecting = (async () => {
             const deps = await loadDependencies();
             if (!connectionAllowed || intentional) throw new Error('Подключение WhatsApp остановлено владельцем.');
+            // The bundled web version can expire independently of this pinned
+            // package. Obtain the current public protocol version before pairing.
+            let webVersion;
+            try {
+                const latest = await deps.fetchLatestWaWebVersion({ timeout: 10000 });
+                if (!latest.isLatest || !Array.isArray(latest.version) || latest.version.length !== 3
+                    || latest.version.some(value => !Number.isSafeInteger(value) || value < 0)) throw new Error('Unverified web version');
+                webVersion = latest.version;
+            } catch {
+                state = 'disconnected';
+                await runtime();
+                return { message: 'Не удалось получить текущую версию WhatsApp Web. Проверь интернет на Mac и обнови QR-код.' };
+            }
+            if (!connectionAllowed || intentional) throw new Error('Подключение WhatsApp остановлено владельцем.');
             const sessionDirectory = path.join(directory, 'session');
             await fs.mkdir(sessionDirectory, { recursive: true, mode: 0o700 });
             await fs.chmod(sessionDirectory, 0o700);
@@ -169,7 +188,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             state = 'connecting';
             qr = null;
             const logger = deps.pino({ level: 'silent' });
-            const nextSocket = deps.default({ auth: { creds: auth.state.creds, keys: deps.makeCacheableSignalKeyStore(auth.state.keys, logger) },
+            const nextSocket = deps.default({ version: webVersion, auth: { creds: auth.state.creds, keys: deps.makeCacheableSignalKeyStore(auth.state.keys, logger) },
                 logger, browser: deps.Browsers.macOS('SHAIKH'), markOnlineOnConnect: false,
                 syncFullHistory: false, shouldSyncHistoryMessage: () => false,
                 getMessage: async () => undefined });
@@ -194,16 +213,18 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                     if (update.connection === 'open') {
                         state = 'connected'; qr = null;
                         reconnectAttempts = 0;
-                        await writePrivateJSON(activePath, { agentId });
+                        await rememberActive({ agentId });
+                        if (socket !== nextSocket || !connectionAllowed || intentional) return;
                         notify({ message: 'WhatsApp подключён. Приложение и переписки на телефоне остаются доступны.' });
                     }
                     if (update.connection === 'close') {
                         const reason = Number(update.lastDisconnect?.error?.output?.statusCode);
+                        console.info(`[WhatsApp] Connection closed (code ${Number.isFinite(reason) ? reason : 0}).`);
                         socket = undefined;
                         state = intentional ? 'paused' : 'disconnected'; qr = null;
                         if (reason === 401 || reason === deps.DisconnectReason?.loggedOut) {
                             connectionAllowed = false;
-                            await writePrivateJSON(activePath, {});
+                            await rememberActive({});
                             notify({ message: 'WhatsApp вышел из связанного устройства. Подключи его заново через QR в кабинете.' });
                         } else {
                             notify({ message: intentional ? 'Соединение WhatsApp остановлено.' : 'WhatsApp переподключается. При необходимости обнови QR в кабинете.' });
@@ -241,7 +262,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         state = 'paused'; qr = null;
         socket?.end?.(new Error('Owner paused the delegate'));
         socket = undefined;
-        if (!remember) await writePrivateJSON(activePath, {});
+        if (!remember) await rememberActive({});
         notify({ message: 'Ответы WhatsApp остановлены.' });
     }
 
@@ -300,6 +321,10 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 await request({ action: 'delivered', approvalId: decision.id, status: delivered });
             }
         },
-        async stop() { await pause(); await chain; }
+        async stop() {
+            await pause();
+            await chain;
+            await Promise.allSettled([credentialSaves, activeWrites, journalWrites]);
+        }
     };
 }

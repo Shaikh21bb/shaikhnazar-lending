@@ -8,7 +8,6 @@ import { createWhatsAppAdapter } from '../companion/whatsapp.mjs';
 
 async function fixture(t, { generate, examples = '', approval, localGenerate } = {}) {
     const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'shaikh-wa-test-'));
-    t.after(() => fs.rm(directory, { recursive: true, force: true }));
     const ev = new EventEmitter();
     const sent = [];
     const requests = [];
@@ -22,6 +21,7 @@ async function fixture(t, { generate, examples = '', approval, localGenerate } =
             return { ok: true };
         },
         loadDependencies: async () => ({ default() { created = true; return socket; },
+            fetchLatestWaWebVersion: async () => ({ isLatest: true, version: [2, 3000, 1051868451] }),
             useMultiFileAuthState: async () => ({ state: { creds: {}, keys: {} }, saveCreds: async () => {} }),
             makeCacheableSignalKeyStore: key => key, Browsers: { macOS: () => ['test'] }, pino: () => ({}), QRCode: { toDataURL: async () => 'data:image/png;base64,TEST' } }) });
     const agents = [{ id: 'agent-a', type: 'whatsapp', enabled: true, rules: '', examples }];
@@ -34,7 +34,7 @@ async function fixture(t, { generate, examples = '', approval, localGenerate } =
     ev.emit('connection.update', { connection: 'open' });
     await new Promise(resolve => setImmediate(resolve));
     const inbound = (text, id = text) => ev.emit('messages.upsert', { type: 'notify', messages: [{ key: { remoteJid: '77771234567@s.whatsapp.net', id, fromMe: false }, message: { conversation: text }, messageTimestamp: Math.floor(Date.now() / 1000) }] });
-    t.after(() => adapter.stop());
+    t.after(async () => { await adapter.stop(); await fs.rm(directory, { recursive: true, force: true }); });
     return { adapter, agents, inbound, sent, requests, directory };
 }
 
@@ -179,12 +179,12 @@ async function waitUntil(predicate) {
 
 async function reconnectFixture(t, { reconnectBaseMs = 5 } = {}) {
     const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'shaikh-wa-reconnect-'));
-    t.after(() => fs.rm(directory, { recursive: true, force: true }));
     const sockets = [];
     const options = [];
     const agents = [{ id: 'agent-a', type: 'whatsapp', enabled: true, rules: '', examples: '' }];
     const adapter = await createWhatsAppAdapter({ stateDirectory: directory, reconnectBaseMs,
         request: async () => ({ ok: true }), loadDependencies: async () => ({
+            fetchLatestWaWebVersion: async () => ({ isLatest: true, version: [2, 3000, 1051868451] }),
             default(config) {
                 options.push(config);
                 const next = { ev: new EventEmitter(), end() {}, async sendMessage() {} };
@@ -193,7 +193,7 @@ async function reconnectFixture(t, { reconnectBaseMs = 5 } = {}) {
             useMultiFileAuthState: async () => ({ state: { creds: {}, keys: {} }, saveCreds: async () => {} }),
             makeCacheableSignalKeyStore: keys => keys, Browsers: { macOS: () => ['test'] }, pino: () => ({}), QRCode: { toDataURL: async () => 'data:image/png;base64,TEST' }
         }) });
-    t.after(() => adapter.stop());
+    t.after(async () => { await adapter.stop(); await fs.rm(directory, { recursive: true, force: true }); });
     await adapter.onPoll({ agents });
     const first = adapter.handleJob({ kind: 'whatsapp_connect' });
     await waitUntil(() => sockets.length === 1);
@@ -210,12 +210,26 @@ test('Baileys restartRequired and transient closes reconnect without importing p
     f.sockets[1].ev.emit('connection.update', { connection: 'open' });
     await waitUntil(() => f.adapter.status === 'connected');
     assert.equal(f.options[1].syncFullHistory, false);
+    assert.deepEqual(f.options[1].version, [2, 3000, 1051868451]);
     assert.equal(f.options[1].shouldSyncHistoryMessage({}), false);
     f.sockets[0].ev.emit('connection.update', { connection: 'close' });
     assert.equal(f.adapter.status, 'connected', 'events from old sockets must not disconnect the current socket');
     f.sockets[1].ev.emit('connection.update', { connection: 'close', lastDisconnect: { error: { output: { statusCode: 408 } } } });
     await waitUntil(() => f.sockets.length === 3);
     f.sockets[2].ev.emit('connection.update', { connection: 'open' });
+});
+
+test('an unverified WhatsApp Web version never opens a socket or falls back to the bundled version', async t => {
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'shaikh-wa-version-'));
+    let opened = false;
+    const adapter = await createWhatsAppAdapter({ stateDirectory: directory, request: async () => ({ ok: true }),
+        loadDependencies: async () => ({ fetchLatestWaWebVersion: async () => ({ isLatest: false, version: [2, 1, 1] }),
+            default() { opened = true; throw new Error('Must not open'); } }) });
+    t.after(async () => { await adapter.stop(); await fs.rm(directory, { recursive: true, force: true }); });
+    await adapter.onPoll({ agents: [{ id: 'agent-a', type: 'whatsapp', enabled: true }] });
+    const result = await adapter.handleJob({ kind: 'whatsapp_connect' });
+    assert.equal(opened, false);
+    assert.match(result.message, /текущую версию WhatsApp Web/);
 });
 
 test('logout never reconnects and clears the remembered delegate activation', async t => {
