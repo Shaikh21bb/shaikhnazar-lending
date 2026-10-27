@@ -74,48 +74,56 @@ export async function main(argv = process.argv.slice(2)) {
         console.log(`Кабинет: ${config.token ? 'сопряжён' : 'не сопряжён'}. Локальная модель: ${model.ready ? 'готова' : 'недоступна'}.`);
         return;
     }
-    config.vaultPath = await selectVault(options.vault, config.vaultPath);
-    if (options.pair) {
-        const base = new URL(options.url || config.baseURL || 'https://shaikh.digital');
-        if (base.protocol !== 'https:' && !(base.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(base.hostname))) throw new Error('Для сопряжения требуется HTTPS.');
-        let keys;
-        if (config.baseURL === base.origin && config.publicKey && config.privateKey) {
-            validatePublicKey(config.publicKey);
-            if (config.privateKey.n !== config.publicKey.n || config.privateKey.e !== config.publicKey.e) throw new Error('Локальные ключи не совпадают. Не удаляй config.json; восстанови его из локальной копии.');
-            await globalThis.crypto.subtle.importKey('jwk', config.privateKey, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['decrypt']);
-            keys = { publicKey: config.publicKey, privateKey: config.privateKey };
-        } else keys = await generateEnvelopeKeyPair();
-        const response = await fetch(new URL('/api/hub/device', base), {
-            method: 'POST', redirect: 'error', headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ action: 'pair', code: options.pair, publicKey: keys.publicKey, name: 'Мой MacBook' }),
-            signal: AbortSignal.timeout(30_000),
-        });
-        if (!response.ok) throw new Error('Код сопряжения недействителен или истёк. Создай новый в кабинете.');
-        const paired = await response.json();
-        if (typeof paired.token !== 'string' || !paired.deviceId) throw new Error('Платформа вернула неполные данные сопряжения.');
-        Object.assign(config, { baseURL: base.origin, token: paired.token, deviceId: paired.deviceId, publicKey: keys.publicKey, privateKey: keys.privateKey });
-        await writePrivateJSON(configPath, config);
-        console.log('Mac подключён. Приватный ключ сохранён только на этом Mac.');
-    } else if (options.url || options.vault || options.model || options['model-url']) {
-        if (options.url && new URL(options.url).origin !== config.baseURL) throw new Error('Для смены платформы создай новый код сопряжения.');
-        await writePrivateJSON(configPath, config);
-    }
-    if (!config.token || !config.privateKey) throw new Error('Сначала создай код в личном кабинете и выполни команду сопряжения.');
+    // Reserve this Mac before rotating its server token. A running instance
+    // must keep its working credential when a second pairing command is run.
     const unlock = await claimLock(stateDirectory);
-    const request = deviceRequest({ baseURL: config.baseURL, token: config.token });
-    let adapter;
     try {
-        const module = await import('./whatsapp.mjs');
-        adapter = await module.createWhatsAppAdapter({ config, request, stateDirectory });
-    } catch (error) {
-        if (error.code !== 'ERR_MODULE_NOT_FOUND') { await unlock(); throw new Error('Не удалось подготовить WhatsApp-модуль.'); }
-    }
-    const runtime = createCompanion({ config, stateDirectory, request, adapter });
-    const shutdown = async () => { await runtime.stop(); await unlock(); };
-    process.once('SIGINT', shutdown);
-    process.once('SIGTERM', shutdown);
-    try { await runtime.run({ once: options.once }); }
-    finally { await runtime.stop(); await unlock(); }
+        config.vaultPath = await selectVault(options.vault, config.vaultPath);
+        if (options.pair) {
+            const base = new URL(options.url || config.baseURL || 'https://shaikh.digital');
+            if (base.protocol !== 'https:' && !(base.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(base.hostname))) throw new Error('Для сопряжения требуется HTTPS.');
+            let keys;
+            if (config.baseURL === base.origin && config.publicKey && config.privateKey) {
+                validatePublicKey(config.publicKey);
+                if (config.privateKey.n !== config.publicKey.n || config.privateKey.e !== config.publicKey.e) throw new Error('Локальные ключи не совпадают. Не удаляй config.json; восстанови его из локальной копии.');
+                await globalThis.crypto.subtle.importKey('jwk', config.privateKey, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['decrypt']);
+                keys = { publicKey: config.publicKey, privateKey: config.privateKey };
+            } else keys = await generateEnvelopeKeyPair();
+            const response = await fetch(new URL('/api/hub/device', base), {
+                method: 'POST', redirect: 'error', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ action: 'pair', code: options.pair, publicKey: keys.publicKey, name: 'Мой MacBook' }),
+                signal: AbortSignal.timeout(30_000),
+            });
+            if (!response.ok) throw new Error('Код сопряжения недействителен или истёк. Создай новый в кабинете.');
+            const paired = await response.json();
+            if (typeof paired.token !== 'string' || !paired.deviceId) throw new Error('Платформа вернула неполные данные сопряжения.');
+            Object.assign(config, { baseURL: base.origin, token: paired.token, deviceId: paired.deviceId, publicKey: keys.publicKey, privateKey: keys.privateKey });
+            await writePrivateJSON(configPath, config);
+            console.log('Mac подключён. Приватный ключ сохранён только на этом Mac.');
+        } else if (options.url || options.vault || options.model || options['model-url']) {
+            if (options.url && new URL(options.url).origin !== config.baseURL) throw new Error('Для смены платформы создай новый код сопряжения.');
+            await writePrivateJSON(configPath, config);
+        }
+        if (!config.token || !config.privateKey) throw new Error('Сначала создай код в личном кабинете и выполни команду сопряжения.');
+        const request = deviceRequest({ baseURL: config.baseURL, token: config.token });
+        let adapter;
+        try {
+            const module = await import('./whatsapp.mjs');
+            adapter = await module.createWhatsAppAdapter({ config, request, stateDirectory });
+        } catch (error) {
+            if (error.code !== 'ERR_MODULE_NOT_FOUND') throw new Error('Не удалось подготовить WhatsApp-модуль.');
+        }
+        const runtime = createCompanion({ config, stateDirectory, request, adapter });
+        const shutdown = () => { void runtime.stop(); };
+        process.once('SIGINT', shutdown);
+        process.once('SIGTERM', shutdown);
+        try { await runtime.run({ once: options.once }); }
+        finally {
+            process.removeListener('SIGINT', shutdown);
+            process.removeListener('SIGTERM', shutdown);
+            await runtime.stop();
+        }
+    } finally { await unlock(); }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

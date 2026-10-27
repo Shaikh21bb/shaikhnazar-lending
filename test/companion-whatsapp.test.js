@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createWhatsAppAdapter } from '../companion/whatsapp.mjs';
 
-async function fixture(t, { generate, examples = '', approval } = {}) {
+async function fixture(t, { generate, examples = '', approval, localGenerate } = {}) {
     const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'shaikh-wa-test-'));
     t.after(() => fs.rm(directory, { recursive: true, force: true }));
     const ev = new EventEmitter();
@@ -14,7 +14,7 @@ async function fixture(t, { generate, examples = '', approval } = {}) {
     const requests = [];
     const socket = { ev, end() {}, async sendMessage(to, payload) { sent.push({ to, ...payload }); } };
     let created = false;
-    const adapter = await createWhatsAppAdapter({ stateDirectory: directory,
+    const adapter = await createWhatsAppAdapter({ stateDirectory: directory, localGenerate,
         request: async payload => {
             requests.push(payload);
             if (payload.action === 'generate_whatsapp') return generate ? generate(payload) : { draft: 'Я обещаю отправить деньги', requiresApproval: false };
@@ -116,6 +116,57 @@ test('pending review uploads survive a temporary platform outage without duplica
     assert.equal(f.sent.length, 0);
     const ids = f.requests.filter(item => item.action === 'approval').map(item => item.externalId);
     assert.equal(new Set(ids).size, 1);
+});
+
+test('an unavailable free cloud model uses a local draft only for owner review', async t => {
+    const localCalls = [];
+    const f = await fixture(t, {
+        generate: () => ({ draft: '', requiresApproval: true, reason: 'model_unavailable', provider: 'none' }),
+        localGenerate: async payload => {
+            localCalls.push(payload);
+            return { draft: 'Я занимаюсь сайтами.', requiresApproval: false, provider: 'local' };
+        }
+    });
+    f.inbound('Привет', 'local-greeting');
+    await f.adapter.idle();
+    assert.equal(localCalls.length, 0, 'greetings must not invoke any model');
+    f.inbound('Чем занимаешься?', 'local-draft');
+    await f.adapter.idle();
+    assert.equal(localCalls.length, 1);
+    assert.equal(localCalls[0].text, 'Чем занимаешься?');
+    assert.equal(f.sent.length, 1, 'only the deterministic greeting may be sent');
+    const review = f.requests.find(value => value.action === 'approval');
+    assert.equal(review.draft, 'Я занимаюсь сайтами.');
+});
+
+test('pausing during local fallback prevents its later draft from being sent or uploaded', async t => {
+    let release;
+    let began;
+    const started = new Promise(resolve => { began = resolve; });
+    const f = await fixture(t, {
+        generate: () => ({ draft: '', requiresApproval: true, reason: 'free_limit', provider: 'none' }),
+        localGenerate: () => { began(); return new Promise(resolve => { release = resolve; }); }
+    });
+    f.inbound('Расскажи о себе', 'local-in-flight');
+    await started;
+    await f.adapter.handleJob({ kind: 'whatsapp_disconnect' });
+    release({ draft: 'Я делаю сайты.', requiresApproval: false });
+    await f.adapter.idle();
+    assert.equal(f.sent.length, 0);
+    assert.equal(f.requests.some(value => value.action === 'approval'), false);
+});
+
+test('a configured cloud draft does not invoke local fallback', async t => {
+    let localCalls = 0;
+    const f = await fixture(t, {
+        generate: () => ({ draft: 'Вот короткий ответ.', requiresApproval: true, provider: 'openrouter/free' }),
+        localGenerate: () => { localCalls++; throw new Error('must not run'); }
+    });
+    f.inbound('Какой у тебя опыт?', 'cloud-ready');
+    await f.adapter.idle();
+    assert.equal(localCalls, 0);
+    assert.equal(f.sent.length, 0);
+    assert.equal(f.requests.find(value => value.action === 'approval').draft, 'Вот короткий ответ.');
 });
 
 async function waitUntil(predicate) {

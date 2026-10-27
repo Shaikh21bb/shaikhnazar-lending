@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { approvalReason, assessDraft, explicitOwnerReply, simpleGreeting } from '../lib/whatsapp-policy.mjs';
 import { readPrivateJSON, writePrivateJSON } from './runtime.mjs';
+import { LocalWhatsAppModel } from './whatsapp-model.mjs';
 
 const requireWorker = createRequire(new URL('../worker/package.json', import.meta.url));
 const personalJid = value => /^(?:[0-9]{5,20}@s\.whatsapp\.net|[0-9]{5,30}@lid)$/.test(String(value));
@@ -21,7 +22,7 @@ async function dependencies() {
 
 // The adapter never imports a vault or a local memory index. The only style
 // inputs are the owner's explicit workspace agent rules and examples.
-export async function createWhatsAppAdapter({ request, stateDirectory, loadDependencies = dependencies, now = () => Date.now(), reconnectBaseMs = 1000 }) {
+export async function createWhatsAppAdapter({ config = {}, request, stateDirectory, loadDependencies = dependencies, localGenerate, now = () => Date.now(), reconnectBaseMs = 1000 }) {
     const directory = path.join(stateDirectory, 'whatsapp');
     const journalPath = path.join(directory, 'delivery.json');
     const activePath = path.join(directory, 'active.json');
@@ -46,6 +47,11 @@ export async function createWhatsAppAdapter({ request, stateDirectory, loadDepen
     let chain = Promise.resolve();
     let journalWrites = Promise.resolve();
     const counts = [];
+    let localDraftModel;
+    const draftLocally = localGenerate || (payload => {
+        localDraftModel ||= new LocalWhatsAppModel({ url: config.modelURL, model: config.model });
+        return localDraftModel.generate(payload);
+    });
     const persist = () => {
         journalWrites = journalWrites.catch(() => {}).then(() => writePrivateJSON(journalPath, journal));
         return journalWrites;
@@ -100,6 +106,13 @@ export async function createWhatsAppAdapter({ request, stateDirectory, loadDepen
             result = greeting ? { draft: greeting, requiresApproval: false, reason: 'simple' }
                 : await request({ action: 'generate_whatsapp', agentId: agent.id, text });
         } catch { result = { draft: '', requiresApproval: true, reason: 'model_unavailable' }; }
+        if (!result?.draft?.trim() && (result?.provider === 'none'
+            || ['model_unavailable', 'free_limit'].includes(result?.reason))) {
+            // Budget remains zero when no cloud key/quota is available. The
+            // separate local model sees no Obsidian data or conversation history.
+            try { result = await draftLocally({ agent, text }); }
+            catch { /* Keep the editable owner-review item if local AI is offline. */ }
+        }
         // A model or a server response cannot override deterministic boundaries.
         const automatic = explicitOwnerReply(text, agent) || simpleGreeting(text);
         const checked = assessDraft(text, result, { trustedAutomatic: Boolean(automatic && result.draft === automatic) });
