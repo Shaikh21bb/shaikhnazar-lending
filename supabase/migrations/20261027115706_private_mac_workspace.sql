@@ -1,4 +1,4 @@
--- The signed-cookie backend owns access. Vault text is never stored here:
+-- Only the signed-cookie backend owns access. Vault text is never stored here:
 -- jobs contain envelopes encrypted to the Mac (and replies to the browser).
 create table public.workspace_devices (
     id uuid primary key default gen_random_uuid(),

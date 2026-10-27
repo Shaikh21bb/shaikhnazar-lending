@@ -1,4 +1,4 @@
--- The scheduler credential is generated and retained inside Postgres Vault.
+-- This scheduler credential is generated and retained inside Postgres Vault.
 -- No plaintext credential is returned, checked into source, or put in app env.
 create table public.workspace_scheduler (
     singleton boolean primary key default true check (singleton),
