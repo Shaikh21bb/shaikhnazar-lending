@@ -57,7 +57,7 @@ function storedDestination(message, evidence, notes) {
     // be part of a verified quotation, not a location invented by the model.
     if (evidence.some(item => /Место\s+сохранения:\s*Obsidian(?=$|[.\s])/iu.test(item.quote))) return 'В Obsidian.';
     const paths = new Set(evidence.map(item => item.path));
-    if (notes.some(note => paths.has(note.path) && /^Место сохранения: Obsidian\.\s*Канал поступления: (?:Telegram|сайт)\./u.test(note.excerpt))) return 'В Obsidian.';
+    if (notes.some(note => paths.has(note.path) && /^Место сохранения: Obsidian\.\s*Канал записи: (?:Telegram|сайт)\./u.test(note.excerpt))) return 'В Obsidian.';
     return null;
 }
 

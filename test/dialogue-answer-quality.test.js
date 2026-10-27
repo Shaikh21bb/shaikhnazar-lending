@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { LocalModel } from '../companion/model.mjs';
+import { LocalVault } from '../companion/vault.mjs';
 
 function fixture(result) {
     const calls = [];
@@ -160,11 +164,17 @@ test('explicit failure evidence remains a legitimate negative answer', async () 
     assert.deepEqual(result.sources, ['Failure.md']);
 });
 
-test('trusted capture provenance repairs destination even when the model quoted only the original infinitive', async () => {
+test('canonical capture header repairs destination even when the model quoted only the original infinitive', async t => {
     const quote = 'Проверка Telegram: сохранить эту мысль в Obsidian.';
-    const excerpt = `Место сохранения: Obsidian.\nКанал поступления: Telegram.\n\nИсходная мысль:\n${quote}`;
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'shaikh-capture-answer-'));
+    t.after(() => fs.rm(directory, { recursive: true, force: true }));
+    const vault = await new LocalVault(directory).initialize();
+    const saved = await vault.write({ title: 'Захваченная мысль', body: `## Исходная мысль\n\n${quote}`, source: 'telegram', jobId: 'capture-answer-fixture' });
+    const related = await vault.search('Что я проверял через Telegram?');
+    assert.equal(related[0].path, saved.path);
+    assert.match(related[0].excerpt, /^Место сохранения: Obsidian\.\nКанал записи: Telegram\./u);
     const f = fixture({ action: 'answer', answer: 'Это не сохранялось.', evidence: [{ source: 'S1', quote }] });
-    const result = await f.model.converse('В какую базу это сохранялось?', [{ path: 'Capture.md', title: 'Захваченная мысль', excerpt }], { mode: 'answer' });
+    const result = await f.model.converse('В какую базу это сохранялось?', related, { mode: 'answer' });
     assert.equal(result.answer, 'В Obsidian.');
-    assert.deepEqual(result.sources, ['Capture.md']);
+    assert.deepEqual(result.sources, [saved.path]);
 });
