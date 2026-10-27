@@ -2,6 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { approvalReason, assessDraft, delegatePrompt, explicitOwnerReply, simpleGreeting } from '../lib/whatsapp-policy.mjs';
 
+test('ordinary continuation wording does not get mislabeled as a loan request', () => {
+    assert.equal(approvalReason('Как дела?', 'Дела нормально, но мне нужно ваше согласие перед продолжением.'), null);
+    assert.equal(approvalReason('Одолжи немного до вечера'), 'money');
+});
+
 test('money, dates, promises, conflicts and sensitive details always need approval', () => {
     for (const input of ['Переведи 5000 ₸', 'Meet tomorrow?', 'Созвонимся в 15:00', 'Я обещаю', 'Ренжідім', 'Пароль от почты?', 'Когда оплата?', 'I will call you', 'Давай встретимся']) {
         assert.ok(approvalReason(input), input);
