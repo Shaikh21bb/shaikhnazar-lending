@@ -134,7 +134,6 @@ export async function replyToPersonalAgent(agent, message, deadlineAt = Date.now
     const chatId = String(message.chat.id);
     const userId = String(message.from?.id || '');
     const text = String(message.text || '').trim();
-    if (!text) return;
 
     if (message.chat.type !== 'private' || !userId) {
         await telegram('sendMessage', token, {
@@ -184,7 +183,15 @@ export async function replyToPersonalAgent(agent, message, deadlineAt = Date.now
     if (/^\/help(?:@[A-Za-z0-9_]+)?$/i.test(text)) {
         await telegram('sendMessage', token, {
             chat_id: chatId,
-            text: 'Пишите обычным сообщением — личный агент ответит с учётом Obsidian.\n/ask вопрос — спросить по базе\n/note мысль — сохранить отдельную заметку\n/when идентификатор дата и время — уточнить срок задачи\n/new — начать новый диалог на Mac\n/help — команды\n\nБаза, анализ и история диалога хранятся на Mac. Ответы приходят в этот личный чат. Если Mac выключен, сообщения ждут в зашифрованной очереди.'
+            text: 'Пишите обычным сообщением — личный агент ответит с учётом Obsidian.\n/ask вопрос — спросить по базе\n/note мысль — сохранить отдельную заметку\n/when идентификатор дата и время — уточнить срок задачи\n/new — начать новый диалог на Mac\n/help — команды\n\nМожно отправлять голосовые до 10 минут и 19 МБ, если на Mac настроено локальное распознавание. Агент распознаёт их на Mac и отвечает текстом.\n\nБаза, анализ и история диалога хранятся на Mac. Ответы приходят в этот личный чат. Если Mac выключен, сообщения ждут в зашифрованной очереди.'
+        }, telegramDeadlineOptions(deadlineAt));
+        return;
+    }
+
+    if (!text && message.voice === undefined) {
+        await telegram('sendMessage', token, {
+            chat_id: chatId,
+            text: 'Пока поддерживаются текст и голосовые сообщения Telegram. Запишите мысль кнопкой микрофона или отправьте её текстом; аудиофайлы, видео и вложения не распознаются.'
         }, telegramDeadlineOptions(deadlineAt));
         return;
     }
@@ -194,12 +201,15 @@ export async function replyToPersonalAgent(agent, message, deadlineAt = Date.now
     const queued = await enqueueTelegramThought(agent, text, {
         externalMessageId: message.message_id ? String(message.message_id) : null,
         telegramMessageId: message.message_id,
-        userId
+        userId,
+        ...(message.voice === undefined ? {} : { voice: message.voice })
     });
     await telegram('sendMessage', token, {
         chat_id: chatId,
         text: queued.queued
-            ? !queued.dialogueEnabled
+            ? queued.voice
+                ? 'Голосовое добавлено в зашифрованную очередь для Mac. Агент распознает его локально и ответит здесь текстом.'
+                : !queued.dialogueEnabled
                 ? 'Мысль добавлена в зашифрованную очередь для Mac. Когда он будет включён, агент сохранит и оформит её в Obsidian.'
                 : queued.intent === 'thought'
                     ? 'Мысль добавлена в зашифрованную очередь для Mac. Локальный агент сохранит её в Obsidian и ответит здесь.'

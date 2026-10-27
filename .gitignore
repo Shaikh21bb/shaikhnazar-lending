@@ -6,3 +6,5 @@ worker/.wa-session/
 .ollama-started-by-sales-agent
 supabase/.temp/
 /outputs/
+__pycache__/
+*.pyc

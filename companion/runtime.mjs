@@ -7,6 +7,8 @@ import { LocalModel } from './model.mjs';
 import { normalizeTasks, nextDailyOverview, bindExplicitDeadline, TIMEZONE } from './reminders.mjs';
 import { LocalDialogueRuntime } from './dialogue.mjs';
 import { TelegramOwnerDelivery } from './telegram.mjs';
+import { LocalVoiceProcessor } from './voice.mjs';
+import { LocalVoiceRuntime } from './voice-runtime.mjs';
 
 export async function writePrivateJSON(filename, value) {
     await fs.mkdir(path.dirname(filename), { recursive: true, mode: 0o700 });
@@ -67,7 +69,7 @@ function resultFor(record) {
 }
 
 export class CompanionRuntime {
-    constructor({ config, stateDirectory, request, vault, model, adapter, telegramDelivery, now = () => new Date(), log = console.log }) {
+    constructor({ config, stateDirectory, request, vault, model, adapter, telegramDelivery, voiceProcessor, now = () => new Date(), log = console.log }) {
         this.config = config;
         this.stateDirectory = stateDirectory;
         this.request = request || deviceRequest({ baseURL: config.baseURL, token: config.token });
@@ -80,8 +82,10 @@ export class CompanionRuntime {
         this.stopped = false;
         this.lastRetry = 0;
         this.telegramDialogueEnabled = config.telegramDialogueEnabled === true;
+        this.telegramVoiceEnabled = this.telegramDialogueEnabled && config.telegramVoiceEnabled === true;
         this.dialogue = new LocalDialogueRuntime(this, { writePrivateJSON,
             delivery: telegramDelivery || new TelegramOwnerDelivery({ privateKey: config.privateKey, request: this.request }) });
+        this.voice = new LocalVoiceRuntime(this, voiceProcessor || new LocalVoiceProcessor({ config, stateDirectory, delivery: this.dialogue.delivery }));
     }
 
     async initialize() {
@@ -90,6 +94,7 @@ export class CompanionRuntime {
         this.journal.jobs ||= {};
         this.journal.reminders ||= {};
         this.dialogue.initialize();
+        await this.voice.initialize();
         return this;
     }
 
@@ -155,7 +160,7 @@ export class CompanionRuntime {
             await this.persist();
         } else if (job.kind === 'telegram_thought' && payload.intent === 'dialogue') {
             const processed = this.telegramDialogueEnabled
-                ? await this.dialogue.process(job, payload, modelReady)
+                ? payload.voice ? await this.voice.stage(job, payload) : await this.dialogue.process(job, payload, modelReady)
                 : { record: { source: job.kind, dialogueCancelled: true, completedAt: this.now().toISOString() }, result: { message: 'Диалог по базе не разрешён на этом Mac.' }, reminders: [] };
             stored = processed.record;
             result = processed.result;
@@ -177,7 +182,11 @@ export class CompanionRuntime {
         const completion = { action: 'complete', jobId: job.id, leaseToken: job.lease_token, status: 'complete', reminders: reminders || [] };
         if (resultEnvelope) completion.resultEnvelope = resultEnvelope;
         if (stored.clarification?.length) completion.needsClarification = true;
+        stored.completionPending = completion;
+        await this.persist();
         await this.request(completion);
+        delete stored.completionPending;
+        await this.persist();
         if (job.kind === 'telegram_thought' && stored.clarification?.length && !stored.conversationKey) {
             await this.request({ action: 'notify', kind: 'clarification', jobId: job.id });
         }
@@ -217,20 +226,36 @@ export class CompanionRuntime {
     async flushPendingSync() {
         for (const [id, record] of Object.entries(this.journal.jobs)) {
             if (!record.syncPending) continue;
-            await this.request(record.syncPending);
+            try { await this.request(record.syncPending); }
+            catch (error) {
+                // A lost completion may need a new lease; let polling reclaim it.
+                if ([404, 409].includes(error.status)) continue;
+                throw error;
+            }
             if (record.source === 'telegram_thought' && !record.conversationKey) await this.request({ action: 'notify', kind: record.clarification?.length ? 'clarification' : 'processed', jobId: id });
             delete record.syncPending;
             await this.persist();
         }
     }
 
+    async flushCompletions() {
+        for (const record of Object.values(this.journal.jobs)) {
+            if (!record.completionPending) continue;
+            try { await this.request(record.completionPending); }
+            catch (error) {
+                if (error.status !== 409) throw error;
+            }
+            delete record.completionPending;
+            await this.persist();
+        }
+    }
+
     async tick() {
         const status = await this.model.status();
-        await this.dialogue.retry(status.ready);
-        await this.retryPending(status.ready);
-        await this.dialogue.flush();
+        const speech = await this.voice.status();
+        await this.flushCompletions();
         const whatsapp = typeof this.adapter?.status === 'function' ? this.adapter.status() : this.adapter?.status;
-        const response = await this.request({ action: 'poll', status: { state: status.ready ? 'ready' : 'model_offline', model: status.model || '', modelReady: Boolean(status.ready), telegramDialogue: this.telegramDialogueEnabled, ...(whatsapp ? { whatsapp } : {}) } });
+        const response = await this.request({ action: 'poll', status: { state: status.ready ? 'ready' : 'model_offline', model: status.model || '', modelReady: Boolean(status.ready), telegramDialogue: this.telegramDialogueEnabled, telegramVoice: speech.ready === true, ...(whatsapp ? { whatsapp } : {}) } });
         if (this.adapter?.onPoll) await this.adapter.onPoll(response);
         for (const job of response.jobs || []) {
             try { await this.handleJob(job, status.ready); }
@@ -240,6 +265,8 @@ export class CompanionRuntime {
                 if (error.status === 401) throw error;
             }
         }
+        await this.voice.retry();
+        await this.dialogue.retry(status.ready);
         await this.retryPending(status.ready);
         await this.dialogue.flush();
         return { modelReady: status.ready, processed: response.jobs?.length || 0 };

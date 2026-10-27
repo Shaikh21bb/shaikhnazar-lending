@@ -45,7 +45,7 @@ export class LocalDialogueRuntime {
         if (sources.length) conversation.sources = sources.slice(0, 6);
     }
 
-    async queueReply(job, record, answer, sources = []) {
+    async queueReply(job, record, answer, sources = [], { remember = true } = {}) {
         if (record.dialogue) return;
         const footer = sources.length ? `\n\nИсточники Obsidian:\n${sources.map(source => `• ${source}`).join('\n')}` : '';
         record.dialogue = {
@@ -53,7 +53,7 @@ export class LocalDialogueRuntime {
             response: answer, sources,
             outbox: splitTelegramReply(`${answer}${footer}`).map(text => ({ text, status: 'pending' })),
         };
-        await this.remember(job, record, answer, sources);
+        if (remember) await this.remember(job, record, answer, sources);
     }
 
     async finishNote(job, record) {
@@ -82,6 +82,7 @@ export class LocalDialogueRuntime {
         for (const previous of Object.values(this.runtime.journal.jobs)) {
             if (previous.conversationKey !== record.conversationKey) continue;
             if (previous.pendingDialogue) { previous.pendingDialogue = false; previous.dialogueCancelled = true; }
+            if (previous.pendingVoice) { previous.pendingVoice = false; previous.voiceCancelled = true; previous.dialogueCancelled = true; }
             for (const chunk of previous.dialogue?.outbox || []) {
                 if (['pending', 'retry'].includes(chunk.status)) chunk.status = 'cancelled';
             }
@@ -112,7 +113,7 @@ export class LocalDialogueRuntime {
         const ownIndex = entries.findIndex(([id]) => id === job.id);
         const position = ownIndex < 0 ? entries.length : ownIndex;
         const earlierPending = entries.some(([id, previous], index) => id !== job.id
-            && previous.pendingDialogue && previous.conversationKey === key && previous.dialogueEpoch === conversation.epoch
+            && (previous.pendingDialogue || previous.pendingVoice) && previous.conversationKey === key && previous.dialogueEpoch === conversation.epoch
             && (Date.parse(previous.thoughtAt) < Date.parse(record.thoughtAt)
                 || (Date.parse(previous.thoughtAt) === Date.parse(record.thoughtAt) && index < position)));
         if (!modelReady || earlierPending) {
@@ -124,7 +125,8 @@ export class LocalDialogueRuntime {
             if (relatedJobId && this.runtime.journal.jobs[relatedJobId]?.note) {
                 const processed = await this.runtime.processThought(job, { ...payload, intent: 'clarify', relatedJobId }, true);
                 record = { ...processed.record, conversationKey: key, dialogueEpoch: conversation.epoch,
-                    telegramMessageId: payload.telegramMessageId, relatedJobId };
+                    telegramMessageId: payload.telegramMessageId, relatedJobId,
+                    ...(record.fromVoice ? { fromVoice: true, voiceTranscribedAt: record.voiceTranscribedAt } : {}) };
                 await this.finishNote(job, record);
                 return { ...processed, record };
             }
@@ -135,7 +137,8 @@ export class LocalDialogueRuntime {
             if (decision.action === 'save' && payload.mode !== 'ask') {
                 const processed = await this.runtime.processThought(job, { ...payload, intent: 'thought' }, true);
                 record = { ...processed.record, conversationKey: key, dialogueEpoch: conversation.epoch,
-                    telegramMessageId: payload.telegramMessageId };
+                    telegramMessageId: payload.telegramMessageId,
+                    ...(record.fromVoice ? { fromVoice: true, voiceTranscribedAt: record.voiceTranscribedAt } : {}) };
                 await this.finishNote(job, record);
                 return { ...processed, record };
             }

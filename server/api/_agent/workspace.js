@@ -262,7 +262,8 @@ function safeRuntime(body) {
     const whatsapp = ['disconnected', 'qr', 'connected', 'paused'].includes(status.whatsapp) ? status.whatsapp : 'disconnected';
     const rawModel = String(body.model ?? status.model ?? '');
     const model = /^[A-Za-z0-9_./:@+-]{0,100}$/.test(rawModel) ? rawModel : '';
-    return { status: { state, whatsapp, modelReady: status.modelReady === true, telegramDialogue: status.telegramDialogue === true }, model, last_seen_at: new Date().toISOString() };
+    return { status: { state, whatsapp, modelReady: status.modelReady === true, telegramDialogue: status.telegramDialogue === true,
+        telegramVoice: status.telegramDialogue === true && status.telegramVoice === true }, model, last_seen_at: new Date().toISOString() };
 }
 
 function safeReminders(input) {
@@ -396,11 +397,34 @@ export async function workspaceDeviceMutation(context, body) {
     }
 }
 
+function telegramVoiceInput(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)
+        || typeof value.file_id !== 'string' || typeof value.file_unique_id !== 'string'
+        || !/^[A-Za-z0-9_-]{1,512}$/.test(value.file_id || '')
+        || !/^[A-Za-z0-9_-]{1,128}$/.test(value.file_unique_id || '')
+        || !Number.isSafeInteger(value.duration) || value.duration < 1 || value.duration > 600) {
+        throw failure('Не удалось проверить голосовое сообщение. Отправьте новое голосовое длительностью до 10 минут.');
+    }
+    if (value.file_size !== undefined && value.file_size !== null
+        && (!Number.isSafeInteger(value.file_size) || value.file_size < 1 || value.file_size > 19 * 1024 * 1024)) {
+        throw failure('Голосовое должно занимать не больше 19 МБ. Отправьте более короткую запись.');
+    }
+    const mimeType = value.mime_type === undefined || value.mime_type === null ? null : String(value.mime_type).toLowerCase();
+    if (mimeType !== null && !/^(?:audio\/[a-z0-9.+-]{1,60}|application\/ogg)$/.test(mimeType)) {
+        throw failure('Не удалось проверить формат голосового сообщения. Отправьте его как голосовое в Telegram.');
+    }
+    return {
+        fileId: value.file_id, uniqueId: value.file_unique_id, duration: value.duration,
+        size: value.file_size ?? null, mimeType,
+    };
+}
+
 export async function enqueueTelegramThought(root, text, options = {}) {
     const device = await workspaceDevice(root.id);
     if (!device) return { queued: false, reason: 'missing-device' };
     const raw = String(text || '').trim();
-    if (!raw || raw.length > 20000) throw failure('Сообщение должно содержать от 1 до 20 000 символов.');
+    const voice = options.voice === undefined ? null : telegramVoiceInput(options.voice);
+    if ((!raw && !voice) || raw.length > 20000) throw failure('Сообщение должно содержать от 1 до 20 000 символов.');
     const messageId = Number(options.telegramMessageId ?? options.externalMessageId);
     if (!Number.isSafeInteger(messageId) || messageId < 1) throw failure('Не удалось проверить идентификатор сообщения Telegram.');
     const conversationKey = telegramConversationKey(root, device);
@@ -408,7 +432,10 @@ export async function enqueueTelegramThought(root, text, options = {}) {
     const clarification = raw.match(/^\/when(?:@\w+)?\s+([a-f0-9-]{36})\s+([\s\S]+)$/i);
     const command = raw.match(/^\/(ask|note|new|when)(?:@\w+)?(?:\s+([\s\S]*))?$/i);
     let payload = { intent: dialogueEnabled ? 'dialogue' : 'thought', text: raw, source: 'telegram', telegramMessageId: messageId, conversationKey };
-    if (clarification) {
+    if (voice) {
+        if (!dialogueEnabled || device.status?.telegramVoice !== true) throw failure('Распознавание голосовых пока не включено на вашем Mac. Настройте локальное распознавание или отправьте сообщение текстом.', 409);
+        payload = { ...payload, intent: 'dialogue', text: '', voice };
+    } else if (clarification) {
         const relatedJobId = requireUuid(clarification[1]);
         const related = first(await rest(`workspace_jobs?select=id&id=eq.${encode(relatedJobId)}&root_id=eq.${encode(root.id)}&device_id=eq.${encode(device.id)}&limit=1`));
         if (!related) throw failure('Задача для уточнения не найдена.', 404);
@@ -430,7 +457,7 @@ export async function enqueueTelegramThought(root, text, options = {}) {
     const envelope = await encryptEnvelope(device.public_key, payload);
     const external = `tg_${hash(`${conversationKey}:${root.telegram_bot_id || ''}:${messageId}`)}`;
     const result = await insertJob(root, device, { kind: 'telegram_thought', request_id: external, envelope });
-    return { queued: true, jobId: result.job.id, intent: payload.intent, dialogueEnabled, ...(payload.mode ? { mode: payload.mode } : {}) };
+    return { queued: true, jobId: result.job.id, intent: payload.intent, dialogueEnabled, ...(voice ? { voice: true } : {}), ...(payload.mode ? { mode: payload.mode } : {}) };
 }
 
 export function isWorkspaceQuietTime(now = new Date()) {
