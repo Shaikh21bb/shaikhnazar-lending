@@ -75,13 +75,16 @@ test('login returns owner and client to an allowlisted workspace without accepti
     assert.ok(start >= 0 && end > start);
     const snippet = login.slice(start, end);
     for (const [next, expected] of [
+        [null, 'workspace.html'],
         ['workspace.html', 'workspace.html'], ['/workspace', 'workspace.html'],
-        ['//evil.example', 'hub.html'], ['https://evil.example', 'hub.html'],
-        ['/workspace?next=https://evil.example', 'hub.html'], ['javascript:alert(1)', 'hub.html']
+        ['hub.html', 'hub.html'], ['/hub', 'hub.html'],
+        ['//evil.example', 'workspace.html'], ['https://evil.example', 'workspace.html'],
+        ['/workspace?next=https://evil.example', 'workspace.html'], ['javascript:alert(1)', 'workspace.html']
     ]) {
-        const context = vm.createContext({ URLSearchParams, window: { location: { search: `?next=${encodeURIComponent(next)}` } } });
+        const context = vm.createContext({ URLSearchParams, window: { location: { search: next === null ? '' : `?next=${encodeURIComponent(next)}` } } });
         vm.runInContext(snippet, context);
         assert.equal(vm.runInContext("destinationFor('client')", context), expected);
         assert.equal(vm.runInContext("destinationFor('manager')", context), 'dashboard.html');
+        assert.equal(vm.runInContext("destinationFor('owner')", context), ['workspace.html', 'hub.html', '/workspace', '/hub'].includes(next) ? expected : 'dashboard.html');
     }
 });

@@ -187,7 +187,7 @@
             const safeNext = typeof requestedPage === 'string' && safePages.has(requestedPage.replace(/^\//, ''))
                 ? `${requestedPage.replace(/^\//, '').replace(/\.html$/, '')}.html` : null;
             const destinationFor = role => safeNext && ['owner', 'client'].includes(role)
-                ? safeNext : role === 'client' ? 'hub.html' : 'dashboard.html';
+                ? safeNext : role === 'client' ? 'workspace.html' : 'dashboard.html';
             if (localStorage.getItem('auth_token')) {
                 try {
                     const response = await fetch('/api/auth/session', { cache: 'no-store' });
