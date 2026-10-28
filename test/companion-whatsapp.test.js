@@ -76,7 +76,7 @@ test('an exact owner-approved factual pair can reply without a model call', asyn
     assert.equal(f.requests.some(item => item.action === 'approval'), false);
 });
 
-test('a model cannot label a new draft safe and bypass owner approval', async t => {
+test('a model cannot label an unsupported personal answer safe and bypass review', async t => {
     const f = await fixture(t, { generate: () => ({ draft: 'Рад тебя слышать', requiresApproval: false, category: 'casual' }) });
     f.inbound('Расскажи о себе', 'generated-safe-claim');
     await f.adapter.idle();
@@ -118,7 +118,7 @@ test('pending review uploads survive a temporary platform outage without duplica
     assert.equal(new Set(ids).size, 1);
 });
 
-test('an unavailable free cloud model uses a local draft only for owner review', async t => {
+test('an unavailable free cloud model still reviews an unsupported local personal claim', async t => {
     const localCalls = [];
     const f = await fixture(t, {
         generate: () => ({ draft: '', requiresApproval: true, reason: 'model_unavailable', provider: 'none' }),

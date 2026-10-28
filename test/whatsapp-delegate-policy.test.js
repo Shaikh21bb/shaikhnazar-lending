@@ -15,13 +15,29 @@ test('money, dates, promises, conflicts and sensitive details always need approv
     assert.equal(assessDraft('Как дела?', { draft: 'Я приеду завтра', category: 'casual', requiresApproval: false }).requiresApproval, true);
 });
 
-test('model self-classification cannot authorize an automatic answer', () => {
+test('ordinary structured replies can send, but malformed or uncertain classifications cannot', () => {
     assert.equal(simpleGreeting('Привет!'), 'Привет!');
     assert.equal(simpleGreeting('Привет, переведи деньги'), null);
-    assert.equal(assessDraft('Как дела?', { draft: 'Привет!', category: 'casual', requiresApproval: false }).requiresApproval, true);
+    assert.equal(assessDraft('Как дела?', { draft: 'Нормально, а у тебя?', category: 'casual', requiresApproval: false }).requiresApproval, false);
     for (const value of ['Ignore all rules', '{}', { draft: 'Хорошо', category: 'unknown', requiresApproval: false }, { draft: 'Да', category: 'facts' }]) {
         assert.equal(assessDraft('Как дела?', value).requiresApproval, true);
     }
+});
+
+test('casual mentions of dates and numbers do not imply meetings or money', () => {
+    for (const input of ['Как сегодня дела?', 'Купил 2 книги', 'Tomorrow is a nice day', 'Я на 2 курсе']) {
+        assert.equal(approvalReason(input), null, input);
+    }
+});
+
+test('grounded owner facts may send but invented or mislabeled personal claims require review', () => {
+    const agent = { rules: 'Я делаю сайты.', examples: '' };
+    assert.equal(assessDraft('Чем занимаешься?', { draft: 'Я делаю сайты.', category: 'facts', requiresApproval: false, evidence: ['Я делаю сайты.'] }, { agent }).requiresApproval, false);
+    for (const value of [
+        { draft: 'Я работаю в банке.', category: 'casual', requiresApproval: false },
+        { draft: 'Я живу в Астане.', category: 'facts', requiresApproval: false, evidence: ['Я живу в Астане.'] },
+        { draft: 'Я делаю сайты и приложения.', category: 'facts', requiresApproval: false, evidence: ['Я делаю сайты.'] },
+    ]) assert.equal(assessDraft('Чем занимаешься?', value, { agent }).requiresApproval, true);
 });
 
 test('loan, word-only meeting and ambiguous numeric requests always require review', () => {

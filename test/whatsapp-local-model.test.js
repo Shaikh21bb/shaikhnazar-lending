@@ -4,7 +4,7 @@ import { LocalWhatsAppModel } from '../companion/whatsapp-model.mjs';
 
 const json = value => new Response(JSON.stringify(value));
 
-test('local WhatsApp drafts use only the current message and explicit rules, and always require approval', async () => {
+test('local WhatsApp may answer with a supported owner fact from explicit rules', async () => {
     const calls = [];
     const model = new LocalWhatsAppModel({ model: 'qwen3:1.7b', fetchImpl: async (url, options = {}) => {
         calls.push({ url, options });
@@ -12,11 +12,11 @@ test('local WhatsApp drafts use only the current message and explicit rules, and
         assert.equal(options.redirect, 'error');
         if (url.endsWith('/api/tags')) return json({ models: [{ name: 'qwen3:1.7b' }] });
         if (url.endsWith('/api/show')) return json({ model_info: { parameters: 1700000000 }, capabilities: ['completion', 'thinking'] });
-        return json({ message: { content: JSON.stringify({ draft: 'Я делаю сайты.', category: 'facts', requiresApproval: false }) } });
+        return json({ message: { content: JSON.stringify({ draft: 'Я делаю сайты.', category: 'facts', requiresApproval: false, evidence: ['Я делаю сайты.'] }) } });
     } });
     const result = await model.generate({ agent: { rules: 'Я делаю сайты.', examples: 'Сообщение: Привет\nМой ответ: Салам!' }, text: 'Чем занимаешься?' });
     assert.equal(result.draft, 'Я делаю сайты.');
-    assert.equal(result.requiresApproval, true);
+    assert.equal(result.requiresApproval, false);
     assert.equal(result.provider, 'local');
     const request = JSON.parse(calls.at(-1).options.body);
     assert.equal(request.think, false);

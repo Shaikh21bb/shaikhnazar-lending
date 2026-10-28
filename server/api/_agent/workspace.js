@@ -3,6 +3,7 @@ import { db, telegram } from '../_lib.js';
 import { ensurePersonalAgent, personalTelegramToken } from './personal.js';
 import { encryptEnvelope } from '../../../lib/private-envelope.mjs';
 import { generateWorkspaceWhatsApp } from './workspace-whatsapp.js';
+import { personalWhatsAppJid } from '../../../lib/whatsapp-policy.mjs';
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
@@ -364,7 +365,16 @@ export async function workspaceDeviceMutation(context, body) {
         const agentId = requireUuid(body.agentId);
         const agent = first(await rest(`workspace_agents?select=*&id=eq.${encode(agentId)}&root_id=eq.${encode(root.id)}&type=eq.whatsapp&enabled=eq.true&limit=1`));
         if (!agent) throw failure('Рабочий агент выключен или не найден.', 409);
-        return generateWorkspaceWhatsApp(root.id, agent, body.text);
+        return generateWorkspaceWhatsApp(root.id, agent, body.text, fetch, body.history);
+    }
+    case 'whatsapp_context': {
+        const agentId = requireUuid(body.agentId);
+        const recipient = clean(body.recipient, 100);
+        if (!personalWhatsAppJid(recipient)) throw failure('Доступны только личные чаты.');
+        const agent = first(await rest(`workspace_agents?select=id&id=eq.${encode(agentId)}&root_id=eq.${encode(root.id)}&type=eq.whatsapp&enabled=eq.true&limit=1`));
+        if (!agent) throw failure('Рабочий агент выключен или не найден.', 409);
+        const pending = first(await rest(`workspace_approvals?select=reason,external_id,expires_at&root_id=eq.${encode(root.id)}&device_id=eq.${encode(device.id)}&agent_id=eq.${encode(agentId)}&recipient=eq.${encode(recipient)}&status=in.(pending,approved,dispatching)&expires_at=gt.${encode(new Date().toISOString())}&order=created_at.desc&limit=1`));
+        return pending ? { pending: true, reason: pending.reason, externalId: pending.external_id, expiresAt: pending.expires_at } : { pending: false };
     }
     case 'approval': {
         const agentId = requireUuid(body.agentId);

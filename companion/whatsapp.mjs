@@ -4,12 +4,11 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
-import { approvalReason, assessDraft, explicitOwnerReply, simpleGreeting } from '../lib/whatsapp-policy.mjs';
+import { approvalReason, assessDraft, explicitOwnerReply, simpleGreeting, personalWhatsAppJid as personalJid, importantFollowup, whatsappHistory } from '../lib/whatsapp-policy.mjs';
 import { readPrivateJSON, writePrivateJSON } from './runtime.mjs';
 import { LocalWhatsAppModel } from './whatsapp-model.mjs';
 
 const requireWorker = createRequire(new URL('../worker/package.json', import.meta.url));
-const personalJid = value => /^(?:[0-9]{5,20}@s\.whatsapp\.net|[0-9]{5,30}@lid)$/.test(String(value));
 
 async function dependencies() {
     try {
@@ -30,6 +29,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     await fs.chmod(directory, 0o700);
     const journal = await readPrivateJSON(journalPath, { inbound: {}, approvals: {} });
     journal.approvalOutbox ||= {};
+    journal.conversations ||= {};
     const saved = await readPrivateJSON(activePath, {});
     let agents = [];
     let socket;
@@ -65,6 +65,29 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         const enabled = agents.filter(agent => agent.type === 'whatsapp' && agent.enabled);
         return enabled.length === 1 && enabled[0].id === agentId ? enabled[0] : undefined;
     };
+    const conversation = (agent, recipient) => {
+        const key = `${agent.id}:${recipient}`;
+        const previous = journal.conversations[key];
+        if (!previous || now() - previous.updatedAt > 24 * 3_600_000) {
+            journal.conversations[key] = { history: [], updatedAt: now() };
+        }
+        for (const [id, chat] of Object.entries(journal.conversations)) {
+            if (now() - chat.updatedAt > 24 * 3_600_000) delete journal.conversations[id];
+        }
+        return journal.conversations[key];
+    };
+    const remember = (chat, role, content) => {
+        chat.history = whatsappHistory([...chat.history, { role, content }]);
+        chat.updatedAt = now();
+    };
+    const refreshImportant = async (agent, recipient, chat) => {
+        try {
+            const context = await request({ action: 'whatsapp_context', agentId: agent.id, recipient });
+            if (context.pending === false && !Object.values(journal.approvalOutbox).some(item => item.agentId === agent.id && item.recipient === recipient)) delete chat.pendingImportant;
+            if (context.pending === true) chat.pendingImportant = { reason: String(context.reason || 'uncertain'),
+                externalId: context.externalId, expiresAt: Date.parse(context.expiresAt) || now() + 3_600_000 };
+        } catch { /* Keep the local important context while the server is unavailable. */ }
+    };
     const notify = result => { for (const done of waiters.splice(0)) done(result); };
     const runtime = async () => { await request({ action: 'runtime', status: { state: 'ready', whatsapp: state } }).catch(() => {}); };
     const stillActive = (agent, expectedSocket) => {
@@ -75,6 +98,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
 
     async function flushApprovalOutbox() {
         for (const [id, payload] of Object.entries(journal.approvalOutbox)) {
+            if (!personalJid(payload.recipient)) { delete journal.approvalOutbox[id]; await persist(); continue; }
             if (!agents.some(agent => agent.id === payload.agentId && agent.enabled)) continue;
             try {
                 await request(payload);
@@ -85,6 +109,9 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     }
 
     async function queueApproval(agent, message, draft, reason, externalId) {
+        if (!personalJid(message.key?.remoteJid)) return;
+        const chat = conversation(agent, message.key.remoteJid);
+        chat.pendingImportant = { reason, externalId, expiresAt: now() + 24 * 3_600_000 };
         journal.approvalOutbox[externalId] = { action: 'approval', agentId: agent.id, recipient: message.key.remoteJid,
             original: String(message.message.conversation || message.message.extendedTextMessage?.text || '').slice(0, 8000),
             draft: String(draft || '').slice(0, 2500), reason, externalId };
@@ -104,28 +131,42 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         if (!Number.isFinite(timestamp) || now() - timestamp > 10 * 60_000 || timestamp > now() + 60_000) return;
         const externalId = createHash('sha256').update(`${message.key.remoteJid}:${message.key.id}`).digest('hex');
         if (!message.key.id || journal.inbound[externalId]) return;
-        const gate = approvalReason(text);
+        const chat = conversation(agent, message.key.remoteJid);
+        const checkedContext = importantFollowup(text);
+        if (checkedContext) await refreshImportant(agent, message.key.remoteJid, chat);
+        const gate = approvalReason(text) || (chat.pendingImportant?.expiresAt > now() && importantFollowup(text) ? chat.pendingImportant.reason : null);
+        const history = whatsappHistory(chat.history);
         let result;
         try {
             const greeting = explicitOwnerReply(text, agent) || simpleGreeting(text);
             result = greeting ? { draft: greeting, requiresApproval: false, reason: 'simple' }
-                : await request({ action: 'generate_whatsapp', agentId: agent.id, text });
+                : await request({ action: 'generate_whatsapp', agentId: agent.id, text, history });
         } catch { result = { draft: '', requiresApproval: true, reason: 'model_unavailable' }; }
         if (!result?.draft?.trim() && (result?.provider === 'none'
             || ['model_unavailable', 'free_limit'].includes(result?.reason))) {
             // Budget remains zero when no cloud key/quota is available. The
-            // separate local model sees no Obsidian data or conversation history.
-            try { result = await draftLocally({ agent, text }); }
+            // separate local model sees no Obsidian or imported phone history.
+            try { result = await draftLocally({ agent, text, history }); }
             catch { /* Keep the editable owner-review item if local AI is offline. */ }
         }
         // A model or a server response cannot override deterministic boundaries.
         const automatic = explicitOwnerReply(text, agent) || simpleGreeting(text);
-        const checked = assessDraft(text, result, { trustedAutomatic: Boolean(automatic && result.draft === automatic) });
+        const checked = assessDraft(text, result, { agent, trustedAutomatic: Boolean(automatic && result.draft === automatic) });
+        if (!checkedContext && importantFollowup('', checked.draft)) await refreshImportant(agent, message.key.remoteJid, chat);
         if (!stillActive(agent, receivingSocket)) return;
-        const reason = gate || checked.reason;
+        remember(chat, 'user', text);
+        const importantContext = chat.pendingImportant?.expiresAt > now() && importantFollowup(text, checked.draft) ? chat.pendingImportant.reason : null;
+        const reason = gate || importantContext || checked.reason;
         while (counts.length && now() - counts[0] > 3_600_000) counts.shift();
-        if (gate || checked.requiresApproval || counts.length >= 30) {
-            await queueApproval(agent, message, checked.draft, counts.length >= 30 ? 'rate_limit' : reason, externalId);
+        if (gate || importantContext || checked.requiresApproval) {
+            await queueApproval(agent, message, checked.draft, reason, externalId);
+            return;
+        }
+        // A traffic limit must not turn ordinary conversation into requests
+        // for permission. Bound automatic traffic without uploading a review.
+        if (counts.length >= 120) {
+            journal.inbound[externalId] = 'rate_limited';
+            await persist();
             return;
         }
         // Persist before the external send. An ambiguous interruption is not
@@ -140,6 +181,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         try {
             await receivingSocket.sendMessage(message.key.remoteJid, { text: checked.draft });
             journal.inbound[externalId] = 'sent';
+            remember(chat, 'assistant', checked.draft);
             counts.push(now());
         } catch { journal.inbound[externalId] = 'uncertain'; }
         await persist();
@@ -191,6 +233,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             const nextSocket = deps.default({ version: webVersion, auth: { creds: auth.state.creds, keys: deps.makeCacheableSignalKeyStore(auth.state.keys, logger) },
                 logger, browser: deps.Browsers.macOS('SHAIKH'), markOnlineOnConnect: false,
                 syncFullHistory: false, shouldSyncHistoryMessage: () => false,
+                shouldIgnoreJid: jid => !personalJid(jid),
                 getMessage: async () => undefined });
             socket = nextSocket;
             nextSocket.ev.on('creds.update', () => {
@@ -316,6 +359,13 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 let delivered = 'sent';
                 try { await sendingSocket.sendMessage(decision.recipient, { text: decision.draft }); }
                 catch { delivered = 'uncertain'; }
+                if (delivered === 'sent') {
+                    const chat = conversation(sendingAgent, decision.recipient);
+                    remember(chat, 'assistant', decision.draft);
+                    // Do not turn a later short acknowledgment into consent to
+                    // some other still-pending important request in this chat.
+                    if (decision.external_id && chat.pendingImportant?.externalId === decision.external_id) delete chat.pendingImportant;
+                }
                 journal.approvals[decision.id] = delivered;
                 await persist();
                 await request({ action: 'delivered', approvalId: decision.id, status: delivered });
