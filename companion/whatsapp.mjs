@@ -4,7 +4,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
-import { approvalReason, assessDraft, explicitOwnerReply, simpleGreeting, personalWhatsAppJid as personalJid, importantFollowup, whatsappHistory } from '../lib/whatsapp-policy.mjs';
+import { approvalReason, assessDraft, explicitOwnerReply, simpleGreeting, personalWhatsAppJid as personalJid, importantFollowup, whatsappHistory, approvalNotice } from '../lib/whatsapp-policy.mjs';
 import { readPrivateJSON, writePrivateJSON } from './runtime.mjs';
 import { LocalWhatsAppModel } from './whatsapp-model.mjs';
 import { ignoreWhatsAppTransportJid, whatsappMessageText, whatsappDiagnosticLogger } from './whatsapp-message.mjs';
@@ -34,6 +34,11 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     const journal = await readPrivateJSON(journalPath, { inbound: {}, approvals: {} });
     journal.approvalOutbox ||= {};
     journal.conversations ||= {};
+    journal.handoffs ||= {};
+    journal.handoffNotices ||= {};
+    let recoveredHandoffs = false;
+    for (const notice of Object.values(journal.handoffs)) if (notice.status === 'sending') { notice.status = 'uncertain'; recoveredHandoffs = true; }
+    if (recoveredHandoffs) await writePrivateJSON(journalPath, journal);
     const saved = await readPrivateJSON(activePath, {});
     let agents = [];
     let socket;
@@ -52,6 +57,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     let chain = Promise.resolve();
     let journalWrites = Promise.resolve();
     let activeWrites = Promise.resolve();
+    const handoffFlights = new Map();
     const counts = [];
     let localDraftModel;
     const draftLocally = localGenerate || (payload => {
@@ -106,10 +112,54 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             if (!personalJid(payload.recipient)) { delete journal.approvalOutbox[id]; await persist(); continue; }
             if (!agents.some(agent => agent.id === payload.agentId && agent.enabled)) continue;
             try {
-                await request(payload);
+                const response = await request(payload);
+                const notice = journal.handoffs[id];
+                if (notice?.status === 'waiting') {
+                    if (typeof response?.approval?.id === 'string' && response.approval.status === 'pending') {
+                        notice.approvalId = response.approval.id;
+                        notice.status = 'pending';
+                    } else notice.status = 'cancelled';
+                }
                 delete journal.approvalOutbox[id];
                 await persist();
             } catch { break; }
+        }
+    }
+
+    async function flushHandoffs() {
+        for (const notice of Object.values(journal.handoffs)) {
+            if (notice.status !== 'pending') continue;
+            if (!personalJid(notice.recipient) || notice.expiresAt <= now()) {
+                notice.status = 'cancelled'; await persist(); continue;
+            }
+            const agent = activeAgent(), sendingSocket = socket;
+            if (!agent || agent.id !== notice.agentId || !stillActive(agent, sendingSocket)) continue;
+            const key = `${agent.id}:${notice.recipient}`;
+            if (journal.handoffNotices[key] !== undefined && now() - journal.handoffNotices[key] < 5 * 60_000) {
+                notice.status = 'suppressed'; await persist(); continue;
+            }
+            while (counts.length && now() - counts[0] > 3_600_000) counts.shift();
+            if (counts.length >= 120) continue;
+            const sending = (async () => {
+                notice.status = 'sending';
+                // Reserve the cooldown even if a lost response leaves the
+                // outcome unknown; another question must not repeat the notice.
+                journal.handoffNotices[key] = now();
+                await persist();
+                if (notice.status !== 'sending' || !stillActive(agent, sendingSocket)) {
+                    if (notice.status === 'sending') notice.status = 'cancelled';
+                    await persist(); return;
+                }
+                try {
+                    await sendingSocket.sendMessage(notice.recipient, { text: notice.text });
+                    notice.status = 'sent'; notice.sentAt = now(); counts.push(now());
+                    remember(conversation(agent, notice.recipient), 'assistant', notice.text);
+                    count('handoff.sent');
+                } catch { notice.status = 'uncertain'; count('handoff.uncertain'); }
+                await persist();
+            })();
+            handoffFlights.set(notice, sending);
+            try { await sending; } finally { handoffFlights.delete(notice); }
         }
     }
 
@@ -120,9 +170,12 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         journal.approvalOutbox[externalId] = { action: 'approval', agentId: agent.id, recipient: message.key.remoteJid,
             original: String(whatsappMessageText(message.message) || '').slice(0, 8000),
             draft: String(draft || '').slice(0, 2500), reason, externalId };
+        journal.handoffs[externalId] ||= { agentId: agent.id, recipient: message.key.remoteJid,
+            text: approvalNotice(whatsappMessageText(message.message)), createdAt: now(), expiresAt: now() + 10 * 60_000, status: 'waiting' };
         journal.inbound[externalId] = 'approval';
         await persist();
         await flushApprovalOutbox();
+        await flushHandoffs();
     }
 
     async function receive(message) {
@@ -140,6 +193,15 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         if (!message.key.id || journal.inbound[externalId]) { count('ignored.duplicate'); return; }
         count('received.personalText');
         const chat = conversation(agent, message.key.remoteJid);
+        const last = chat.history.findLast(turn => turn.role === 'assistant');
+        if (last?.role === 'assistant' && Object.values(journal.handoffs).some(item => item.agentId === agent.id
+            && item.recipient === message.key.remoteJid && item.status === 'sent' && item.text === last.content)
+            && /^(?:ок(?:ей)?|понял(?:а)?|спасибо|хорошо|ладно|рахмет|түсіндім|ok(?:ay)?|thanks|got it)[!.,\s]*$/iu.test(text.trim())) {
+            remember(chat, 'user', text);
+            journal.inbound[externalId] = 'acknowledged';
+            await persist();
+            return;
+        }
         const checkedContext = importantFollowup(text);
         if (checkedContext) await refreshImportant(agent, message.key.remoteJid, chat);
         const gate = approvalReason(text) || (chat.pendingImportant?.expiresAt > now() && importantFollowup(text) ? chat.pendingImportant.reason : null);
@@ -377,6 +439,17 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             }
             await flushApprovalOutbox();
             for (const decision of response.decisions || []) {
+                let handoffChanged = false;
+                for (const notice of Object.values(journal.handoffs)) {
+                    if (notice.approvalId === decision.id || (decision.external_id && notice.agentId === decision.agent_id
+                        && notice.recipient === decision.recipient && journal.handoffs[decision.external_id] === notice)) {
+                        if (['waiting', 'pending', 'sending'].includes(notice.status)) { notice.status = 'cancelled'; handoffChanged = true; }
+                        // Finish an already-started notice before sending the
+                        // owner's approved reply; never put a notice after it.
+                        if (handoffFlights.has(notice)) await handoffFlights.get(notice);
+                    }
+                }
+                if (handoffChanged) await persist();
                 if (!personalJid(decision.recipient) || !decision.draft?.trim() || !activeAgent()
                     || (decision.agent_id && decision.agent_id !== agentId) || state !== 'connected') {
                     await request({ action: 'delivered', approvalId: decision.id, status: 'failed' });
@@ -412,6 +485,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 await persist();
                 await request({ action: 'delivered', approvalId: decision.id, status: delivered });
             }
+            await flushHandoffs();
             // Counts and stages only: no addresses, message IDs, text or keys.
             diagnostics.transportOpen = typeof socket?.ws?.isOpen === 'boolean' ? socket.ws.isOpen : null;
             diagnostics.eventsBuffered = typeof socket?.ev?.isBuffering === 'function' ? socket.ev.isBuffering() === true : null;
@@ -420,6 +494,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         async stop() {
             await pause();
             await chain;
+            await Promise.allSettled([...handoffFlights.values()]);
             await Promise.allSettled([credentialSaves, activeWrites, journalWrites]);
             await writePrivateJSON(diagnosticPath, diagnostics);
         }
