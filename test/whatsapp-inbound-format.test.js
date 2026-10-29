@@ -5,6 +5,19 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createWhatsAppAdapter } from '../companion/whatsapp.mjs';
+import { whatsappDiagnosticLogger } from '../companion/whatsapp-message.mjs';
+
+test('library errors are reduced to fixed categories, including child loggers', () => {
+    const kinds = [], leaked = [];
+    const base = { error: (...args) => leaked.push(args), child() { return this; }, level: 'silent' };
+    const logger = whatsappDiagnosticLogger(base, kind => kinds.push(kind));
+    logger.error({ err: { message: 'private-payload-123456789' } }, 'Unexpected Error in processing offline nodes');
+    logger.child({ component: 'test' }).error({ key: 'private-key' }, 'error in handling message');
+    logger.error('other-private-payload');
+    assert.deepEqual(kinds, ['offlineNode', 'message', 'other']);
+    assert.deepEqual(leaked, []);
+    assert.equal(logger.level, 'silent');
+});
 
 const personal = '77771234567@s.whatsapp.net';
 const wrappers = ['ephemeralMessage', 'viewOnceMessage', 'viewOnceMessageV2', 'viewOnceMessageV2Extension', 'documentWithCaptionMessage'];

@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { approvalReason, assessDraft, explicitOwnerReply, simpleGreeting, personalWhatsAppJid as personalJid, importantFollowup, whatsappHistory } from '../lib/whatsapp-policy.mjs';
 import { readPrivateJSON, writePrivateJSON } from './runtime.mjs';
 import { LocalWhatsAppModel } from './whatsapp-model.mjs';
-import { ignoreWhatsAppTransportJid, whatsappMessageText } from './whatsapp-message.mjs';
+import { ignoreWhatsAppTransportJid, whatsappMessageText, whatsappDiagnosticLogger } from './whatsapp-message.mjs';
 
 const requireWorker = createRequire(new URL('../worker/package.json', import.meta.url));
 
@@ -47,6 +47,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     let credentialSaves = Promise.resolve();
     let connecting;
     let startupChecked = false;
+    let lastConnectionOpenAt = null;
     let waiters = [];
     let chain = Promise.resolve();
     let journalWrites = Promise.resolve();
@@ -241,7 +242,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             if (!connectionAllowed || intentional) throw new Error('Подключение WhatsApp остановлено владельцем.');
             state = 'connecting';
             qr = null;
-            const logger = deps.pino({ level: 'silent' });
+            const logger = whatsappDiagnosticLogger(deps.pino({ level: 'silent' }), kind => count(`library.error.${kind}`));
             const nextSocket = deps.default({ version: webVersion, auth: { creds: auth.state.creds, keys: deps.makeCacheableSignalKeyStore(auth.state.keys, logger) },
                 logger, browser: deps.Browsers.macOS('SHAIKH'), markOnlineOnConnect: false,
                 syncFullHistory: false, shouldSyncHistoryMessage: () => false,
@@ -252,6 +253,12 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 },
                 getMessage: async () => undefined });
             socket = nextSocket;
+            nextSocket.ws?.on?.('CB:message', node => {
+                if (socket !== nextSocket) return;
+                const from = String(node?.attrs?.from || '');
+                count(ignoreWhatsAppTransportJid(from) ? 'transport.nonPersonalFrame'
+                    : /^[0-9].*@(?:s\.whatsapp\.net|lid)$/u.test(from) ? 'transport.personalFrame' : 'transport.controlFrame');
+            });
             nextSocket.ev.on('creds.update', () => {
                 credentialSaves = credentialSaves.catch(() => {}).then(async () => {
                     await auth.saveCreds();
@@ -271,12 +278,14 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                     }
                     if (update.connection === 'open') {
                         state = 'connected'; qr = null;
+                        lastConnectionOpenAt = now();
                         reconnectAttempts = 0;
                         await rememberActive({ agentId });
                         if (socket !== nextSocket || !connectionAllowed || intentional) return;
                         notify({ message: 'WhatsApp подключён. Приложение и переписки на телефоне остаются доступны.' });
                     }
                     if (update.connection === 'close') {
+                        lastConnectionOpenAt = null;
                         const reason = Number(update.lastDisconnect?.error?.output?.statusCode);
                         console.info(`[WhatsApp] Connection closed (code ${Number.isFinite(reason) ? reason : 0}).`);
                         socket = undefined;
@@ -325,6 +334,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         clearTimeout(reconnectTimer);
         reconnectTimer = undefined;
         state = 'paused'; qr = null;
+        lastConnectionOpenAt = null;
         socket?.end?.(new Error('Owner paused the delegate'));
         socket = undefined;
         if (!remember) await rememberActive({});
@@ -356,6 +366,15 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 }
             }
             if (state === 'disconnected' && !socket && !connecting) scheduleReconnect();
+            // History sync is disabled, but late offline deliveries can re-open
+            // Baileys' event buffer after its initial flush. Release it only on
+            // the active, open connection after startup; receive() still checks
+            // personal recipients, freshness, own messages and duplicates.
+            if (state === 'connected' && socket?.ws?.isOpen === true && lastConnectionOpenAt !== null
+                && now() - lastConnectionOpenAt >= 5000 && socket.ev.isBuffering?.() === true) {
+                try { socket.ev.flush(); count('buffer.recovered'); }
+                catch { count('buffer.flushFailed'); }
+            }
             await flushApprovalOutbox();
             for (const decision of response.decisions || []) {
                 if (!personalJid(decision.recipient) || !decision.draft?.trim() || !activeAgent()
@@ -394,6 +413,8 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 await request({ action: 'delivered', approvalId: decision.id, status: delivered });
             }
             // Counts and stages only: no addresses, message IDs, text or keys.
+            diagnostics.transportOpen = typeof socket?.ws?.isOpen === 'boolean' ? socket.ws.isOpen : null;
+            diagnostics.eventsBuffered = typeof socket?.ev?.isBuffering === 'function' ? socket.ev.isBuffering() === true : null;
             await writePrivateJSON(diagnosticPath, diagnostics);
         },
         async stop() {

@@ -3,6 +3,22 @@
 // has to pass the strict personal-JID gate before any generation or send.
 export const ignoreWhatsAppTransportJid = value => /@(?:g\.us|broadcast|newsletter)$/u.test(String(value));
 
+export function whatsappDiagnosticLogger(base, onError) {
+    return new Proxy(base, {
+        get(target, key) {
+            if (key === 'error') return (...args) => {
+                const context = args.filter(value => typeof value === 'string').join(' ');
+                const kind = /processing offline/iu.test(context) ? 'offlineNode'
+                    : /handling message|processing message/iu.test(context) ? 'message' : 'other';
+                onError(kind);
+            };
+            const value = Reflect.get(target, key, target);
+            if (key === 'child' && typeof value === 'function') return (...args) => whatsappDiagnosticLogger(value.apply(target, args), onError);
+            return typeof value === 'function' ? value.bind(target) : value;
+        },
+    });
+}
+
 export function whatsappMessageText(value) {
     let content = value;
     for (let depth = 0; depth <= 5; depth++) {
