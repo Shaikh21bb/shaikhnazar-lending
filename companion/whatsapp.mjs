@@ -217,9 +217,10 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                     || latest.version.some(value => !Number.isSafeInteger(value) || value < 0)) throw new Error('Unverified web version');
                 webVersion = latest.version;
             } catch {
+                if (!connectionAllowed || intentional) return { message: 'Ответы WhatsApp остановлены.' };
                 state = 'disconnected';
                 await runtime();
-                return { message: 'Не удалось получить текущую версию WhatsApp Web. Проверь интернет на Mac и обнови QR-код.' };
+                return { message: 'Не удалось получить текущую версию WhatsApp Web. Повторю подключение автоматически, когда появится связь.' };
             }
             if (!connectionAllowed || intentional) throw new Error('Подключение WhatsApp остановлено владельцем.');
             const sessionDirectory = path.join(directory, 'session');
@@ -294,7 +295,12 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             });
         })();
         try { return await connecting; }
-        finally { connecting = null; }
+        finally {
+            connecting = null;
+            // A failed protocol check returns a helpful result rather than
+            // throwing. It must still re-arm retries after a network outage.
+            if (state === 'disconnected' && !socket) scheduleReconnect();
+        }
     }
 
     async function pause({ remember = true } = {}) {
@@ -325,7 +331,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         },
         async onPoll(response) {
             agents = response.agents || [];
-            if (state === 'connected' && !activeAgent()) { await pause(); await runtime(); }
+            if (connectionAllowed && !activeAgent()) { await pause(); await runtime(); }
             if (!startupChecked) {
                 startupChecked = true;
                 if (saved.agentId && activeAgent()) {
@@ -333,6 +339,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                     void connect().catch(() => scheduleReconnect());
                 }
             }
+            if (state === 'disconnected' && !socket && !connecting) scheduleReconnect();
             await flushApprovalOutbox();
             for (const decision of response.decisions || []) {
                 if (!personalJid(decision.recipient) || !decision.draft?.trim() || !activeAgent()
