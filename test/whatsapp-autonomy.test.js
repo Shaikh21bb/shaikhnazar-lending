@@ -53,7 +53,7 @@ test('groups, broadcasts, channels, status, own messages and history never enter
         f.inbound('Привет', { jid, participant: personA });
     }
     f.inbound('Привет', { fromMe: true });
-    f.inbound('Привет', { type: 'append' });
+    f.inbound('Привет', { type: 'append', timestamp: Math.floor(Date.now() / 1000) - 3600 });
     f.inbound('Привет', { timestamp: Math.floor(Date.now() / 1000) - 3600 });
     await f.adapter.idle();
     assert.deepEqual(f.sent, []);

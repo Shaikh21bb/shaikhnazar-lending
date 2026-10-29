@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { approvalReason, assessDraft, explicitOwnerReply, simpleGreeting, personalWhatsAppJid as personalJid, importantFollowup, whatsappHistory } from '../lib/whatsapp-policy.mjs';
 import { readPrivateJSON, writePrivateJSON } from './runtime.mjs';
 import { LocalWhatsAppModel } from './whatsapp-model.mjs';
+import { ignoreWhatsAppTransportJid, whatsappMessageText } from './whatsapp-message.mjs';
 
 const requireWorker = createRequire(new URL('../worker/package.json', import.meta.url));
 
@@ -24,6 +25,9 @@ async function dependencies() {
 export async function createWhatsAppAdapter({ config = {}, request, stateDirectory, loadDependencies = dependencies, localGenerate, now = () => Date.now(), reconnectBaseMs = 1000 }) {
     const directory = path.join(stateDirectory, 'whatsapp');
     const journalPath = path.join(directory, 'delivery.json');
+    const diagnosticPath = path.join(directory, 'diagnostics.json');
+    const diagnostics = { version: 1, startedAt: new Date(now()).toISOString(), counts: {} };
+    const count = name => { diagnostics.counts[name] = (diagnostics.counts[name] || 0) + 1; diagnostics.lastEventAt = new Date(now()).toISOString(); };
     const activePath = path.join(directory, 'active.json');
     await fs.mkdir(directory, { recursive: true, mode: 0o700 });
     await fs.chmod(directory, 0o700);
@@ -113,7 +117,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         const chat = conversation(agent, message.key.remoteJid);
         chat.pendingImportant = { reason, externalId, expiresAt: now() + 24 * 3_600_000 };
         journal.approvalOutbox[externalId] = { action: 'approval', agentId: agent.id, recipient: message.key.remoteJid,
-            original: String(message.message.conversation || message.message.extendedTextMessage?.text || '').slice(0, 8000),
+            original: String(whatsappMessageText(message.message) || '').slice(0, 8000),
             draft: String(draft || '').slice(0, 2500), reason, externalId };
         journal.inbound[externalId] = 'approval';
         await persist();
@@ -122,21 +126,25 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
 
     async function receive(message) {
         const agent = activeAgent();
-        if (!agent || !socket || state !== 'connected' || message.key?.fromMe || !personalJid(message.key?.remoteJid)) return;
+        if (!agent || !socket || state !== 'connected') { count('ignored.inactive'); return; }
+        if (message.key?.fromMe) { count('ignored.own'); return; }
+        if (!personalJid(message.key?.remoteJid)) { count('ignored.nonPersonal'); return; }
         const receivingSocket = socket;
-        const text = message.message?.conversation || message.message?.extendedTextMessage?.text;
-        if (typeof text !== 'string' || !text.trim() || text.length > 8000) return;
+        const text = whatsappMessageText(message.message);
+        if (typeof text !== 'string' || !text.trim() || text.length > 8000) { count('ignored.unsupportedText'); return; }
         const timestamp = Number(message.messageTimestamp?.toString?.() || message.messageTimestamp) * 1000;
         // Never answer a bulk history synchronization or stale phone backlog.
-        if (!Number.isFinite(timestamp) || now() - timestamp > 10 * 60_000 || timestamp > now() + 60_000) return;
+        if (!Number.isFinite(timestamp) || now() - timestamp > 10 * 60_000 || timestamp > now() + 60_000) { count('ignored.timestamp'); return; }
         const externalId = createHash('sha256').update(`${message.key.remoteJid}:${message.key.id}`).digest('hex');
-        if (!message.key.id || journal.inbound[externalId]) return;
+        if (!message.key.id || journal.inbound[externalId]) { count('ignored.duplicate'); return; }
+        count('received.personalText');
         const chat = conversation(agent, message.key.remoteJid);
         const checkedContext = importantFollowup(text);
         if (checkedContext) await refreshImportant(agent, message.key.remoteJid, chat);
         const gate = approvalReason(text) || (chat.pendingImportant?.expiresAt > now() && importantFollowup(text) ? chat.pendingImportant.reason : null);
         const history = whatsappHistory(chat.history);
         let result;
+        count('decision.started');
         try {
             const greeting = explicitOwnerReply(text, agent) || simpleGreeting(text);
             result = greeting ? { draft: greeting, requiresApproval: false, reason: 'simple' }
@@ -146,8 +154,8 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             || ['model_unavailable', 'free_limit'].includes(result?.reason))) {
             // Budget remains zero when no cloud key/quota is available. The
             // separate local model sees no Obsidian or imported phone history.
-            try { result = await draftLocally({ agent, text, history }); }
-            catch { /* Keep the editable owner-review item if local AI is offline. */ }
+            try { count('model.localStarted'); result = await draftLocally({ agent, text, history }); }
+            catch { count('model.localFailed'); /* Keep an editable review item if local AI is offline. */ }
         }
         // A model or a server response cannot override deterministic boundaries.
         const automatic = explicitOwnerReply(text, agent) || simpleGreeting(text);
@@ -159,6 +167,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         const reason = gate || importantContext || checked.reason;
         while (counts.length && now() - counts[0] > 3_600_000) counts.shift();
         if (gate || importantContext || checked.requiresApproval) {
+            count('decision.approval');
             await queueApproval(agent, message, checked.draft, reason, externalId);
             return;
         }
@@ -166,6 +175,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         // for permission. Bound automatic traffic without uploading a review.
         if (counts.length >= 120) {
             journal.inbound[externalId] = 'rate_limited';
+            count('decision.rateLimited');
             await persist();
             return;
         }
@@ -181,9 +191,10 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         try {
             await receivingSocket.sendMessage(message.key.remoteJid, { text: checked.draft });
             journal.inbound[externalId] = 'sent';
+            count('send.sent');
             remember(chat, 'assistant', checked.draft);
             counts.push(now());
-        } catch { journal.inbound[externalId] = 'uncertain'; }
+        } catch { journal.inbound[externalId] = 'uncertain'; count('send.uncertain'); }
         await persist();
     }
 
@@ -234,7 +245,11 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             const nextSocket = deps.default({ version: webVersion, auth: { creds: auth.state.creds, keys: deps.makeCacheableSignalKeyStore(auth.state.keys, logger) },
                 logger, browser: deps.Browsers.macOS('SHAIKH'), markOnlineOnConnect: false,
                 syncFullHistory: false, shouldSyncHistoryMessage: () => false,
-                shouldIgnoreJid: jid => !personalJid(jid),
+                shouldIgnoreJid: jid => {
+                    const ignored = ignoreWhatsAppTransportJid(jid);
+                    count(ignored ? 'transport.nonPersonalBlocked' : 'transport.allowed');
+                    return ignored;
+                },
                 getMessage: async () => undefined });
             socket = nextSocket;
             nextSocket.ev.on('creds.update', () => {
@@ -280,9 +295,10 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             });
             nextSocket.ev.on('messages.upsert', update => {
                 if (socket !== nextSocket) return;
-                if (update.type !== 'notify') return;
+                if (!['notify', 'append'].includes(update.type) || update.requestId) { count('ignored.historyBatch'); return; }
+                count(update.type === 'notify' ? 'upsert.notify' : 'upsert.append');
                 for (const message of update.messages || []) {
-                    chain = chain.then(() => receive(message)).catch(() => {});
+                    chain = chain.then(() => receive(message)).catch(() => { count('receive.failed'); });
                 }
             });
             return new Promise(resolve => {
@@ -377,11 +393,14 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 await persist();
                 await request({ action: 'delivered', approvalId: decision.id, status: delivered });
             }
+            // Counts and stages only: no addresses, message IDs, text or keys.
+            await writePrivateJSON(diagnosticPath, diagnostics);
         },
         async stop() {
             await pause();
             await chain;
             await Promise.allSettled([credentialSaves, activeWrites, journalWrites]);
+            await writePrivateJSON(diagnosticPath, diagnostics);
         }
     };
 }
