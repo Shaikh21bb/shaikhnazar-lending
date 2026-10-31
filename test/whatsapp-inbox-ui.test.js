@@ -292,7 +292,10 @@ test('workspace exposes Chats on desktop and phone without a manual-send compose
     const module = readFileSync(new URL('../js/whatsapp-inbox.js', import.meta.url), 'utf8');
     const workspace = readFileSync(new URL('../js/workspace.js', import.meta.url), 'utf8');
     assert.equal((html.match(/href="#chats" data-view="chats"/g) || []).length, 2);
-    assert.match(html, /id="view-chats"/); assert.match(html, /20261031d/);
-    assert.match(workspace, /await import\('\.\/whatsapp-inbox\.js\?v=20261031d'\)/);
+    assert.match(html, /id="view-chats"/);
+    const scriptVersion = html.match(/workspace\.js\?v=([a-z0-9]+)/)?.[1];
+    const inboxVersion = workspace.match(/await import\('\.\/whatsapp-inbox\.js\?v=([a-z0-9]+)'\)/)?.[1];
+    assert.ok(scriptVersion);
+    assert.equal(inboxVersion, scriptVersion, 'Lazy chat module must ship with the workspace revision');
     assert.doesNotMatch(module, /sessionStorage|localStorage|indexedDB|document\.cookie|data-inbox-action="send"/);
 });

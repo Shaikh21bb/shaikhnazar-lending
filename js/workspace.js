@@ -821,7 +821,7 @@ async function init() {
         $('account-name').textContent = state.user?.name || state.user?.login || 'Мой кабинет';
         await refresh();
         try {
-            const { mountWhatsAppInbox } = await import('./whatsapp-inbox.js?v=20261031d');
+            const { mountWhatsAppInbox } = await import('./whatsapp-inbox.js?v=20261031e');
             inboxController = mountWhatsAppInbox({ accountId: selfCheckAccount(), notice: toast, onAuth: () => location.assign('/login.html?next=workspace.html'), onDecision: () => refresh({ quiet: true }) });
             inboxController.setActive(state.view === 'chats');
         } catch {

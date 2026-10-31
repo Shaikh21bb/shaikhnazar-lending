@@ -16,7 +16,7 @@
 .ws-shell { display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 54px; max-width: 1460px; margin: 0 auto; padding: 146px 48px 80px; }
 .ws-rail { position: sticky; align-self: start; top: 145px; min-width: 0; }
 .ws-rail-heading { display: flex; flex-direction: column; gap: 9px; padding: 0 12px; margin-bottom: 30px; }
-.ws-rail-heading strong { font-family: Syne, Manrope, sans-serif; font-size: 1.02rem; letter-spacing: -.035em; }
+.ws-rail-heading strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: Syne, Manrope, sans-serif; font-size: 1.02rem; letter-spacing: -.035em; }
 .ws-label { display: block; color: var(--ws-quiet); font-size: .64rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; line-height: 1.7; }
 .ws-nav { display: grid; gap: 7px; }
 .ws-nav a { display: flex; align-items: center; gap: 13px; min-height: 66px; padding: 12px; border: 1px solid transparent; border-radius: 17px; color: var(--ws-muted); transition: .2s ease; }
