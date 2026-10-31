@@ -71,7 +71,7 @@ test('an ambiguous network failure retries the same encrypted request without du
 test('login returns owner and client to an allowlisted workspace without accepting external redirects', async () => {
     const login = await projectFile('login.html');
     const start = login.indexOf('            const requestedPage =');
-    const end = login.indexOf("            if (localStorage.getItem('auth_token'))", start);
+    const end = login.indexOf('            let authAttempted = false;', start);
     assert.ok(start >= 0 && end > start);
     const snippet = login.slice(start, end);
     for (const [next, expected] of [

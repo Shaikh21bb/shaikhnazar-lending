@@ -46,7 +46,7 @@
 
             <div id="auth-error" role="alert" aria-live="polite"></div>
 
-            <form id="auth-form" class="auth-form">
+            <form id="auth-form" class="auth-form" method="post" action="/api/auth/login">
                 <label for="email" data-i18n="login">Логин (Email)</label>
                 <input type="text" id="email" name="login" required placeholder="name@company.com" autocomplete="username" autocapitalize="none" spellcheck="false">
                 <label for="password" data-i18n="pass">Пароль</label>
@@ -123,7 +123,12 @@
                 conn: 'Деректер базасымен байланыста қате орын алды.'
             }
         };
-        const savedLoginLang = localStorage.getItem('shaikh_lang') || localStorage.getItem('shaikh-portfolio-lang');
+        const loginStorage = {
+            getItem(key) { try { return localStorage.getItem(key); } catch { return null; } },
+            setItem(key, value) { try { localStorage.setItem(key, value); } catch { /* The HttpOnly session works without browser storage. */ } },
+            removeItem(key) { try { localStorage.removeItem(key); } catch { /* Storage is optional. */ } }
+        };
+        const savedLoginLang = loginStorage.getItem('shaikh_lang') || loginStorage.getItem('shaikh-portfolio-lang');
         let loginLang = savedLoginLang === 'kk' || savedLoginLang === 'kz' ? 'kk' : 'ru';
         function applyLoginLang(lang) {
             const t = LOGIN_I18N[lang] || LOGIN_I18N.ru;
@@ -156,7 +161,7 @@
         document.querySelectorAll('.lang-btn').forEach(b => {
             b.addEventListener('click', () => {
                 loginLang = b.dataset.lang;
-                localStorage.setItem('shaikh_lang', loginLang);
+                loginStorage.setItem('shaikh_lang', loginLang);
                 applyLoginLang(loginLang);
             });
         });
@@ -188,24 +193,14 @@
                 ? `${requestedPage.replace(/^\//, '').replace(/\.html$/, '')}.html` : null;
             const destinationFor = role => safeNext && ['owner', 'client'].includes(role)
                 ? safeNext : role === 'client' ? 'workspace.html' : 'dashboard.html';
-            if (localStorage.getItem('auth_token')) {
-                try {
-                    const response = await fetch('/api/auth/session', { cache: 'no-store' });
-                    if (response.ok) {
-                        const session = await response.json();
-                        window.location.replace(destinationFor(session.user?.role));
-                        return;
-                    }
-                } catch (_) { /* show login form */ }
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('auth_email');
-            }
-
+            let authAttempted = false;
             authForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                if (submitBtn.disabled) return;
+                authAttempted = true;
                 const t = LOGIN_I18N[loginLang] || LOGIN_I18N.ru;
                 const login = emailInput.value.trim();
-                const password = passwordInput.value.trim();
+                const password = passwordInput.value;
 
                 if (!login || !password) {
                     if (authError) {
@@ -231,8 +226,8 @@
                     const data = await response.json();
 
                     if (response.ok) {
-                        localStorage.setItem('auth_token', data.id);
-                        localStorage.setItem('auth_email', data.login);
+                        loginStorage.setItem('auth_token', data.id);
+                        loginStorage.setItem('auth_email', data.login);
                         window.location.href = destinationFor(data.role);
                     } else {
                         if (authError) {
@@ -243,7 +238,6 @@
                         }
                     }
                 } catch (error) {
-                    console.error('Ошибка входа:', error);
                     if (authError) {
                         authError.textContent = t.conn;
                         authError.style.display = 'block';
@@ -256,6 +250,22 @@
                     submitBtn.textContent = (LOGIN_I18N[loginLang] || LOGIN_I18N.ru).enter;
                 }
             });
+
+            // Bind submit before checking the cookie: a slow session request
+            // must never leave the form without its JSON submit handler.
+            try {
+                const response = await fetch('/api/auth/session', {
+                    cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(5000)
+                });
+                if (authAttempted) return;
+                if (response.ok) {
+                    const session = await response.json();
+                    if (!authAttempted) window.location.replace(destinationFor(session.user?.role));
+                } else if (response.status === 401) {
+                    loginStorage.removeItem('auth_token');
+                    loginStorage.removeItem('auth_email');
+                }
+            } catch { /* Keep the form usable when session lookup is unavailable. */ }
         });
     </script>
     <script>

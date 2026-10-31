@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST' && !requireSameOrigin(req, res)) return;
     try {
         let result;
-        if (req.method === 'GET') result = await workspaceOverview(session);
+        if (req.method === 'GET') result = await workspaceOverview(session, { approvalOffset: req.query?.approvalOffset });
         else {
             const body = await readJsonBody(req);
             if (!body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > 760000) return res.status(400).json({ error: 'Некорректный запрос.' });

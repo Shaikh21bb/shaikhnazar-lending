@@ -149,14 +149,14 @@ test('audio uploads, photos and other attachments are rejected helpfully without
     } finally { globalThis.fetch = previous; }
 });
 
-test('runtime advertises voice support only with explicit dialogue and voice booleans', async () => {
+test('partial runtime omits unknown voice capability and normalizes explicit dialogue disablement', async () => {
     const previous = globalThis.fetch; const statuses = [];
-    globalThis.fetch = async (_input, options) => { statuses.push(JSON.parse(options.body).status); return json(null); };
+    globalThis.fetch = async (_input, options) => { statuses.push(JSON.parse(options.body).p_status); return json(true); };
     try {
         for (const status of [{ telegramDialogue: true }, { telegramDialogue: true, telegramVoice: 'true' },
             { telegramDialogue: false, telegramVoice: true }, { telegramDialogue: true, telegramVoice: true }]) {
             await workspaceDeviceMutation({ device: { id: DEVICE, root_id: ROOT }, root }, { action: 'runtime', status });
         }
-        assert.deepEqual(statuses.map(status => status.telegramVoice), [false, false, false, true]);
+        assert.deepEqual(statuses.map(status => status.telegramVoice), [undefined, undefined, false, true]);
     } finally { globalThis.fetch = previous; }
 });

@@ -33,12 +33,22 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     await fs.chmod(directory, 0o700);
     const journal = await readPrivateJSON(journalPath, { inbound: {}, approvals: {} });
     journal.approvalOutbox ||= {};
+    const recoverLegacyDeliveryAcks = !journal.deliveryOutbox;
+    journal.deliveryOutbox ||= {};
     journal.conversations ||= {};
     journal.handoffs ||= {};
     journal.handoffNotices ||= {};
-    let recoveredHandoffs = false;
-    for (const notice of Object.values(journal.handoffs)) if (notice.status === 'sending') { notice.status = 'uncertain'; recoveredHandoffs = true; }
-    if (recoveredHandoffs) await writePrivateJSON(journalPath, journal);
+    let recoveredJournal = false;
+    for (const [id, status] of Object.entries(journal.approvals)) {
+        if (status === 'sending') { journal.approvals[id] = 'uncertain'; recoveredJournal = true; }
+        if ((recoverLegacyDeliveryAcks || status === 'sending') && ['sent', 'uncertain', 'cancelled', 'failed', 'sending'].includes(status)) {
+            journal.deliveryOutbox[id] = { action: 'delivered', approvalId: id,
+                status: status === 'sent' ? 'sent' : ['failed', 'cancelled'].includes(status) ? 'failed' : 'uncertain' };
+            recoveredJournal = true;
+        }
+    }
+    for (const notice of Object.values(journal.handoffs)) if (notice.status === 'sending') { notice.status = 'uncertain'; recoveredJournal = true; }
+    if (recoveredJournal) await writePrivateJSON(journalPath, journal);
     const saved = await readPrivateJSON(activePath, {});
     let agents = [];
     let socket;
@@ -100,7 +110,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         } catch { /* Keep the local important context while the server is unavailable. */ }
     };
     const notify = result => { for (const done of waiters.splice(0)) done(result); };
-    const runtime = async () => { await request({ action: 'runtime', status: { state: 'ready', whatsapp: state } }).catch(() => {}); };
+    const runtime = async () => { await request({ action: 'runtime', status: { whatsapp: state } }).catch(() => {}); };
     const stillActive = (agent, expectedSocket) => {
         const current = activeAgent();
         return connectionAllowed && !intentional && state === 'connected' && socket === expectedSocket
@@ -124,6 +134,25 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 await persist();
             } catch { break; }
         }
+    }
+
+    async function flushDeliveryOutbox() {
+        for (const [id, payload] of Object.entries(journal.deliveryOutbox)) {
+            try {
+                // A resolved { ok: false } also finishes this receipt: the
+                // server only changes dispatching rows, so it may already have
+                // recorded a previous attempt whose response was lost.
+                await request(payload);
+                delete journal.deliveryOutbox[id];
+                await persist();
+            } catch { break; }
+        }
+    }
+
+    async function acknowledgeDelivery(approvalId, status) {
+        journal.deliveryOutbox[approvalId] = { action: 'delivered', approvalId, status };
+        await persist();
+        await flushDeliveryOutbox();
     }
 
     async function flushHandoffs() {
@@ -178,17 +207,16 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         await flushHandoffs();
     }
 
-    async function receive(message) {
+    async function receive(message, admission) {
         const agent = activeAgent();
-        if (!agent || !socket || state !== 'connected') { count('ignored.inactive'); return; }
+        if (!agent || agent.id !== admission.agentId || socket !== admission.socket
+            || !stillActive(agent, admission.socket)) { count('ignored.inactive'); return; }
         if (message.key?.fromMe) { count('ignored.own'); return; }
         if (!personalJid(message.key?.remoteJid)) { count('ignored.nonPersonal'); return; }
-        const receivingSocket = socket;
+        const receivingSocket = admission.socket;
         const text = whatsappMessageText(message.message);
         if (typeof text !== 'string' || !text.trim() || text.length > 8000) { count('ignored.unsupportedText'); return; }
-        const timestamp = Number(message.messageTimestamp?.toString?.() || message.messageTimestamp) * 1000;
-        // Never answer a bulk history synchronization or stale phone backlog.
-        if (!Number.isFinite(timestamp) || now() - timestamp > 10 * 60_000 || timestamp > now() + 60_000) { count('ignored.timestamp'); return; }
+        if (!admission.fresh) { count('ignored.timestamp'); return; }
         const externalId = createHash('sha256').update(`${message.key.remoteJid}:${message.key.id}`).digest('hex');
         if (!message.key.id || journal.inbound[externalId]) { count('ignored.duplicate'); return; }
         count('received.personalText');
@@ -369,7 +397,16 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 if (!['notify', 'append'].includes(update.type) || update.requestId) { count('ignored.historyBatch'); return; }
                 count(update.type === 'notify' ? 'upsert.notify' : 'upsert.append');
                 for (const message of update.messages || []) {
-                    chain = chain.then(() => receive(message)).catch(() => { count('receive.failed'); });
+                    const receivedAt = now();
+                    const timestamp = Number(message?.messageTimestamp?.toString?.() || message?.messageTimestamp) * 1000;
+                    // Freshness belongs to transport arrival, not the moment a
+                    // slow earlier generation releases the processing queue.
+                    // Bind queued work to this agent and socket as well: a
+                    // reconnect or agent switch must not inherit old events.
+                    const admission = { socket: nextSocket,
+                        agentId: state === 'connected' && connectionAllowed && !intentional ? activeAgent()?.id : undefined,
+                        fresh: Number.isFinite(timestamp) && receivedAt - timestamp <= 10 * 60_000 && timestamp <= receivedAt + 60_000 };
+                    chain = chain.then(() => receive(message, admission)).catch(() => { count('receive.failed'); });
                 }
             });
             return new Promise(resolve => {
@@ -437,6 +474,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 try { socket.ev.flush(); count('buffer.recovered'); }
                 catch { count('buffer.flushFailed'); }
             }
+            await flushDeliveryOutbox();
             await flushApprovalOutbox();
             for (const decision of response.decisions || []) {
                 let handoffChanged = false;
@@ -452,12 +490,15 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 if (handoffChanged) await persist();
                 if (!personalJid(decision.recipient) || !decision.draft?.trim() || !activeAgent()
                     || (decision.agent_id && decision.agent_id !== agentId) || state !== 'connected') {
-                    await request({ action: 'delivered', approvalId: decision.id, status: 'failed' });
+                    journal.approvals[decision.id] ||= 'cancelled';
+                    await acknowledgeDelivery(decision.id, journal.approvals[decision.id] === 'sent' ? 'sent'
+                        : ['uncertain', 'sending'].includes(journal.approvals[decision.id]) ? 'uncertain' : 'failed');
                     continue;
                 }
                 const previous = journal.approvals[decision.id];
                 if (previous) {
-                    await request({ action: 'delivered', approvalId: decision.id, status: previous === 'sent' ? 'sent' : 'uncertain' });
+                    await acknowledgeDelivery(decision.id, previous === 'sent' ? 'sent'
+                        : ['failed', 'cancelled'].includes(previous) ? 'failed' : 'uncertain');
                     continue;
                 }
                 journal.approvals[decision.id] = 'sending';
@@ -467,8 +508,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 if (!sendingAgent || !stillActive(sendingAgent, sendingSocket)
                     || (decision.agent_id && decision.agent_id !== sendingAgent.id)) {
                     journal.approvals[decision.id] = 'cancelled';
-                    await persist();
-                    await request({ action: 'delivered', approvalId: decision.id, status: 'failed' });
+                    await acknowledgeDelivery(decision.id, 'failed');
                     continue;
                 }
                 let delivered = 'sent';
@@ -482,8 +522,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                     if (decision.external_id && chat.pendingImportant?.externalId === decision.external_id) delete chat.pendingImportant;
                 }
                 journal.approvals[decision.id] = delivered;
-                await persist();
-                await request({ action: 'delivered', approvalId: decision.id, status: delivered });
+                await acknowledgeDelivery(decision.id, delivered);
             }
             await flushHandoffs();
             // Counts and stages only: no addresses, message IDs, text or keys.

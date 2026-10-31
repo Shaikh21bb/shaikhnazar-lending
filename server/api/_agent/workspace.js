@@ -15,6 +15,8 @@ const telegramConversationKey = (root, device) => hash(`${root.id}:${device.id}:
 const clean = (value, max) => String(value ?? '').trim().slice(0, max);
 const first = value => Array.isArray(value) ? value[0] : value;
 const writeHeaders = { Prefer: 'return=representation' };
+const APPROVAL_PAGE_SIZE = 250;
+const APPROVAL_FIELDS = 'id,agent_id,recipient,original,draft,reason,status,expires_at,created_at,decided_at,delivered_at,activity_at';
 export const WORKSPACE_SETTINGS = Object.freeze({ timezone: 'Asia/Almaty', quietStart: 22, quietEnd: 9, digestHour: 9 });
 
 async function rest(path, options = {}) {
@@ -105,19 +107,41 @@ async function ensureDefaultAgent(rootId, agents) {
     throw failure('Не удалось подготовить личного агента.', 503);
 }
 
-export async function workspaceOverview(session) {
+function approvalOffset(value) {
+    const scalar = Array.isArray(value) ? value[0] : value;
+    if (scalar === undefined || scalar === null || scalar === '') return 0;
+    const offset = Number(scalar);
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > Number.MAX_SAFE_INTEGER - APPROVAL_PAGE_SIZE) {
+        throw failure('Некорректная страница согласований.');
+    }
+    return offset;
+}
+
+export async function workspaceOverview(session, options = {}) {
+    const offset = approvalOffset(options.approvalOffset);
     const root = await ensurePersonalAgent(session);
+    const now = new Date().toISOString();
     const results = await Promise.all([
         workspaceDevice(root.id), listAgents(root.id),
         rest(`workspace_jobs?select=id,kind,status,result_envelope,error_code,created_at,updated_at&root_id=eq.${encode(root.id)}&order=created_at.desc&limit=60`),
         rest(`workspace_reminders?select=id,due_at,status,sent_at&root_id=eq.${encode(root.id)}&status=not.in.(complete,cancelled)&order=due_at.asc&limit=100`),
-        rest(`workspace_approvals?select=id,agent_id,recipient,original,draft,reason,status,expires_at,created_at&root_id=eq.${encode(root.id)}&order=created_at.desc&limit=60`)
+        // Active decisions must not disappear behind newer completed history.
+        rest(`workspace_approvals?select=${APPROVAL_FIELDS}&root_id=eq.${encode(root.id)}&status=eq.pending&expires_at=gt.${encode(now)}&order=created_at.asc,id.asc&offset=${offset}&limit=${APPROVAL_PAGE_SIZE + 1}`),
+        rest(`workspace_approvals?select=${APPROVAL_FIELDS}&root_id=eq.${encode(root.id)}&or=${encode(`(status.neq.pending,expires_at.lte.${now})`)}&order=activity_at.desc,id.desc&limit=60`)
     ]);
+    const pending = results[4] || [];
     return {
         device: publicDevice(results[0]), agents: (await ensureDefaultAgent(root.id, results[1])).map(publicAgent),
-        jobs: (results[2] || []).map(publicJob), reminders: results[3] || [], approvals: results[4] || [],
+        jobs: (results[2] || []).map(publicJob), reminders: results[3] || [], approvals: pending.slice(0, APPROVAL_PAGE_SIZE),
+        approvalPage: { offset, limit: APPROVAL_PAGE_SIZE, hasMore: pending.length > APPROVAL_PAGE_SIZE },
+        approvalHistory: (results[5] || []).map(approval => ['pending', 'approved'].includes(approval.status) && Date.parse(approval.expires_at) <= Date.parse(now)
+            ? { ...approval, status: 'expired' } : approval),
         settings: WORKSPACE_SETTINGS, telegram: { connected: Boolean(root.telegram_owner_chat_id) }
     };
+}
+
+function whatsappActivationConflict() {
+    return failure('Для этого номера уже включён другой WhatsApp-агент. Сначала остановите его в разделе «Агенты».', 409);
 }
 
 function agentInput(value, current = null) {
@@ -176,10 +200,23 @@ export async function workspaceMutation(session, body) {
         const current = first(await rest(`workspace_agents?select=*&id=eq.${encode(id)}&root_id=eq.${encode(root.id)}&limit=1`));
         if (!current) throw failure('Агент не найден.', 404);
         const input = agentInput(body.agent || body, current);
-        const updated = first(await rest(`workspace_agents?id=eq.${encode(id)}&root_id=eq.${encode(root.id)}`, {
-            method: 'PATCH', headers: writeHeaders,
-            body: JSON.stringify({ ...input, updated_at: new Date().toISOString() })
-        }));
+        if (input.type === 'whatsapp' && input.enabled) {
+            const other = first(await rest(`workspace_agents?select=id&root_id=eq.${encode(root.id)}&type=eq.whatsapp&enabled=eq.true&id=neq.${encode(id)}&limit=1`));
+            if (other) throw whatsappActivationConflict();
+        }
+        let updated;
+        try {
+            updated = first(await rest(`workspace_agents?id=eq.${encode(id)}&root_id=eq.${encode(root.id)}`, {
+                method: 'PATCH', headers: writeHeaders,
+                body: JSON.stringify({ ...input, updated_at: new Date().toISOString() })
+            }));
+        } catch (error) {
+            // The partial unique index also protects simultaneous activations
+            // that both passed the friendly preflight check.
+            if (input.type === 'whatsapp' && input.enabled && error.code === '23505') throw whatsappActivationConflict();
+            throw error;
+        }
+        if (!updated) throw failure('Агент не найден.', 404);
         return { agent: publicAgent(updated) };
     }
     case 'enqueue':
@@ -257,14 +294,24 @@ export async function pairWorkspaceDevice(body) {
     return { token, deviceId: device.id };
 }
 
-function safeRuntime(body) {
-    const status = typeof body.status === 'object' && body.status ? body.status : {};
-    const state = ['ready', 'processing', 'error', 'offline'].includes(status.state) ? status.state : 'ready';
-    const whatsapp = ['disconnected', 'qr', 'connected', 'paused'].includes(status.whatsapp) ? status.whatsapp : 'disconnected';
-    const rawModel = String(body.model ?? status.model ?? '');
-    const model = /^[A-Za-z0-9_./:@+-]{0,100}$/.test(rawModel) ? rawModel : '';
-    return { status: { state, whatsapp, modelReady: status.modelReady === true, telegramDialogue: status.telegramDialogue === true,
-        telegramVoice: status.telegramDialogue === true && status.telegramVoice === true }, model, last_seen_at: new Date().toISOString() };
+function safeRuntime(body, { partial = false } = {}) {
+    const input = body.status && typeof body.status === 'object' && !Array.isArray(body.status) ? body.status : {};
+    const states = ['ready', 'processing', 'error', 'offline', 'model_offline'];
+    const whatsappStates = ['disconnected', 'qr', 'connected', 'paused'];
+    const status = {};
+    if (states.includes(input.state)) status.state = input.state;
+    else if (!partial) status.state = input.modelReady === true ? 'ready' : 'model_offline';
+    if (whatsappStates.includes(input.whatsapp)) status.whatsapp = input.whatsapp;
+    else if (!partial) status.whatsapp = 'disconnected';
+    for (const field of ['modelReady', 'telegramDialogue', 'telegramVoice']) {
+        if (typeof input[field] === 'boolean') status[field] = input[field];
+        else if (!partial) status[field] = false;
+    }
+    if (status.state === 'model_offline') status.modelReady = false;
+    if (status.telegramDialogue === false || !partial && status.telegramDialogue !== true) status.telegramVoice = false;
+    const rawModel = body.model ?? input.model;
+    const model = typeof rawModel === 'string' && !rawModel.includes('://') && /^[A-Za-z0-9_./:@+-]{0,100}$/.test(rawModel) ? rawModel : partial ? null : '';
+    return { status, model, last_seen_at: new Date().toISOString() };
 }
 
 function safeReminders(input) {
@@ -322,9 +369,14 @@ export async function workspaceDeviceMutation(context, body) {
             conversationKey: telegramConversationKey(current, currentDevice)
         }) };
     }
-    case 'runtime':
-        await rest(`workspace_devices?id=eq.${encode(device.id)}&revoked_at=is.null`, { method: 'PATCH', body: JSON.stringify(safeRuntime(body)) });
+    case 'runtime': {
+        const patch = safeRuntime(body, { partial: true });
+        const applied = await rpc('workspace_patch_runtime', {
+            p_device_id: device.id, p_root_id: root.id, p_status: patch.status, p_model: patch.model
+        });
+        if (!applied) throw failure('Подключение Mac отозвано.', 401);
         return { ok: true };
+    }
     case 'poll': {
         await rest(`workspace_devices?id=eq.${encode(device.id)}&revoked_at=is.null`, { method: 'PATCH', body: JSON.stringify(safeRuntime(body)) });
         const [jobs, agents, decisions] = await Promise.all([

@@ -15,10 +15,13 @@ function sign(payload) {
 }
 
 function parseCookies(header = '') {
+    if (typeof header !== 'string') return {};
     return Object.fromEntries(header.split(';').map(part => {
         const index = part.indexOf('=');
         if (index < 0) return ['', ''];
-        return [part.slice(0, index).trim(), decodeURIComponent(part.slice(index + 1).trim())];
+        const name = part.slice(0, index).trim();
+        try { return [name, decodeURIComponent(part.slice(index + 1).trim())]; }
+        catch { return [name, '']; }
     }).filter(([key]) => key));
 }
 

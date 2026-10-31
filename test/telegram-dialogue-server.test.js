@@ -144,20 +144,20 @@ test('older Macs keep note capture and cannot start dialogue or obtain reply cre
     } finally { globalThis.fetch = previous; }
 });
 
-test('runtime records Telegram dialogue capability only when the Mac explicitly sends boolean true', async () => {
+test('partial runtime records Telegram dialogue capability only for explicit booleans', async () => {
     const previous = globalThis.fetch;
     const statuses = [];
     globalThis.fetch = async (input, options = {}) => {
-        assert.match(String(input), /workspace_devices/);
-        assert.equal(options.method, 'PATCH');
-        statuses.push(JSON.parse(options.body).status);
-        return json(null);
+        assert.match(String(input), /rpc\/workspace_patch_runtime/);
+        assert.equal(options.method, 'POST');
+        statuses.push(JSON.parse(options.body).p_status);
+        return json(true);
     };
     try {
         for (const value of [undefined, false, 'true', true]) {
             await workspaceDeviceMutation({ device: { id: DEVICE, root_id: ROOT }, root }, { action: 'runtime', status: { telegramDialogue: value } });
         }
-        assert.deepEqual(statuses.map(status => status.telegramDialogue), [false, false, false, true]);
+        assert.deepEqual(statuses.map(status => status.telegramDialogue), [undefined, false, undefined, true]);
     } finally { globalThis.fetch = previous; }
 });
 

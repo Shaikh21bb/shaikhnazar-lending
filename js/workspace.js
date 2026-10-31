@@ -4,7 +4,7 @@ const API = '/api/hub/workspace';
 const REPLY_KEY_STORAGE = 'shaikh-private-reply-key-v1';
 const VIEWS = new Set(['thoughts', 'reminders', 'agents', 'mac']);
 const POLL_MS = 6000;
-const state = { data: null, keys: null, decrypted: new Map(), approvalDrafts: new Map(), pendingThought: null, view: 'thoughts', loading: false, sending: false, clarification: null, pairing: null, qrJobId: null, qrAgentId: null, qrFingerprint: '', user: null };
+const state = { data: null, keys: null, decrypted: new Map(), approvalDrafts: new Map(), approvalActions: new Set(), approvalDecisions: new Map(), approvalOffset: 0, historyVisible: 20, historyFingerprint: '', pendingThought: null, view: 'thoughts', loading: false, sending: false, clarification: null, pairing: null, qrJobId: null, qrAgentId: null, qrFingerprint: '', user: null };
 const $ = id => document.getElementById(id);
 let toastTimer;
 let pollingTimer;
@@ -49,7 +49,8 @@ function showError(error) {
 }
 
 async function api(body) {
-    const response = await fetch(API, {
+    const url = !body && state.approvalOffset ? `${API}?approvalOffset=${state.approvalOffset}` : API;
+    const response = await fetch(url, {
         method: body ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store',
         ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {})
     });
@@ -215,23 +216,109 @@ function renderReminders() {
     }).join('') : empty('◷', 'Пока можно выдохнуть', 'Когда в мысли появится задача со сроком, агент создаст напоминание. Если даты нет, он спросит вас.');
 }
 
+function enabledWhatsAppAgents() {
+    return (state.data?.agents || []).filter(agent => agent.type === 'whatsapp' && agent.enabled);
+}
+
+function whatsAppAgentStatus(agent) {
+    if (!agent.enabled) return { label: 'Выключен', connected: false };
+    const enabled = enabledWhatsAppAgents();
+    if (enabled.length !== 1 || enabled[0].id !== agent.id) return { label: 'Выберите одного агента', connected: false };
+    if (!deviceIsOnline()) return { label: 'Ждёт Mac', connected: false };
+    const status = state.data?.device?.status?.whatsapp;
+    if (status === 'connected') return { label: 'На связи', connected: true };
+    if (status === 'paused') return { label: 'Приостановлен', connected: false };
+    if (status === 'qr') return { label: 'Ожидает QR', connected: false };
+    return { label: 'Не подключён', connected: false };
+}
+
 function renderAgents() {
     const agents = state.data?.agents || [];
-    const whatsappConnected = state.data?.device?.status?.whatsapp === 'connected' && deviceIsOnline();
     $('agents-list').innerHTML = agents.length ? agents.map(agent => {
         const whatsapp = agent.type === 'whatsapp';
-        return `<article class="ws-agent"><div class="ws-agent-head"><span class="ws-agent-avatar ${whatsapp ? 'is-whatsapp' : ''}" aria-hidden="true">${whatsapp ? '↗' : '✦'}</span><span class="ws-state ${agent.enabled ? 'is-online' : ''}">${agent.enabled ? 'Включён' : 'Выключен'}</span></div><h2>${escapeHtml(agent.name)}</h2><p>${whatsapp ? 'Сам отвечает на общие вопросы и общается в личных чатах в вашем стиле. Личные решения передаёт вам и предупреждает собеседника.' : 'Собирает мысли в заметки и работает с вашей базой Obsidian локально.'}</p><div class="ws-agent-meta"><span>${whatsapp ? `WhatsApp · ${whatsappConnected && agent.enabled ? 'подключён' : 'на Mac'}` : 'Obsidian · на Mac'}</span><span>${agent.rules || agent.examples ? 'Ваши инструкции' : 'Правила ещё не заданы'}</span></div><div class="ws-agent-actions"><button class="ws-secondary" type="button" data-edit-agent="${escapeHtml(agent.id)}">Настроить</button>${whatsapp ? whatsappConnected && agent.enabled ? `<button class="ws-text-button" type="button" data-pause-whatsapp="${escapeHtml(agent.id)}">Остановить ответы</button>` : `<button class="ws-text-button" type="button" data-connect-whatsapp="${escapeHtml(agent.id)}">Подключить WhatsApp ↗</button>` : '<span class="ws-muted">Только локальная AI</span>'}</div></article>`;
+        const status = whatsapp ? whatsAppAgentStatus(agent) : { label: agent.enabled ? 'Включён' : 'Выключен', connected: agent.enabled };
+        const onlyEnabled = enabledWhatsAppAgents().length === 1;
+        const actions = !whatsapp ? '<span class="ws-muted">Только локальная AI</span>' : agent.enabled
+            ? `${!status.connected && onlyEnabled ? `<button class="ws-text-button" type="button" data-connect-whatsapp="${escapeHtml(agent.id)}">Подключить WhatsApp ↗</button>` : ''}<button class="ws-text-button" type="button" data-pause-whatsapp="${escapeHtml(agent.id)}">Остановить ответы</button>`
+            : '<span class="ws-muted">Включите в настройках</span>';
+        return `<article class="ws-agent"><div class="ws-agent-head"><span class="ws-agent-avatar ${whatsapp ? 'is-whatsapp' : ''}" aria-hidden="true">${whatsapp ? '↗' : '✦'}</span><span class="ws-state ${status.connected ? 'is-online' : ''}">${escapeHtml(status.label)}</span></div><h2>${escapeHtml(agent.name)}</h2><p>${whatsapp ? 'Сам отвечает на общие вопросы и общается в личных чатах в вашем стиле. Личные решения передаёт вам и предупреждает собеседника.' : 'Собирает мысли в заметки и работает с вашей базой Obsidian локально.'}</p><div class="ws-agent-meta"><span>${whatsapp ? `WhatsApp · ${escapeHtml(status.label.toLocaleLowerCase('ru'))}` : 'Obsidian · на Mac'}</span><span>${agent.rules || agent.examples ? 'Ваши инструкции' : 'Правила ещё не заданы'}</span></div><div class="ws-agent-actions"><button class="ws-secondary" type="button" data-edit-agent="${escapeHtml(agent.id)}">Настроить</button>${actions}</div></article>`;
     }).join('') : empty('✦', 'Создайте своего первого агента', 'Задайте ему роль, правила общения и несколько ваших примеров ответов.');
 }
 
+function actionableApproval(approval) {
+    const expiry = safeDate(approval.expires_at);
+    return ['pending', 'awaiting_approval'].includes(approval.status) && (!expiry || expiry.getTime() > Date.now()) && !state.approvalDecisions.has(approval.id);
+}
+
+function approvalActivityAt(approval) {
+    return [approval.activity_at, approval.created_at, approval.decided_at, approval.delivered_at]
+        .map(value => ({ value, date: safeDate(value) })).filter(item => item.date)
+        .sort((a, b) => b.date.getTime() - a.date.getTime())[0]?.value || null;
+}
+
+function approvalHistory() {
+    const records = new Map();
+    const history = Array.isArray(state.data?.approvalHistory) ? state.data.approvalHistory : (state.data?.approvals || []).filter(item => !actionableApproval(item));
+    for (const item of [...history, ...state.approvalDecisions.values()]) {
+        const status = ['pending', 'awaiting_approval', 'approved'].includes(item.status) && safeDate(item.expires_at)?.getTime() <= Date.now() ? 'expired' : item.status;
+        if (!['pending', 'awaiting_approval'].includes(status)) records.set(item.id, { ...item, status });
+    }
+    return [...records.values()].sort((a, b) => (safeDate(approvalActivityAt(b))?.getTime() || 0) - (safeDate(approvalActivityAt(a))?.getTime() || 0));
+}
+
+function renderApprovalHistory() {
+    const history = approvalHistory();
+    const fingerprint = JSON.stringify({ history, visible: state.historyVisible, online: deviceIsOnline() });
+    if (fingerprint === state.historyFingerprint) return;
+    state.historyFingerprint = fingerprint;
+    const expanded = new Set([...document.querySelectorAll('#approval-history-list details[open]')].map(item => item.dataset.historyDetails));
+    const statuses = {
+        approved: ['Ждёт отправки', deviceIsOnline() ? 'Ответ согласован. Ожидает обработки на Mac.' : 'Ответ согласован и ждёт подключения Mac.'],
+        dispatching: ['Отправляется', 'Mac обрабатывает согласованную отправку. Подождите обновления статуса.'],
+        sent: ['Передано WhatsApp', 'WhatsApp принял отправку. Это не подтверждает доставку на телефон или прочтение.'],
+        failed: ['Не отправлено', 'Отправка не завершилась. Проверьте подключение и сам чат WhatsApp.'],
+        uncertain: ['Исход неизвестен', 'Не удалось подтвердить результат отправки. Проверьте чат WhatsApp перед повторными действиями.'],
+        rejected: ['Отклонено', 'Вы отклонили этот ответ. Агент его не отправит.'],
+        expired: ['Срок истёк', 'Срок согласования истёк. Ответ по этому согласованию не будет отправлен.']
+    };
+    $('approval-history-total').textContent = history.length ? `Последние ${history.length}` : '';
+    $('approval-history-list').innerHTML = history.length ? history.slice(0, state.historyVisible).map(item => {
+        const [label, detail] = statuses[item.status] || ['Статус уточняется', 'Результат ещё не подтверждён. Проверьте чат WhatsApp.'];
+        const timestamp = approvalActivityAt(item);
+        return `<article class="ws-decision"><div class="ws-decision-head"><h3>${escapeHtml(recipientLabel(item))}</h3><span class="ws-state ${item.status === 'sent' ? 'is-online' : ''}">${escapeHtml(label)}</span></div><p>${escapeHtml(detail)}</p><time datetime="${escapeHtml(timestamp || '')}">${escapeHtml(formatDate(timestamp, { hour: '2-digit', minute: '2-digit' }))}</time><details data-history-details="${escapeHtml(item.id)}"${expanded.has(item.id) ? ' open' : ''}><summary>Сообщение и ответ</summary><dl><dt>Входящее сообщение</dt><dd>${escapeHtml(item.original || 'Текст недоступен')}</dd><dt>Ответ</dt><dd>${escapeHtml(item.draft || 'Ответ не был подготовлен')}</dd></dl></details></article>`;
+    }).join('') : empty('↗', 'Здесь будет результат согласований', 'После вашего решения можно проверить, ожидает ли ответ отправки и что сообщил WhatsApp.');
+    $('approval-history-more').hidden = history.length <= state.historyVisible;
+}
+
 function renderApprovals() {
-    const approvals = (state.data?.approvals || []).filter(approval => ['pending', 'awaiting_approval'].includes(approval.status));
-    $('approval-badge').hidden = !approvals.length;
-    $('approval-badge').textContent = String(approvals.length);
-    $('mobile-approval-dot').hidden = !approvals.length;
-    $('approval-total').textContent = approvals.length ? `${approvals.length} ждут решения` : '';
+    const focused = document.activeElement?.matches('#approvals-list textarea') ? document.activeElement : null;
+    const focusedId = focused?.closest('[data-approval]')?.dataset.approval;
+    const selection = focused ? { start: focused.selectionStart, end: focused.selectionEnd, scrollTop: focused.scrollTop } : null;
+    if (focusedId) state.approvalDrafts.set(focusedId, focused.value);
+    const approvals = (state.data?.approvals || []).filter(actionableApproval);
+    const page = state.data?.approvalPage || { offset: 0, limit: 250, hasMore: false };
+    const more = page.hasMore || page.offset > 0;
+    $('approval-badge').hidden = !approvals.length && !more;
+    $('approval-badge').textContent = `${approvals.length}${more ? '+' : ''}`;
+    $('mobile-approval-dot').hidden = !approvals.length && !more;
+    $('approval-total').textContent = page.offset || page.hasMore ? `${approvals.length} на странице · от ${page.offset + 1}` : approvals.length ? `${approvals.length} ждут решения` : '';
+    $('approval-paging').hidden = !page.hasMore && !page.offset;
+    $('approval-previous').disabled = !page.offset;
+    $('approval-next').disabled = !page.hasMore;
+    $('approvals-list').setAttribute('aria-busy', String(page.offset !== state.approvalOffset));
     const reasons = { money: 'Платёж или личное финансовое решение', meeting: 'Личная встреча или срок', commitment: 'Обещание или договорённость', conflict: 'Личный конфликт', sensitive: 'Личные данные', uncertain: 'Нужно уточнить важные сведения', model_unavailable: 'Модель сейчас недоступна', rate_limit: 'Лимит автоматических ответов' };
-    $('approvals-list').innerHTML = approvals.length ? approvals.map(approval => `<article class="ws-approval" data-approval="${escapeHtml(approval.id)}"><div class="ws-approval-head"><div><strong>${escapeHtml(recipientLabel(approval))}</strong><span>${escapeHtml(reasons[approval.reason] || 'Новый ответ — нужно ваше решение')}</span></div><span class="ws-state">На согласовании</span></div><blockquote>${escapeHtml(approval.original || 'Входящее сообщение')}</blockquote><label for="approval-${escapeHtml(approval.id)}">Ответ агента — можно отредактировать<textarea id="approval-${escapeHtml(approval.id)}" maxlength="4000" rows="3">${escapeHtml(state.approvalDrafts.get(approval.id) ?? approval.draft ?? '')}</textarea></label><div class="ws-approval-actions"><button class="ws-text-button" type="button" data-approval-action="reject" data-id="${escapeHtml(approval.id)}">Не отправлять</button><button class="ws-primary" type="button" data-approval-action="approve" data-id="${escapeHtml(approval.id)}">Согласовать ответ <span aria-hidden="true">↗</span></button></div></article>`).join('') : empty('✓', 'Согласований пока нет', 'На общие вопросы AI отвечает сам. Здесь появятся личные встречи, платежи, обещания и другие вопросы, требующие вашего решения.');
+    const html = approvals.length ? approvals.map(approval => `<article class="ws-approval" data-approval="${escapeHtml(approval.id)}"><div class="ws-approval-head"><div><strong>${escapeHtml(recipientLabel(approval))}</strong><span>${escapeHtml(reasons[approval.reason] || 'Новый ответ — нужно ваше решение')}</span></div><span class="ws-state">На согласовании</span></div><blockquote>${escapeHtml(approval.original || 'Входящее сообщение')}</blockquote><label for="approval-${escapeHtml(approval.id)}">Ответ агента — можно отредактировать<textarea id="approval-${escapeHtml(approval.id)}" maxlength="4000" rows="3">${escapeHtml(state.approvalDrafts.get(approval.id) ?? approval.draft ?? '')}</textarea></label><div class="ws-approval-actions"><button class="ws-text-button" type="button" data-approval-action="reject" data-id="${escapeHtml(approval.id)}"${state.approvalActions.has(approval.id) ? ' disabled' : ''}>Не отправлять</button><button class="ws-primary" type="button" data-approval-action="approve" data-id="${escapeHtml(approval.id)}"${state.approvalActions.has(approval.id) ? ' disabled' : ''}>Согласовать ответ <span aria-hidden="true">↗</span></button></div></article>`).join('') : empty('✓', page.offset ? 'На этой странице больше нет согласований' : 'Согласований пока нет', page.offset ? 'Вернитесь на предыдущую страницу, чтобы проверить оставшиеся вопросы.' : 'На общие вопросы AI отвечает сам. Здесь появятся личные встречи, платежи, обещания и другие вопросы, требующие вашего решения.');
+    if ($('approvals-list').innerHTML !== html) $('approvals-list').innerHTML = html;
+    if (focusedId && approvals.some(item => item.id === focusedId)) {
+        const input = $(`approval-${focusedId}`);
+        input?.focus({ preventScroll: true });
+        input?.setSelectionRange(selection.start, selection.end);
+        if (input) input.scrollTop = selection.scrollTop;
+    } else if (focusedId) {
+        $('approval-title').focus({ preventScroll: true });
+        toast('Согласование завершено или его срок истёк. Черновик не отправлен.');
+    }
+    renderApprovalHistory();
 }
 
 function recipientLabel(approval) {
@@ -246,7 +333,8 @@ function renderQr() {
     if (!state.qrJobId || !$('qr-dialog').open) return;
     const job = (state.data?.jobs || []).find(item => item.id === state.qrJobId);
     const result = state.decrypted.get(state.qrJobId)?.result;
-    const connected = state.data?.device?.status?.whatsapp === 'connected' && deviceIsOnline();
+    const agent = (state.data?.agents || []).find(item => item.id === state.qrAgentId);
+    const connected = Boolean(agent && whatsAppAgentStatus(agent).connected);
     const fingerprint = JSON.stringify({ status: job?.status, result, connected });
     if (fingerprint === state.qrFingerprint) return;
     state.qrFingerprint = fingerprint;
@@ -277,13 +365,14 @@ function renderQr() {
 async function refresh({ quiet = false } = {}) {
     if (state.loading) return;
     state.loading = true;
+    const requestedOffset = state.approvalOffset;
     try {
         const data = await api();
         state.data = data.workspace || data;
+        for (const item of state.data.approvalHistory || []) state.approvalDecisions.delete(item.id);
         await decryptResults();
         renderDevice(); renderThoughts(); renderReminders(); renderAgents();
-        // Preserve an edited draft while it is being reviewed.
-        if (!document.activeElement?.matches('#approvals-list textarea')) renderApprovals();
+        renderApprovals();
         renderQr();
         $('workspace-alert').hidden = true;
     } catch (error) {
@@ -294,7 +383,10 @@ async function refresh({ quiet = false } = {}) {
             $('thought-results').innerHTML = empty('↻', 'Пространство пока не загрузилось', 'Попробуйте обновить данные. Ваши мысли не были отправлены.');
             $('island-status').textContent = 'Нет связи';
         }
-    } finally { state.loading = false; }
+    } finally {
+        state.loading = false;
+        if (requestedOffset !== state.approvalOffset) void refresh({ quiet: true });
+    }
 }
 
 async function submitThought(event) {
@@ -347,12 +439,29 @@ function openAgent(id) {
     $('agent-type').disabled = Boolean(agent);
     $('agent-type').querySelector('option[value="personal"]').disabled = !agent && (state.data?.agents || []).some(item => item.type === 'personal');
     $('agent-rules').value = agent?.rules || '';
-    $('agent-examples').value = typeof agent?.examples === 'string' ? agent.examples : JSON.stringify(agent?.examples || '');
+    $('agent-examples').value = typeof agent?.examples === 'string' ? agent.examples : agent?.examples ? JSON.stringify(agent.examples) : '';
     $('agent-enabled').checked = agent?.enabled || false;
     $('agent-dialog-title').textContent = agent ? 'Настроить агента' : 'Создать агента';
     $('agent-form-feedback').textContent = '';
+    updateAgentActivation();
     openDialog($('agent-dialog'));
     $('agent-name').focus();
+}
+
+function updateAgentActivation() {
+    const id = $('agent-id').value;
+    const whatsapp = $('agent-type').value === 'whatsapp';
+    const other = enabledWhatsAppAgents().find(agent => agent.id !== id);
+    const current = (state.data?.agents || []).find(agent => agent.id === id);
+    const newlyCreated = whatsapp && !id;
+    const blocked = whatsapp && !current?.enabled && Boolean(other);
+    $('agent-enabled').disabled = newlyCreated || blocked;
+    if (newlyCreated || blocked) $('agent-enabled').checked = false;
+    $('agent-enabled-label').textContent = newlyCreated ? 'Создать выключенным' : 'Включить агента';
+    $('agent-activation-hint').textContent = newlyCreated
+        ? 'Новый WhatsApp-агент сохранится выключенным. Затем включите его в настройках. Для одного личного номера работает один агент.'
+        : blocked ? `Сейчас включён «${other.name}». Сначала остановите его ответы, затем включите этого агента.`
+            : whatsapp ? 'Для одного личного номера можно включить одного WhatsApp-агента. Подключение на Mac настраивается отдельно.' : 'Помощник работает с Obsidian только на вашем Mac.';
 }
 
 async function saveAgent(event) {
@@ -361,13 +470,13 @@ async function saveAgent(event) {
     button.disabled = true;
     const id = $('agent-id').value;
     const agent = { name: $('agent-name').value.trim(), type: $('agent-type').value, rules: $('agent-rules').value.trim(), examples: $('agent-examples').value.trim(), enabled: $('agent-enabled').checked };
+    if (!id && agent.type === 'whatsapp') agent.enabled = false;
     try {
-        const result = await api({ action: id ? 'update_agent' : 'create_agent', ...(id ? { id } : {}), agent });
-        if (!id && agent.type === 'whatsapp' && agent.enabled && result.agent?.id) {
-            await api({ action: 'update_agent', id: result.agent.id, agent });
-        }
+        const other = enabledWhatsAppAgents().find(item => item.id !== id);
+        if (agent.type === 'whatsapp' && agent.enabled && other) throw new Error(`Сначала остановите ответы агента «${other.name}». На один личный номер можно включить одного WhatsApp-агента.`);
+        await api({ action: id ? 'update_agent' : 'create_agent', ...(id ? { id } : {}), agent });
         closeDialog($('agent-dialog'));
-        toast(id ? 'Правила агента сохранены.' : 'Агент создан. Настройте подключение, чтобы он начал работать.');
+        toast(id ? 'Настройки агента сохранены.' : agent.type === 'whatsapp' ? 'Агент создан выключенным. Включите его в настройках, когда будете готовы.' : 'Личный агент создан.');
         await refresh();
     } catch (error) { $('agent-form-feedback').textContent = error.message; }
     finally { button.disabled = false; }
@@ -399,6 +508,11 @@ async function copyPairing() {
 }
 
 async function connectWhatsApp(agentId, button) {
+    const agent = (state.data?.agents || []).find(item => item.id === agentId);
+    if (!agent?.enabled || enabledWhatsAppAgents().length !== 1) {
+        toast('Сначала включите одного WhatsApp-агента в его настройках.');
+        return;
+    }
     button.disabled = true;
     state.qrAgentId = agentId;
     state.qrJobId = null;
@@ -415,17 +529,56 @@ async function connectWhatsApp(agentId, button) {
     finally { button.disabled = false; }
 }
 
+async function pauseWhatsApp(agentId, button) {
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+        await api({ action: 'update_agent', id: agentId, agent: { enabled: false } });
+        const agent = (state.data?.agents || []).find(item => item.id === agentId);
+        if (agent) agent.enabled = false;
+        renderAgents();
+        toast('Агент выключен в кабинете. Mac остановит ответы при следующей связи. Включить его снова можно в настройках.');
+        await refresh();
+    } catch (error) { toast(error.message); button.disabled = false; }
+}
+
 async function handleApproval(action, id, button) {
+    if (state.approvalActions.has(id)) return;
+    const current = (state.data?.approvals || []).find(item => item.id === id);
+    if (!current || !actionableApproval(current)) {
+        toast('Этот ответ уже обработан или срок согласования истёк. Черновик не отправлен.');
+        renderApprovals();
+        return;
+    }
     const article = button.closest('[data-approval]');
     const draft = article.querySelector('textarea').value.trim();
     if (action === 'approve' && !draft) { toast('Введите ответ перед согласованием.'); return; }
+    state.approvalActions.add(id);
     article.querySelectorAll('button').forEach(item => { item.disabled = true; });
     try {
-        await api({ action, id, ...(action === 'approve' ? { draft } : {}) });
+        const result = await api({ action, id, ...(action === 'approve' ? { draft } : {}) });
+        state.approvalDecisions.set(id, { ...current, ...result.approval, status: result.approval?.status || (action === 'approve' ? 'approved' : 'rejected'), ...(action === 'approve' ? { draft } : {}) });
         state.approvalDrafts.delete(id);
         toast(action === 'approve' ? 'Ответ согласован. Mac отправит его, когда будет на связи.' : 'Ответ отклонён. Агент его не отправит.');
+        renderApprovals();
         await refresh();
-    } catch (error) { toast(error.message); article.querySelectorAll('button').forEach(item => { item.disabled = false; }); }
+    } catch (error) {
+        state.approvalDrafts.set(id, draft);
+        toast(error.message);
+    } finally {
+        state.approvalActions.delete(id);
+        renderApprovals();
+    }
+}
+
+async function changeApprovalPage(direction) {
+    const page = state.data?.approvalPage || { offset: 0, limit: 250, hasMore: false };
+    if (state.approvalOffset !== page.offset || direction > 0 && !page.hasMore || direction < 0 && !page.offset) return;
+    state.approvalOffset = Math.max(0, page.offset + direction * page.limit);
+    $('approval-previous').disabled = true;
+    $('approval-next').disabled = true;
+    $('approvals-list').setAttribute('aria-busy', 'true');
+    await refresh();
 }
 
 function bindEvents() {
@@ -460,6 +613,7 @@ function bindEvents() {
         });
     });
     $('agent-form').addEventListener('submit', saveAgent);
+    $('agent-type').addEventListener('change', updateAgentActivation);
     $('pairing-button').addEventListener('click', createPairing);
     $('copy-pairing-button').addEventListener('click', copyPairing);
     $('agents-list').addEventListener('click', event => {
@@ -468,12 +622,7 @@ function bindEvents() {
         const connect = event.target.closest('[data-connect-whatsapp]');
         if (connect) connectWhatsApp(connect.dataset.connectWhatsapp, connect);
         const pause = event.target.closest('[data-pause-whatsapp]');
-        if (pause) {
-            pause.disabled = true;
-            enqueueEncrypted('whatsapp_disconnect', { intent: 'whatsapp_disconnect', agentId: pause.dataset.pauseWhatsapp })
-                .then(() => { toast('Запрос на остановку отправлен вашему Mac.'); return refresh(); })
-                .catch(error => { toast(error.message); pause.disabled = false; });
-        }
+        if (pause) pauseWhatsApp(pause.dataset.pauseWhatsapp, pause);
     });
     $('approvals-list').addEventListener('click', event => {
         const button = event.target.closest('[data-approval-action]');
@@ -484,6 +633,9 @@ function bindEvents() {
         const article = event.target.closest('[data-approval]');
         if (article) state.approvalDrafts.set(article.dataset.approval, event.target.value);
     });
+    $('approval-previous').addEventListener('click', () => changeApprovalPage(-1));
+    $('approval-next').addEventListener('click', () => changeApprovalPage(1));
+    $('approval-history-more').addEventListener('click', () => { state.historyVisible += 20; renderApprovalHistory(); });
     $('reminders-list').addEventListener('click', async event => {
         const button = event.target.closest('[data-cancel-reminder]');
         if (!button) return;
@@ -498,7 +650,7 @@ function bindEvents() {
             if (!response.ok) throw new Error('Не удалось выйти. Попробуйте ещё раз.');
             try { sessionStorage.removeItem(REPLY_KEY_STORAGE); } catch { /* Storage may be disabled. */ }
             try { localStorage.removeItem('auth_token'); localStorage.removeItem('auth_email'); } catch { /* Storage may be disabled. */ }
-            state.keys = null; state.decrypted.clear(); state.approvalDrafts.clear(); state.pendingThought = null;
+            state.keys = null; state.decrypted.clear(); state.approvalDrafts.clear(); state.approvalDecisions.clear(); state.pendingThought = null;
             location.assign('/login.html');
         } catch (error) { toast(error.message); $('logout-button').disabled = false; }
     });
