@@ -3,13 +3,14 @@ import { generateEnvelopeKeyPair, encryptEnvelope, decryptEnvelope } from '../li
 const API = '/api/hub/workspace';
 const REPLY_KEY_STORAGE = 'shaikh-private-reply-key-v1';
 const SELF_CHECK_STORAGE = 'shaikh-whatsapp-self-check-v1';
-const VIEWS = new Set(['thoughts', 'reminders', 'agents', 'mac']);
+const VIEWS = new Set(['thoughts', 'reminders', 'agents', 'chats', 'mac']);
 const POLL_MS = 6000;
 const state = { data: null, keys: null, decrypted: new Map(), approvalDrafts: new Map(), approvalActions: new Set(), approvalDecisions: new Map(), approvalOffset: 0, historyVisible: 20, historyFingerprint: '', pendingThought: null, view: 'thoughts', loading: false, sending: false, clarification: null, pairing: null, qrJobId: null, qrAgentId: null, qrFingerprint: '', selfCheck: null, selfCheckBusy: false, selfCheckFingerprint: '', user: null };
 const $ = id => document.getElementById(id);
 let toastTimer;
 let pollingTimer;
 let previousDialogFocus;
+let inboxController;
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -57,6 +58,7 @@ async function api(body) {
     });
     const data = await response.json().catch(() => ({}));
     if (response.status === 401) {
+        inboxController?.destroy();
         location.assign('/login.html?next=workspace.html');
         throw new Error('Войдите в аккаунт, чтобы продолжить.');
     }
@@ -246,6 +248,7 @@ function focusSelfCheckApproval() {
 function showView(view, updateHash = true) {
     if (!VIEWS.has(view)) view = 'thoughts';
     state.view = view;
+    inboxController?.setActive(view === 'chats');
     document.querySelectorAll('.ws-view').forEach(section => { section.hidden = section.id !== `view-${view}`; });
     document.querySelectorAll('[data-view]').forEach(link => {
         const active = link.dataset.view === view;
@@ -796,11 +799,12 @@ function bindEvents() {
             try { sessionStorage.removeItem(REPLY_KEY_STORAGE); sessionStorage.removeItem(SELF_CHECK_STORAGE); } catch { /* Storage may be disabled. */ }
             try { localStorage.removeItem('auth_token'); localStorage.removeItem('auth_email'); } catch { /* Storage may be disabled. */ }
             state.keys = null; state.decrypted.clear(); state.approvalDrafts.clear(); state.approvalDecisions.clear(); state.pendingThought = null; state.selfCheck = null;
+            inboxController?.destroy();
             location.assign('/login.html');
         } catch (error) { toast(error.message); $('logout-button').disabled = false; }
     });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh({ quiet: true }); });
-    window.addEventListener('pagehide', () => { clearInterval(pollingTimer); });
+    window.addEventListener('pagehide', () => { clearInterval(pollingTimer); inboxController?.destroy(); });
 }
 
 async function init() {
@@ -815,6 +819,15 @@ async function init() {
         restoreSelfCheck();
         $('account-name').textContent = state.user?.name || state.user?.login || 'Мой кабинет';
         await refresh();
+        try {
+            const { mountWhatsAppInbox } = await import('./whatsapp-inbox.js?v=20261031c');
+            inboxController = mountWhatsAppInbox({ accountId: selfCheckAccount(), notice: toast, onAuth: () => location.assign('/login.html?next=workspace.html'), onDecision: () => refresh({ quiet: true }) });
+            inboxController.setActive(state.view === 'chats');
+        } catch {
+            $('inbox-error-copy').textContent = 'Не удалось открыть чаты. Обновите страницу и попробуйте ещё раз.';
+            $('inbox-error').hidden = false;
+            $('inbox-retry').onclick = () => location.reload();
+        }
         pollingTimer = setInterval(() => { if (!document.hidden) refresh({ quiet: true }); }, POLL_MS);
     } catch (error) { showError(error); }
 }

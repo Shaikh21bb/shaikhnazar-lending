@@ -4,6 +4,7 @@ import { ensurePersonalAgent, personalTelegramToken } from './personal.js';
 import { encryptEnvelope } from '../../../lib/private-envelope.mjs';
 import { generateWorkspaceWhatsApp } from './workspace-whatsapp.js';
 import { personalWhatsAppJid } from '../../../lib/whatsapp-policy.mjs';
+import { ingestWhatsAppInbox } from './whatsapp-inbox.js';
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
@@ -347,6 +348,7 @@ async function notifyJob(root, device, body) {
 export async function workspaceDeviceMutation(context, body) {
     const { device, root } = context;
     switch (body.action) {
+        case 'whatsapp_inbox': return ingestWhatsAppInbox(context, body);
     case 'telegram_credentials': {
         if (!device || device.root_id !== root.id || device.revoked_at) throw failure('Подключение Mac отозвано.', 401);
         const currentDevice = await workspaceDevice(root.id);

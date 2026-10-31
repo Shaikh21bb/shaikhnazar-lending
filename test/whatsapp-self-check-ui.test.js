@@ -208,8 +208,10 @@ test('the linked important result follows pending, local approval and server ter
 
 test('self-check asset versions match and the page describes its limited verification scope', async () => {
     const html = await readFile(new URL('../workspace.html', import.meta.url), 'utf8');
-    assert.match(html, /workspace\.css\?v=20261031b/);
-    assert.match(html, /workspace\.js\?v=20261031b/);
+    const cssVersion = html.match(/workspace\.css\?v=([a-z0-9]+)/)?.[1];
+    const jsVersion = html.match(/workspace\.js\?v=([a-z0-9]+)/)?.[1];
+    assert.ok(cssVersion, 'Workspace styles must have a cache version');
+    assert.equal(jsVersion, cssVersion, 'Workspace script and styles must ship together');
     assert.match(html, /два теста в вашем собственном чате/i);
     assert.match(html, /Приём сообщений от других людей проверяется отдельно/);
 });

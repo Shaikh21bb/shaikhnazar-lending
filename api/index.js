@@ -15,6 +15,7 @@ import hubImport from '../server/api/hub/import.js';
 import hubOverview from '../server/api/hub/overview.js';
 import hubRecords from '../server/api/hub/records.js';
 import hubWorkspace from '../server/api/hub/workspace.js';
+import hubWhatsAppInbox from '../server/api/hub/whatsapp-inbox.js';
 import hubDevice from '../server/api/hub/device.js';
 import hubRemind from '../server/api/hub/remind.js';
 import legacyData from '../server/api/legacy/data.js';
@@ -52,6 +53,7 @@ const routes = new Map([
     ['hub/overview', hubOverview],
     ['hub/records', hubRecords],
     ['hub/workspace', hubWorkspace],
+    ['hub/whatsapp-inbox', hubWhatsAppInbox],
     ['hub/device', hubDevice],
     ['hub/remind', hubRemind],
     ['legacy/data', legacyData],

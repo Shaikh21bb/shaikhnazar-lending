@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="./css/client-glass.css?v=20261027c">
-    <link rel="stylesheet" href="./css/workspace.css?v=20261031b">
+    <link rel="stylesheet" href="./css/workspace.css?v=20261031c">
 </head>
 <body class="client-page workspace-page">
     <a class="ws-skip" href="#workspace-main">К содержанию</a>
@@ -35,6 +35,7 @@
                 <a href="#thoughts" data-view="thoughts" class="is-active" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-4 12.74V19h8v-3.26A7 7 0 0 0 12 3ZM9 22h6M9 10h6M12 7v6"/></svg><span>Мысли<small>Из головы — в Obsidian</small></span></a>
                 <a href="#reminders" data-view="reminders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span>Напоминания<small>В нужный момент</small></span><b id="reminder-badge" class="ws-nav-badge" hidden>0</b></a>
                 <a href="#agents" data-view="agents"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v12H5zM12 3v4M8 12h.01M16 12h.01M9 16h6M2 11v4M22 11v4"/></svg><span>Мои агенты<small>Ваши правила и стиль</small></span><b id="approval-badge" class="ws-nav-badge" hidden>0</b></a>
+                <a href="#chats" data-view="chats"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2v-9.5A8.5 8.5 0 0 1 10.5 4H13M7 10h7M7 14h10M17 3h4v4"/></svg><span>Чаты<small>Переписка WhatsApp</small></span></a>
                 <a href="#mac" data-view="mac"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H4zM2 20h20M9 16v4M15 16v4"/></svg><span>Мой Mac<small>Приватное ядро</small></span></a>
             </nav>
             <a class="ws-hub-link" href="/hub.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5-7 7 7 7M2 12h20"/></svg><span>Agent Hub<small>Календарь и финансы</small></span></a>
@@ -86,6 +87,21 @@
                 <div class="ws-whatsapp-note client-glass-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.66 15L2 22l5-1.34A10 10 0 1 0 12 2ZM8 8c0 4 4 8 8 8M8 8l2 2-1 2M16 16l-2-2-2 1"/></svg><div><strong>Ваш WhatsApp остаётся с вами</strong><p>Номер и обычное приложение сохраняются. Для тестового подключения понадобится ваш QR-скан с телефона. Агент работает, пока Mac включён и не спит. Неофициальное подключение несёт риск блокировки номера.</p></div></div>
             </section>
 
+            <section class="ws-view" id="view-chats" aria-labelledby="chats-title" hidden>
+                <div class="ws-heading"><div><span class="ws-label">Ваш WhatsApp · ваш контроль</span><h1 id="chats-title">В каждом разговоре.</h1><p>Входящие, ответы агента и согласования — рядом. Только личные чаты.</p></div><span class="ws-private-label">Группы не записываются</span></div>
+                <p class="ws-inbox-status" id="inbox-status" role="status">Личные чаты · группы не записываются</p>
+                <div class="ws-inbox-error" id="inbox-error" role="alert" hidden><p id="inbox-error-copy"></p><button type="button" class="ws-secondary" id="inbox-retry">Повторить</button></div>
+                <div class="ws-inbox-layout client-glass-panel" id="inbox-layout" aria-busy="false">
+                    <section class="ws-inbox-list-pane" aria-labelledby="inbox-list-title">
+                        <div class="ws-inbox-list-heading"><h2 id="inbox-list-title">Личные чаты</h2><label class="ws-inbox-search" for="inbox-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><span class="ws-inbox-sr-only">Найти по имени или номеру</span><input id="inbox-search" type="search" placeholder="Имя или номер" maxlength="120" autocomplete="off" spellcheck="false"></label></div>
+                        <div id="inbox-thread-list" class="ws-inbox-thread-list"><div class="ws-inbox-empty"><p>Загружаю чаты…</p></div></div>
+                        <nav class="ws-inbox-thread-paging" id="inbox-thread-paging" aria-label="Страницы чатов" hidden><button type="button" class="ws-text-button" id="inbox-previous" disabled>← Назад</button><button type="button" class="ws-text-button" id="inbox-next" disabled>Далее →</button></nav>
+                    </section>
+                    <section class="ws-inbox-conversation" id="inbox-conversation" aria-label="Выбранный разговор"><div class="ws-inbox-empty ws-inbox-welcome"><span aria-hidden="true">↗</span><h2>Разговоры под вашим контролем.</h2><p>Выберите чат, чтобы увидеть сообщения и ответы агента.</p></div></section>
+                </div>
+                <p class="ws-footnote" id="inbox-capture-since">История начнёт записываться после запуска WhatsApp на Mac. Старые переписки не загружаются.</p>
+            </section>
+
             <section class="ws-view" id="view-mac" aria-labelledby="mac-title" hidden>
                 <div class="ws-heading"><div><span class="ws-label">Всё личное — рядом с вами</span><h1 id="mac-title">Ваш Mac — ядро.</h1><p>Локальный помощник читает Obsidian и обрабатывает мысли на вашем компьютере.</p></div><span class="ws-private-label">Без платных сервисов</span></div>
                 <div class="ws-mac-grid">
@@ -97,13 +113,13 @@
         </main>
     </div>
 
-    <nav class="ws-dock" aria-label="Разделы на телефоне"><a href="#thoughts" data-view="thoughts" class="is-active" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-4 12.74V19h8v-3.26A7 7 0 0 0 12 3ZM9 22h6"/></svg><span>Мысли</span></a><a href="#reminders" data-view="reminders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span>Напомнить</span></a><a href="#agents" data-view="agents"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v12H5zM12 3v4M8 12h.01M16 12h.01M9 16h6"/></svg><span>Агенты</span><i id="mobile-approval-dot" hidden></i></a><a href="#mac" data-view="mac"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H4zM2 20h20M9 16v4M15 16v4"/></svg><span>Мой Mac</span></a></nav>
+    <nav class="ws-dock" aria-label="Разделы на телефоне"><a href="#thoughts" data-view="thoughts" class="is-active" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-4 12.74V19h8v-3.26A7 7 0 0 0 12 3ZM9 22h6"/></svg><span>Мысли</span></a><a href="#reminders" data-view="reminders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span>Напомнить</span></a><a href="#agents" data-view="agents"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v12H5zM12 3v4M8 12h.01M16 12h.01M9 16h6"/></svg><span>Агенты</span><i id="mobile-approval-dot" hidden></i></a><a href="#chats" data-view="chats"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2v-9.5A8.5 8.5 0 0 1 10.5 4H13M7 10h7M7 14h10M17 3h4v4"/></svg><span>Чаты</span></a><a href="#mac" data-view="mac"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H4zM2 20h20M9 16v4M15 16v4"/></svg><span>Мой Mac</span></a></nav>
 
     <dialog class="ws-dialog" id="agent-dialog" aria-labelledby="agent-dialog-title"><form id="agent-form"><div class="ws-dialog-heading"><div><span class="ws-label">Ваш новый помощник</span><h2 id="agent-dialog-title">Создать агента</h2></div><button class="ws-icon-button" type="button" id="close-agent-dialog" aria-label="Закрыть форму">×</button></div><input type="hidden" id="agent-id"><label for="agent-name">Имя агента<input id="agent-name" name="name" maxlength="80" placeholder="Например, мой ассистент WhatsApp" required></label><label for="agent-type">Задача<select id="agent-type" name="type"><option value="whatsapp">Отвечать за меня в WhatsApp</option><option value="personal">Помогать с Obsidian на Mac</option></select></label><label for="agent-rules">Как ему действовать<textarea id="agent-rules" name="rules" rows="4" maxlength="6000" placeholder="Пиши кратко и дружелюбно. На «ты». Не придумывай факты о моих планах…"></textarea></label><label for="agent-examples">Ваши примеры ответов<textarea id="agent-examples" name="examples" rows="4" maxlength="12000" placeholder="Сообщение: Как тебя зовут?&#10;Мой ответ: Бекжан.&#10;&#10;Сообщение: Чем ты занимаешься?&#10;Мой ответ: Делаю сайты и помогаю бизнесу с автоматизацией."></textarea></label><p class="ws-form-hint">Записывайте пары с новой строки: «Сообщение: …», затем «Мой ответ: …». Они задают ваш стиль и факты о вас. На общие вопросы AI отвечает сам; личные решения передаёт вам и предупреждает об этом собеседника. В группах не отвечает.</p><label class="ws-checkbox"><input id="agent-enabled" type="checkbox" aria-describedby="agent-activation-hint"><span id="agent-enabled-label">Включить агента</span></label><p class="ws-form-hint" id="agent-activation-hint" role="status">Для одного личного номера работает один WhatsApp-агент.</p><p class="ws-form-feedback" id="agent-form-feedback" role="status"></p><button class="ws-primary" type="submit" id="save-agent-button">Сохранить агента</button></form></dialog>
     <dialog class="ws-dialog ws-qr-dialog" id="qr-dialog" aria-labelledby="qr-title"><div class="ws-dialog-heading"><div><span class="ws-label">Связать устройство</span><h2 id="qr-title">WhatsApp на вашем Mac</h2></div><button class="ws-icon-button" type="button" id="close-qr-dialog" aria-label="Закрыть QR-код">×</button></div><div id="qr-content" class="ws-qr-content"></div><p class="ws-form-hint">В WhatsApp на телефоне откройте «Связанные устройства» → «Привязка устройства» и отсканируйте код самостоятельно. Если код истёк, запросите новый.</p><button class="ws-secondary ws-qr-refresh" id="refresh-qr-button" type="button">Обновить QR-код</button></dialog>
     <div class="ws-toast" id="workspace-toast" role="status" aria-live="polite" hidden></div>
     <noscript><p class="ws-noscript">Для работы личного пространства нужен JavaScript. Включите его в настройках браузера.</p></noscript>
     <script src="./js/client-glass.js?v=20261027c" defer></script>
-    <script type="module" src="./js/workspace.js?v=20261031b"></script>
+    <script type="module" src="./js/workspace.js?v=20261031c"></script>
 </body>
 </html>

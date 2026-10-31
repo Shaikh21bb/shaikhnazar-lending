@@ -8,6 +8,7 @@ import { approvalReason, assessDraft, explicitOwnerReply, simpleGreeting, person
 import { readPrivateJSON, writePrivateJSON } from './runtime.mjs';
 import { LocalWhatsAppModel } from './whatsapp-model.mjs';
 import { ignoreWhatsAppTransportJid, whatsappMessageText, whatsappDiagnosticLogger } from './whatsapp-message.mjs';
+import { createWhatsAppInbox, inboxId, inboxUuid } from './whatsapp-inbox.mjs';
 
 const requireWorker = createRequire(new URL('../worker/package.json', import.meta.url));
 
@@ -31,6 +32,13 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     const activePath = path.join(directory, 'active.json');
     await fs.mkdir(directory, { recursive: true, mode: 0o700 });
     await fs.chmod(directory, 0o700);
+    // A re-pair creates a different device scope. Never migrate a previous
+    // account's pending messages into the newly authenticated device token.
+    const inboxDeviceId = inboxUuid(config.deviceId)?.toLowerCase();
+    const inbox = inboxDeviceId ? await createWhatsAppInbox({
+        filename: path.join(directory, `inbox-${inboxDeviceId}.json`), deviceId: inboxDeviceId, request, now, count
+    }) : { has: () => false, event: () => undefined, incoming: () => null,
+        record: async () => {}, patch: async () => {}, flush: async () => {}, stop: async () => {} };
     const journal = await readPrivateJSON(journalPath, { inbound: {}, approvals: {} });
     journal.approvalOutbox ||= {};
     const recoverLegacyDeliveryAcks = !journal.deliveryOutbox;
@@ -122,6 +130,37 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         return connectionAllowed && !intentional && state === 'connected' && socket === expectedSocket
             && current?.id === agent.id && current.rules === agent.rules && current.examples === agent.examples;
     };
+    // Observation uses its own durable queue. Cloud synchronization is never on
+    // the critical path for deciding or sending a WhatsApp reply.
+    const observe = async operation => {
+        try { await operation(); } catch { count('inbox.captureFailed'); }
+        void inbox.flush();
+    };
+    const patchIncoming = (id, changes) => observe(() => inbox.patch(id, changes));
+    const selfCheckOrigin = (externalId, approvalId) => Object.values(journal.selfChecks)
+        .some(check => externalId && check.externalId === externalId || approvalId && check.approvalId === approvalId) ? 'self_check' : 'live';
+    async function sendObserved(sendingSocket, recipient, text, { id, agentId, externalId, approvalId = null, actor = 'agent', origin = 'live' }) {
+        const expectedAgent = activeAgent();
+        await observe(() => inbox.record({ id, recipient, contactName: null, agentId, direction: 'outgoing', actor,
+            kind: 'text', text, status: 'sending', occurredAt: new Date(now()).toISOString(), approvalId,
+            replyToId: inbox.has(externalId) ? externalId : null, origin, reason: null }));
+        // Persisting history adds an async boundary after callers' policy gate.
+        // Re-check that same agent/socket immediately before the external send.
+        if (!expectedAgent || expectedAgent.id !== agentId || !stillActive(expectedAgent, sendingSocket)) {
+            await observe(() => inbox.patch(id, { status: 'failed', reason: 'inactive' }));
+            const error = new Error('Отправка остановлена вместе с агентом.');
+            error.whatsappNotAttempted = true;
+            throw error;
+        }
+        try {
+            const result = await sendingSocket.sendMessage(recipient, { text });
+            await observe(() => inbox.patch(id, { status: 'sent' }));
+            return result;
+        } catch (error) {
+            await observe(() => inbox.patch(id, { status: 'uncertain', reason: 'delivery_unknown' }));
+            throw error;
+        }
+    }
 
     async function flushApprovalOutbox() {
         for (const [id, payload] of Object.entries(journal.approvalOutbox)) {
@@ -136,6 +175,8 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                     && (!selfChecks.length || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(response.approval.id));
                 if (confirmed) {
                     for (const check of selfChecks) { check.approvalId = response.approval.id; check.approvalSaved = true; }
+                    await patchIncoming(id, { status: 'awaiting_approval', approvalId: response.approval.id });
+                    await patchIncoming(inboxId(`self-check-question:${id}`), { approvalId: response.approval.id });
                 }
                 if (notice?.status === 'waiting') {
                     if (confirmed && response.approval.status === 'pending') {
@@ -169,7 +210,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     }
 
     async function flushHandoffs() {
-        for (const notice of Object.values(journal.handoffs)) {
+        for (const [externalId, notice] of Object.entries(journal.handoffs)) {
             if (notice.status !== 'pending') continue;
             if (!personalJid(notice.recipient) || notice.expiresAt <= now()) {
                 notice.status = 'cancelled'; await persist(); continue;
@@ -193,11 +234,13 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                     await persist(); return;
                 }
                 try {
-                    await sendingSocket.sendMessage(notice.recipient, { text: notice.text });
+                    await sendObserved(sendingSocket, notice.recipient, notice.text, { id: inboxId(`handoff:${externalId}`),
+                        agentId: agent.id, externalId, approvalId: notice.approvalId, actor: 'system',
+                        origin: selfCheckOrigin(externalId, notice.approvalId) });
                     notice.status = 'sent'; notice.sentAt = now(); counts.push(now());
                     remember(conversation(agent, notice.recipient), 'assistant', notice.text);
                     count('handoff.sent');
-                } catch { notice.status = 'uncertain'; count('handoff.uncertain'); }
+                } catch (error) { notice.status = error.whatsappNotAttempted ? 'cancelled' : 'uncertain'; count(`handoff.${notice.status}`); }
                 await persist();
             })();
             handoffFlights.set(notice, sending);
@@ -216,6 +259,12 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             text: approvalNotice(whatsappMessageText(message.message)), createdAt: now(), expiresAt: now() + 10 * 60_000, status: 'waiting' };
         if (!synthetic) journal.inbound[externalId] = 'approval';
         await persist();
+        if (synthetic) {
+            await observe(() => inbox.record({ id: inboxId(`self-check-question:${externalId}`), recipient: message.key.remoteJid,
+                contactName: null, agentId: agent.id, direction: 'system', actor: 'system', kind: 'text',
+                text: whatsappMessageText(message.message), status: 'awaiting_approval', occurredAt: new Date(now()).toISOString(),
+                approvalId: null, replyToId: null, origin: 'self_check', reason }));
+        } else await patchIncoming(externalId, { status: 'awaiting_approval', reason });
         await flushApprovalOutbox();
         await flushHandoffs();
     }
@@ -282,9 +331,10 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                     throw new Error('Самопроверка приостановлена вместе с агентом.');
                 }
                 try {
-                    await checkSocket.sendMessage(check.recipient, { text: `[Самопроверка SHAIKH]\n${checked.draft}` });
+                    await sendObserved(checkSocket, check.recipient, `[Самопроверка SHAIKH]\n${checked.draft}`, {
+                        id: inboxId(`self-check-answer:${check.externalId}`), agentId: agent.id, origin: 'self_check' });
                     check.ordinaryStatus = 'sent'; counts.push(now()); count('selfCheck.sent');
-                } catch { check.ordinaryStatus = 'uncertain'; count('selfCheck.uncertain'); }
+                } catch (error) { check.ordinaryStatus = error.whatsappNotAttempted ? 'pending' : 'uncertain'; count(`selfCheck.${check.ordinaryStatus}`); }
                 await persist();
             }
         }
@@ -336,17 +386,30 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     }
 
     async function receive(message, admission) {
+        // The admission snapshot is persisted before the slower model queue.
+        // Its record survives even when the owner pauses while this work waits.
+        if (admission.capture) await admission.capture.saved;
+        const capturedId = admission.capture?.id;
+        if (admission.capture?.duplicate) { count('ignored.duplicate'); return; }
+        // Scoped capture admits only new human arrivals. Do not answer an old
+        // phone import or control event that has no corresponding inbox source.
+        // Legacy adapters without a pairing scope retain their existing gates.
+        if (inboxDeviceId && !capturedId) { count('ignored.inboxSource'); return; }
         const agent = activeAgent();
         if (!agent || agent.id !== admission.agentId || socket !== admission.socket
-            || !stillActive(agent, admission.socket)) { count('ignored.inactive'); return; }
+            || !stillActive(agent, admission.socket)) { count('ignored.inactive'); await patchIncoming(capturedId, { status: 'skipped', reason: 'inactive' }); return; }
         if (message.key?.fromMe) { count('ignored.own'); return; }
         if (!personalJid(message.key?.remoteJid)) { count('ignored.nonPersonal'); return; }
         const receivingSocket = admission.socket;
         const text = whatsappMessageText(message.message);
-        if (typeof text !== 'string' || !text.trim() || text.length > 8000) { count('ignored.unsupportedText'); return; }
-        if (!admission.fresh) { count('ignored.timestamp'); return; }
+        if (typeof text !== 'string' || !text.trim() || text.length > 8000) {
+            count('ignored.unsupportedText'); await patchIncoming(capturedId, { status: 'skipped',
+                reason: text?.length > 8000 || inbox.event(capturedId)?.reason === 'too_long' ? 'too_long' : 'unsupported_media' }); return;
+        }
+        if (!admission.fresh) { count('ignored.timestamp'); await patchIncoming(capturedId, { status: 'skipped', reason: 'stale' }); return; }
         const externalId = createHash('sha256').update(`${message.key.remoteJid}:${message.key.id}`).digest('hex');
         if (!message.key.id || journal.inbound[externalId]) { count('ignored.duplicate'); return; }
+        await patchIncoming(capturedId, { status: 'processing' });
         count('received.personalText');
         const chat = conversation(agent, message.key.remoteJid);
         const last = chat.history.findLast(turn => turn.role === 'assistant');
@@ -356,6 +419,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             remember(chat, 'user', text);
             journal.inbound[externalId] = 'acknowledged';
             await persist();
+            await patchIncoming(capturedId, { status: 'skipped', reason: 'acknowledgement' });
             return;
         }
         const checkedContext = importantFollowup(text);
@@ -365,7 +429,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         count('decision.started');
         const { checked } = await generateDraft(agent, text, history);
         if (!checkedContext && importantFollowup('', checked.draft)) await refreshImportant(agent, message.key.remoteJid, chat);
-        if (!stillActive(agent, receivingSocket)) return;
+        if (!stillActive(agent, receivingSocket)) { await patchIncoming(capturedId, { status: 'skipped', reason: 'inactive' }); return; }
         remember(chat, 'user', text);
         const importantContext = chat.pendingImportant?.expiresAt > now() && importantFollowup(text, checked.draft) ? chat.pendingImportant.reason : null;
         const reason = gate || importantContext || checked.reason;
@@ -381,6 +445,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             journal.inbound[externalId] = 'rate_limited';
             count('decision.rateLimited');
             await persist();
+            await patchIncoming(capturedId, { status: 'skipped', reason: 'rate_limited' });
             return;
         }
         // Persist before the external send. An ambiguous interruption is not
@@ -390,16 +455,20 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         if (!stillActive(agent, receivingSocket)) {
             journal.inbound[externalId] = 'cancelled';
             await persist();
+            await patchIncoming(capturedId, { status: 'skipped', reason: 'inactive' });
             return;
         }
         try {
-            await receivingSocket.sendMessage(message.key.remoteJid, { text: checked.draft });
+            await sendObserved(receivingSocket, message.key.remoteJid, checked.draft, { id: inboxId(`automatic:${externalId}`),
+                agentId: agent.id, externalId });
             journal.inbound[externalId] = 'sent';
             count('send.sent');
             remember(chat, 'assistant', checked.draft);
             counts.push(now());
-        } catch { journal.inbound[externalId] = 'uncertain'; count('send.uncertain'); }
+        } catch (error) { journal.inbound[externalId] = error.whatsappNotAttempted ? 'cancelled' : 'uncertain'; count(`send.${journal.inbound[externalId]}`); }
         await persist();
+        await patchIncoming(capturedId, { status: journal.inbound[externalId] === 'cancelled' ? 'skipped' : 'answered',
+            reason: journal.inbound[externalId] === 'cancelled' ? 'inactive' : journal.inbound[externalId] === 'uncertain' ? 'delivery_unknown' : null });
     }
 
     function scheduleReconnect(reason) {
@@ -508,7 +577,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             });
             nextSocket.ev.on('messages.upsert', update => {
                 if (socket !== nextSocket) return;
-                if (!['notify', 'append'].includes(update.type) || update.requestId) { count('ignored.historyBatch'); return; }
+                if (!['notify', 'append'].includes(update.type) || update.requestId !== undefined) { count('ignored.historyBatch'); return; }
                 count(update.type === 'notify' ? 'upsert.notify' : 'upsert.append');
                 for (const message of update.messages || []) {
                     const receivedAt = now();
@@ -520,6 +589,11 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                     const admission = { socket: nextSocket,
                         agentId: state === 'connected' && connectionAllowed && !intentional ? activeAgent()?.id : undefined,
                         fresh: Number.isFinite(timestamp) && receivedAt - timestamp <= 10 * 60_000 && timestamp <= receivedAt + 60_000 };
+                    admission.capture = inbox.incoming(message, { timestamp, receivedAt, agentId: admission.agentId });
+                    if (admission.capture) {
+                        admission.capture.saved = admission.capture.saved.catch(() => { count('inbox.captureFailed'); });
+                        void admission.capture.saved.then(() => inbox.flush());
+                    }
                     chain = chain.then(() => receive(message, admission)).catch(() => { count('receive.failed'); });
                 }
             });
@@ -627,8 +701,10 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                     continue;
                 }
                 let delivered = 'sent';
-                try { await sendingSocket.sendMessage(decision.recipient, { text: decision.draft }); }
-                catch { delivered = 'uncertain'; }
+                try { await sendObserved(sendingSocket, decision.recipient, decision.draft, { id: inboxId(`approved:${decision.id}`),
+                    agentId: sendingAgent.id, externalId: decision.external_id, approvalId: decision.id,
+                    origin: selfCheckOrigin(decision.external_id, decision.id) }); }
+                catch (error) { delivered = error.whatsappNotAttempted ? 'failed' : 'uncertain'; }
                 if (delivered === 'sent') {
                     const chat = conversation(sendingAgent, decision.recipient);
                     remember(chat, 'assistant', decision.draft);
@@ -637,9 +713,16 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                     if (decision.external_id && chat.pendingImportant?.externalId === decision.external_id) delete chat.pendingImportant;
                 }
                 journal.approvals[decision.id] = delivered;
+                if (decision.external_id) await patchIncoming(decision.external_id, { status: delivered === 'failed' ? 'skipped' : 'answered', approvalId: decision.id,
+                    reason: delivered === 'failed' ? 'inactive' : delivered === 'uncertain' ? 'delivery_unknown' : null });
+                if (selfCheckOrigin(decision.external_id, decision.id) === 'self_check') {
+                    const check = Object.values(journal.selfChecks).find(item => item.approvalId === decision.id);
+                    if (check) await patchIncoming(inboxId(`self-check-question:${check.externalId}`), { status: delivered === 'failed' ? 'failed' : 'answered' });
+                }
                 await acknowledgeDelivery(decision.id, delivered);
             }
             await flushHandoffs();
+            void inbox.flush();
             // Counts and stages only: no addresses, message IDs, text or keys.
             diagnostics.transportOpen = typeof socket?.ws?.isOpen === 'boolean' ? socket.ws.isOpen : null;
             diagnostics.eventsBuffered = typeof socket?.ev?.isBuffering === 'function' ? socket.ev.isBuffering() === true : null;
@@ -651,6 +734,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             await Promise.allSettled([...selfCheckFlights.values()]);
             await Promise.allSettled([...handoffFlights.values()]);
             await Promise.allSettled([credentialSaves, activeWrites, journalWrites]);
+            await inbox.stop();
             await writePrivateJSON(diagnosticPath, diagnostics);
         }
     };

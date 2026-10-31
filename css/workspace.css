@@ -239,3 +239,114 @@
 @media (max-width: 899px) { .ws-shell { grid-template-columns: minmax(0,1fr); max-width: 760px; padding: 132px 28px 130px; } .ws-rail { display: none; } .ws-heading h1 { font-size: 2.7rem; } .ws-heading p { max-width: 520px; } .ws-dock { position: fixed; bottom: calc(14px + env(safe-area-inset-bottom,0px)); left: 50%; z-index: 110; display: grid; grid-template-columns: repeat(4,1fr); gap: 3px; width: min(440px,calc(100% - 32px)); padding: 7px; border: 1px solid #ffffff22; border-radius: 25px; background: linear-gradient(135deg,#ffffff0d,#ffffff03),#101911d9; box-shadow: inset 0 1px 0 #ffffff0d,0 12px 50px #00000070; backdrop-filter: blur(28px) saturate(140%); transform: translateX(-50%); } .ws-dock a { position: relative; display: grid; align-content: center; justify-items: center; gap: 5px; min-height: 55px; padding: 6px; border: 1px solid transparent; border-radius: 18px; color: var(--ws-quiet); } .ws-dock a svg { width: 20px; height: 20px; } .ws-dock a span { font-size: .57rem; } .ws-dock a.is-active { border-color: #d5ff5420; background: #d5ff540c; color: var(--client-accent); } .ws-dock a > i { position: absolute; top: 5px; right: 18px; width: 5px; height: 5px; border-radius: 50%; background: #ffdc8d; } .is-keyboard-open .ws-dock { display: none; } .ws-toast { bottom: calc(102px + env(safe-area-inset-bottom,0px)); } .is-keyboard-open .ws-toast { bottom: calc(15px + var(--client-keyboard-offset,0px)); } .ws-heading { margin-bottom: 28px; } }
 @media (max-width: 599px) { .ws-island { --island-width: 380px; } .ws-island .client-island__inner { gap: 9px; } .ws-island .ws-icon-button { width: 37px; height: 37px; } .ws-device-pill { min-height: 40px; font-size: .65rem !important; padding-inline: 2px; } .ws-island .client-wave { margin-inline: auto; } .ws-shell { padding: 115px 18px 120px; } .ws-heading { display: block; margin-bottom: 25px; } .ws-heading .ws-primary { margin-top: 20px; } .ws-heading > div > .ws-label { font-size: .59rem; } .ws-heading h1 { margin: 11px 0 13px; font-size: clamp(1.9rem,8vw,2.7rem); } .ws-heading p { font-size: .75rem; line-height: 1.85; } .ws-thought-layout { gap: 21px; } .ws-composer { border-radius: 23px; } .ws-composer-top { padding: 20px 19px 0; } .ws-composer-top label { font-size: .68rem; } .ws-count { font-size: .54rem; } .ws-composer textarea { padding: 21px 19px 10px; min-height: 185px; font-size: 1rem; line-height: 1.8; } .ws-composer-bottom { padding: 14px 18px 20px; gap: 16px; } .ws-composer-bottom p { font-size: .61rem; } .ws-primary { min-height: 48px; } .ws-offline-note { align-items: start; gap: 8px; padding-top: 13px; } .ws-offline-note .ws-dot { margin-top: 6px; } .ws-offline-note .ws-text-button { min-height: 35px; padding-top: 0; } .ws-section-heading { margin-top: 22px; } .ws-intelligence { grid-template-columns: 90px minmax(0,1fr); gap: 0 15px; padding: 20px 16px; border-radius: 23px; } .ws-intelligence .ws-orbit { grid-row: 1/3; width: 90px; height: 100px; margin-top: 4px; } .ws-orbit-ring { width: 76px; height: 76px; } .ws-orbit-ring:nth-child(2) { width: 95px; height: 95px; } .ws-orbit-core { width: 43px; height: 43px; border-radius: 15px; font-size: 1.5rem; } .ws-orbit > i { top: 20px; left: 73px; width: 3px; height: 3px; } .ws-orbit > i:nth-last-child(2) { top: 70px; left: 10px; } .ws-orbit > i:last-child { display: none; } .ws-intelligence > .ws-label { margin-top: 12px; font-size: .53rem; } .ws-intelligence > h2 { align-self: start; margin: 6px 0 15px; font-size: 1.23rem; } .ws-flow { grid-column: 1/-1; display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-top: 16px; padding-top: 18px; border-top: 1px solid #ffffff10; } .ws-flow li { gap: 8px; } .ws-flow strong { font-size: .63rem; line-height: 1.7; } .ws-flow p { font-size: .61rem; } .ws-soft-link { grid-column: 1/-1; margin-top: 16px; padding-top: 12px; } .ws-result { padding: 16px; } .ws-result-top { align-items: start; } .ws-result-top strong { font-size: .7rem; padding-top: 3px; } .ws-result time { font-size: .55rem; padding-top: 6px; } .ws-rhythm { grid-template-columns: 1fr 1fr; padding: 21px 19px; gap: 22px 15px; margin-bottom: 28px; border-radius: 21px; } .ws-rhythm > div { padding-left: 13px; } .ws-rhythm > div:last-child { grid-column: 1/-1; border-left: 0; border-top: 1px solid #ffffff12; padding: 18px 0 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; } .ws-rhythm .ws-label { font-size: .55rem; } .ws-rhythm > div:last-child strong { font-size: .92rem; } .ws-reminder { gap: 13px; padding: 16px 14px; } .ws-reminder time { min-width: 52px; font-size: .9rem; } .ws-reminder strong { font-size: .68rem; } .ws-reminder .ws-icon-button { width: 37px; height: 37px; } .ws-agents { grid-template-columns: 1fr; gap: 16px; } .ws-agent { padding: 22px; border-radius: 22px; } .ws-agent h2 { margin-top: 16px; } .ws-agent-actions { margin-top: 19px; } .ws-approval-section { margin-top: 34px; } .ws-approval { padding: 20px; border-radius: 21px; } .ws-approval textarea { font-size: 1rem; } .ws-whatsapp-note { gap: 13px; padding: 21px 18px; } .ws-whatsapp-note > svg { width: 24px; height: 24px; } .ws-whatsapp-note p { font-size: .64rem; } .ws-mac-grid { grid-template-columns: 1fr; gap: 20px; } .ws-device-card,.ws-setup-card { padding: 24px; border-radius: 23px; } .ws-device-illustration { height: 150px; margin-top: -7px; } .ws-device-card-copy > p { max-width: 310px; } .ws-privacy-grid { grid-template-columns: 1fr; gap: 22px; margin-top: 27px; } .ws-privacy-grid article { position: relative; padding: 2px 5px 2px 39px; } .ws-privacy-grid article > span { position: absolute; left: 5px; top: -1px; font-size: 1.2rem; } .ws-privacy-grid h3 { margin-bottom: 8px; font-size: .72rem; } .ws-privacy-grid p { font-size: .65rem; } .ws-dialog { padding: 23px 21px; border-radius: 22px; max-height: calc(var(--client-visible-height,100svh) - 26px); } .ws-dialog :is(input:not([type="checkbox"]),textarea,select) { font-size: 1rem; } .ws-dialog-heading h2 { font-size: 1.3rem; } .ws-dialog form > label { font-size: .7rem; } }
 @media (max-width: 359px) { .ws-shell { padding-inline: 14px; } .ws-island .client-brand__name { display: none; } .ws-composer-top label { font-size: .65rem; } .ws-heading h1 { font-size: 1.8rem; } .ws-count { font-size: .5rem; } }
+
+/* Private WhatsApp history uses the same glass surfaces as the workspace. */
+.ws-inbox-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.ws-inbox-status { color: var(--ws-muted); font-size: .72rem; line-height: 1.8; margin: -7px 0 18px; }
+.ws-inbox-error { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px 18px; margin-bottom: 16px; border: 1px solid #e1b98035; border-radius: 17px; background: #a0661110; }
+.ws-inbox-error p { margin: 0; color: #f1cf9e; font-size: .74rem; line-height: 1.7; overflow-wrap: anywhere; }
+.ws-inbox-layout { display: grid; grid-template-columns: minmax(220px,.82fr) minmax(0,1.45fr); overflow: hidden; border-radius: 26px; min-height: 560px; }
+.ws-inbox-list-pane, .ws-inbox-conversation { min-width: 0; }
+.ws-inbox-list-pane { display: flex; flex-direction: column; border-right: 1px solid #ffffff12; background: #ffffff02; }
+.ws-inbox-list-heading { padding: 22px 18px 16px; border-bottom: 1px solid #ffffff0c; }
+.ws-inbox-list-heading h2 { margin: 0 0 16px; font-size: .85rem; font-weight: 700; letter-spacing: -.025em; }
+.ws-inbox-search { display: flex; align-items: center; gap: 9px; padding: 0 11px; min-height: 46px; border: 1px solid #ffffff1c; border-radius: 14px; color: var(--ws-quiet); background: #00000016; }
+.ws-inbox-search:focus-within { border-color: #d5ff5460; }
+.ws-inbox-search svg { width: 17px; height: 17px; }
+.ws-inbox-search input { width: 100%; min-width: 0; min-height: 44px; padding: 7px 0; border: 0; outline: 0; background: transparent; color: var(--client-text); font-size: .76rem; }
+.ws-inbox-search input::placeholder { color: var(--ws-quiet); }
+.ws-inbox-thread-list { flex: 1; max-height: 620px; overflow-y: auto; overscroll-behavior: contain; }
+.ws-inbox-thread { display: flex; align-items: start; gap: 11px; width: 100%; min-height: 100px; padding: 18px 14px; border: 0; border-bottom: 1px solid #ffffff0a; border-left: 2px solid transparent; background: none; color: var(--client-text); text-align: left; transition: background .18s ease, border-color .18s ease; }
+.ws-inbox-thread:hover { background: #ffffff05; }
+.ws-inbox-thread.is-selected { border-left-color: var(--client-accent); background: #d5ff5409; }
+.ws-inbox-avatar { display: grid; place-items: center; flex: 0 0 32px; height: 32px; border: 1px solid #ffffff16; border-radius: 12px; background: linear-gradient(145deg,#d5ff5414,#ffffff04); color: #e0ebd2; font-size: .78rem; }
+.ws-inbox-thread-copy { display: grid; gap: 5px; flex: 1; min-width: 0; }
+.ws-inbox-thread-top { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: baseline; gap: 4px 7px; }
+.ws-inbox-thread-top strong { min-width: 0; max-width: 100%; font-size: .72rem; line-height: 1.6; overflow-wrap: anywhere; }
+.ws-inbox-thread-top time { flex-shrink: 0; font-size: .52rem; color: var(--ws-quiet); line-height: 1.6; }
+.ws-inbox-address { color: var(--ws-quiet); font-size: .6rem; overflow-wrap: anywhere; }
+.ws-inbox-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; color: var(--ws-muted); font-size: .67rem; line-height: 1.7; white-space: pre-wrap; }
+.ws-inbox-thread-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.ws-inbox-thread-tags:empty { display: none; }
+.ws-inbox-tag { display: inline-block; padding: 3px 6px; border: 1px solid #ffffff15; border-radius: 6px; color: var(--ws-muted); font-size: .51rem; line-height: 1.4; font-weight: 500; }
+.ws-inbox-tag.is-review { border-color: #efd39a33; background: #efd39a0a; color: #f1d298; }
+.ws-inbox-tag.is-test { border-color: #a5b9ef30; background: #a5b9ef08; color: #b7c8f4; }
+.ws-inbox-thread-paging { display: flex; justify-content: space-between; gap: 12px; padding: 7px 16px; border-top: 1px solid #ffffff10; }
+.ws-inbox-conversation { display: flex; flex-direction: column; }
+.ws-inbox-conversation-heading { display: flex; align-items: center; gap: 12px; min-height: 84px; padding: 20px 23px; border-bottom: 1px solid #ffffff10; }
+.ws-inbox-conversation-heading h2 { margin: 0 0 6px; font-size: .95rem; line-height: 1.6; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.ws-inbox-conversation-heading h2:focus { outline: none; }
+.ws-inbox-conversation-heading p { margin: 0; color: var(--ws-quiet); font-size: .62rem; overflow-wrap: anywhere; }
+.ws-inbox-back { display: none; }
+.ws-inbox-message-paging { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 1px 20px; min-height: 45px; border-bottom: 1px solid #ffffff08; }
+.ws-inbox-message-paging > span { color: var(--ws-quiet); font-size: .56rem; text-align: center; }
+.ws-inbox-message-paging .ws-text-button { padding-left: 0; font-size: .61rem !important; }
+.ws-inbox-scroll { flex: 1; min-height: 350px; max-height: 630px; overflow-y: auto; overscroll-behavior: contain; padding: 24px 20px; scrollbar-gutter: stable; }
+.ws-inbox-messages { display: flex; flex-direction: column; gap: 21px; list-style: none; padding: 0; margin: 0; }
+.ws-inbox-message { min-width: 0; max-width: 100%; }
+.ws-inbox-bubble { width: fit-content; min-width: min(180px,100%); max-width: 93%; padding: 15px 16px 11px; border: 1px solid #ffffff12; border-radius: 18px 18px 18px 5px; background: #ffffff05; }
+.ws-inbox-message.is-outgoing .ws-inbox-bubble { margin-left: auto; border-color: #d5ff5420; border-radius: 18px 18px 5px 18px; background: linear-gradient(120deg,#d5ff5412,#d5ff5405); }
+.ws-inbox-message.is-system .ws-inbox-bubble { margin-inline: auto; border-style: dashed; border-radius: 15px; background: #a5b9ef06; }
+.ws-inbox-message-by { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 7px; }
+.ws-inbox-message-by strong { color: var(--ws-muted); font-size: .6rem; font-weight: 600; overflow-wrap: anywhere; }
+.ws-inbox-message.is-outgoing .ws-inbox-message-by strong { color: #d5e4b9; }
+.ws-inbox-text, .ws-inbox-draft { margin: 0; color: var(--client-text); font-size: .79rem; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ws-inbox-media { width: fit-content; max-width: 100%; margin: 3px 0 8px; padding: 8px 11px; border: 1px solid #ffffff16; border-radius: 10px; background: #ffffff04; color: var(--ws-muted); font-size: .7rem; line-height: 1.7; overflow-wrap: anywhere; }
+.ws-inbox-message-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 15px; margin-top: 10px; color: var(--ws-quiet); font-size: .51rem; line-height: 1.7; }
+.ws-inbox-review { margin: 13px 0 0; padding: 17px; border: 1px solid #efd39a2c; border-radius: 16px; background: linear-gradient(145deg,#efd39a08,#ffffff02); }
+.ws-inbox-review-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 7px; }
+.ws-inbox-review-heading strong { color: #edd4aa; font-size: .68rem; line-height: 1.7; }
+.ws-inbox-review-heading time { color: var(--ws-quiet); font-size: .54rem; }
+.ws-inbox-review-reason { margin: 8px 0 14px; color: var(--ws-muted); font-size: .65rem; line-height: 1.8; overflow-wrap: anywhere; }
+.ws-inbox-review label { display: block; margin-bottom: 8px; color: var(--ws-muted); font-size: .61rem; line-height: 1.8; }
+.ws-inbox-review textarea { width: 100%; min-height: 100px; max-height: 350px; padding: 12px; border: 1px solid #ffffff20; border-radius: 11px; background: #0000001c; color: var(--client-text); font-size: .8rem; line-height: 1.8; resize: vertical; }
+.ws-inbox-review textarea:focus { outline: 1px solid var(--client-accent); outline-offset: 2px; }
+.ws-inbox-review-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }
+.ws-inbox-review-actions button { min-height: 44px; font-size: .65rem; padding: 11px 13px; }
+.ws-inbox-review-note, .ws-inbox-fragment { color: var(--ws-muted); font-size: .61rem; line-height: 1.8; margin: 10px 0 0; }
+.ws-inbox-delivery-note { margin: 0; padding: 14px 21px; border-top: 1px solid #ffffff0c; color: var(--ws-quiet); font-size: .56rem; line-height: 1.9; }
+.ws-inbox-empty { display: grid; align-content: center; justify-items: center; gap: 11px; min-height: 240px; padding: 34px 22px; text-align: center; color: var(--ws-muted); }
+.ws-inbox-empty > span:not(.ws-loading-dot) { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #ffffff16; border-radius: 17px; color: #bfd396; font-size: 1.45rem; background: #d5ff5406; }
+.ws-inbox-empty :is(h2,h3) { max-width: 270px; margin: 4px 0 0; font-size: .94rem; line-height: 1.7; font-weight: 600; letter-spacing: -.035em; color: var(--client-text); }
+.ws-inbox-empty p { max-width: 290px; margin: 0; color: var(--ws-quiet); font-size: .69rem; line-height: 1.95; }
+.ws-inbox-welcome { flex: 1; min-height: 520px; }
+.ws-inbox-layout :is(button,input,textarea):focus-visible { outline: 2px solid var(--client-accent); outline-offset: -3px; }
+@media (max-width: 1199px) and (min-width: 900px) { .ws-inbox-layout { grid-template-columns: minmax(190px,.8fr) minmax(0,1.2fr); } .ws-inbox-thread { padding-inline: 11px; gap: 8px; } .ws-inbox-avatar { flex-basis: 27px; height: 29px; } .ws-inbox-scroll { padding: 20px 14px; } .ws-inbox-review { padding: 13px; } }
+@media (max-width: 899px) { .ws-dock { grid-template-columns: repeat(5,minmax(0,1fr)); } .ws-dock a { min-width: 0; padding-inline: 2px; } .ws-dock a span { max-width: 100%; font-size: .54rem; white-space: nowrap; } }
+@media (max-width: 599px) {
+    .ws-inbox-layout { display: block; min-height: 480px; border-radius: 22px; }
+    .ws-inbox-list-pane { border-right: 0; }
+    .ws-inbox-list-heading { padding: 21px 17px 16px; }
+    .ws-inbox-list-heading h2 { font-size: .87rem; }
+    .ws-inbox-search input { font-size: 1rem; }
+    .ws-inbox-thread { padding: 17px 15px; gap: 12px; }
+    .ws-inbox-thread-top strong { font-size: .8rem; }
+    .ws-inbox-thread-top time { font-size: .55rem; }
+    .ws-inbox-preview { font-size: .74rem; }
+    .ws-inbox-address { font-size: .66rem; }
+    .ws-inbox-thread-list { max-height: 65svh; min-height: 350px; }
+    .ws-inbox-conversation { display: none; }
+    .ws-inbox-layout.is-detail-open .ws-inbox-conversation { display: flex; }
+    .ws-inbox-layout.is-detail-open .ws-inbox-list-pane { display: none; }
+    .ws-inbox-back { display: grid; width: 40px; height: 40px; font-size: 1.15rem !important; }
+    .ws-inbox-conversation-heading { min-height: 82px; padding: 15px 13px; }
+    .ws-inbox-conversation-heading > div { min-width: 0; }
+    .ws-inbox-conversation-heading h2 { font-size: .85rem; }
+    .ws-inbox-conversation-heading p { font-size: .63rem; }
+    .ws-inbox-scroll { min-height: 350px; max-height: 65svh; padding: 20px 12px; }
+    .ws-inbox-bubble { max-width: 96%; padding: 13px 12px 10px; }
+    .ws-inbox-text, .ws-inbox-draft { font-size: .82rem; }
+    .ws-inbox-message-meta { font-size: .55rem; }
+    .ws-inbox-message-paging { padding-inline: 13px; gap: 6px; }
+    .ws-inbox-message-paging > span { font-size: .52rem; }
+    .ws-inbox-review { padding: 14px 12px; }
+    .ws-inbox-review textarea { font-size: 1rem; }
+    .ws-inbox-review-actions { display: grid; grid-template-columns: 1fr; }
+    .ws-inbox-review-actions button { width: 100%; font-size: .72rem; }
+    .ws-inbox-review-reason, .ws-inbox-review label, .ws-inbox-review-note { font-size: .66rem; }
+    .ws-inbox-delivery-note { padding: 13px; font-size: .59rem; }
+    .ws-inbox-status { font-size: .69rem; }
+    .ws-inbox-error { align-items: start; flex-direction: column; }
+}
+@media (max-width: 359px) { .ws-dock { width: calc(100% - 20px); padding: 5px; gap: 1px; } .ws-dock a span { font-size: .51rem; } .ws-inbox-thread { padding-inline: 12px; gap: 9px; } }
+@media (prefers-reduced-motion: reduce) { .ws-inbox-thread { transition: none; } }
