@@ -7,6 +7,7 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '
 const dateLabel = value => new Intl.DateTimeFormat('ru-RU', { timeZone: 'Asia/Almaty', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 const mediaLabels = { image: 'Фото', video: 'Видео', audio: 'Голосовое / аудио', document: 'Документ', sticker: 'Стикер', location: 'Геопозиция', contact: 'Контакт', unsupported: 'Сообщение этого типа пока не поддерживается' };
 const approvalLabels = { pending: 'Нужно согласование', approved: 'Согласовано · ожидает Mac', dispatching: 'Mac отправляет', sent: 'Передано WhatsApp', failed: 'Не удалось отправить', uncertain: 'Исход отправки неизвестен', rejected: 'Ответ отклонён', expired: 'Срок согласования истёк' };
+const approvalReasons = { money: 'Платёж или личное финансовое решение', meeting: 'Личная встреча или срок', commitment: 'Обещание или договорённость', conflict: 'Личный конфликт', sensitive: 'Личные данные', uncertain: 'Нужно уточнить важные сведения', model_unavailable: 'Модель сейчас недоступна', rate_limit: 'Лимит автоматических ответов' };
 const messageLabels = { received: 'Получено агентом', processing: 'Агент обрабатывает', awaiting_approval: 'Передано на согласование', answered: 'Агент ответил', skipped: 'Без автоматического ответа', sending: 'Отправляется', sent: 'Передано WhatsApp', uncertain: 'Исход отправки неизвестен', failed: 'Не удалось отправить' };
 
 export function effectiveInboxApproval(approval, now = Date.now()) {
@@ -17,6 +18,13 @@ export function effectiveInboxApproval(approval, now = Date.now()) {
 export function inboxMessageStatus(message, approval) {
     if (message.direction === 'incoming' && approval) return approvalLabels[approval.status] || messageLabels[message.status];
     return messageLabels[message.status] || 'Статус обновляется';
+}
+
+export function inboxApprovalReason(reason) {
+    const value = String(reason ?? '').trim();
+    if (Object.hasOwn(approvalReasons, value)) return approvalReasons[value];
+    // Provider policy codes are not useful in a client's conversation view.
+    return /[А-ЯЁа-яё]/u.test(value) && !/^[\p{L}\p{N}]+(?:_[\p{L}\p{N}]+)+$/u.test(value) ? value : 'Нужно ваше решение';
 }
 
 /** State stays in this tab. Requests never write chat text to browser storage. */
@@ -193,7 +201,7 @@ export function renderInboxThreads(view) {
 function renderApproval(approval, view) {
     const busy = view.actions.has(approval.id);
     const pending = approval.status === 'pending';
-    return `<section class="ws-inbox-review" data-inbox-approval="${escapeHtml(approval.id)}" aria-labelledby="inbox-review-${escapeHtml(approval.id)}"><div class="ws-inbox-review-heading"><strong id="inbox-review-${escapeHtml(approval.id)}">${escapeHtml(approvalLabels[approval.status] || 'Статус согласования')}</strong>${pending ? `<time datetime="${escapeHtml(approval.expires_at)}">До ${escapeHtml(dateLabel(approval.expires_at))}</time>` : ''}</div><p class="ws-inbox-review-reason">${escapeHtml(approval.reason || 'Важный вопрос требует вашего решения.')}</p>${pending ? `<label for="inbox-draft-${escapeHtml(approval.id)}">Черновик · собеседнику не отправлен</label><textarea id="inbox-draft-${escapeHtml(approval.id)}" data-inbox-draft="${escapeHtml(approval.id)}" maxlength="4000" rows="3"${busy ? ' disabled' : ''}>${escapeHtml(view.drafts.get(approval.id) ?? approval.draft)}</textarea><div class="ws-inbox-review-actions"><button type="button" class="ws-primary" data-inbox-action="approve" data-id="${escapeHtml(approval.id)}"${busy ? ' disabled' : ''}>${busy ? 'Сохраняю…' : 'Согласовать ответ'}</button><button type="button" class="ws-secondary" data-inbox-action="reject" data-id="${escapeHtml(approval.id)}"${busy ? ' disabled' : ''}>Отклонить</button></div>` : `<p class="ws-inbox-draft">${escapeHtml(approval.draft)}</p><p class="ws-inbox-review-note">${escapeHtml(approval.status === 'uncertain' ? 'Сначала проверьте WhatsApp. Повторная отправка может создать дубликат.' : approval.status === 'sent' ? 'WhatsApp принял отправку. Доставка и прочтение собеседником не подтверждены.' : ['approved', 'dispatching'].includes(approval.status) ? 'Фактический ответ появится в истории после отправки агентом.' : 'Этот черновик больше не ожидает решения.')}</p>`}</section>`;
+    return `<section class="ws-inbox-review" data-inbox-approval="${escapeHtml(approval.id)}" aria-labelledby="inbox-review-${escapeHtml(approval.id)}"><div class="ws-inbox-review-heading"><strong id="inbox-review-${escapeHtml(approval.id)}">${escapeHtml(approvalLabels[approval.status] || 'Статус согласования')}</strong>${pending ? `<time datetime="${escapeHtml(approval.expires_at)}">До ${escapeHtml(dateLabel(approval.expires_at))}</time>` : ''}</div><p class="ws-inbox-review-reason">${escapeHtml(inboxApprovalReason(approval.reason))}</p>${pending ? `<label for="inbox-draft-${escapeHtml(approval.id)}">Черновик · собеседнику не отправлен</label><textarea id="inbox-draft-${escapeHtml(approval.id)}" data-inbox-draft="${escapeHtml(approval.id)}" maxlength="4000" rows="3"${busy ? ' disabled' : ''}>${escapeHtml(view.drafts.get(approval.id) ?? approval.draft)}</textarea><div class="ws-inbox-review-actions"><button type="button" class="ws-primary" data-inbox-action="approve" data-id="${escapeHtml(approval.id)}"${busy ? ' disabled' : ''}>${busy ? 'Сохраняю…' : 'Согласовать ответ'}</button><button type="button" class="ws-secondary" data-inbox-action="reject" data-id="${escapeHtml(approval.id)}"${busy ? ' disabled' : ''}>Отклонить</button></div>` : `<p class="ws-inbox-draft">${escapeHtml(approval.draft)}</p><p class="ws-inbox-review-note">${escapeHtml(approval.status === 'uncertain' ? 'Сначала проверьте WhatsApp. Повторная отправка может создать дубликат.' : approval.status === 'sent' ? 'WhatsApp принял отправку. Доставка и прочтение собеседником не подтверждены.' : ['approved', 'dispatching'].includes(approval.status) ? 'Фактический ответ появится в истории после отправки агентом.' : 'Этот черновик больше не ожидает решения.')}</p>`}</section>`;
 }
 
 export function renderInboxConversation(view) {

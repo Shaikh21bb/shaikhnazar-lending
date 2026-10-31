@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { assertInboxSchema, INBOX_RESPONSE_SCHEMA } from '../lib/whatsapp-inbox-contract.mjs';
-import { createInboxController, effectiveInboxApproval, inboxMessageStatus, renderInboxThreads, renderInboxConversation } from '../js/whatsapp-inbox.js';
+import { createInboxController, effectiveInboxApproval, inboxMessageStatus, inboxApprovalReason, renderInboxThreads, renderInboxConversation } from '../js/whatsapp-inbox.js';
 
 const THREAD_A = '11111111-1111-4111-8111-111111111111';
 const THREAD_B = '22222222-2222-4222-8222-222222222222';
@@ -48,6 +49,39 @@ test('all non-text kinds have placeholders without implying attachment download 
         const view = { data: selectedData({ messages: [message({ kind, text: null })] }), drafts: new Map(), actions: new Set() };
         assert.match(renderInboxConversation(view), /ws-inbox-media/);
     }
+});
+
+test('approval reasons use familiar Russian labels and never expose unknown policy codes', () => {
+    const reasons = {
+        money: 'Платёж или личное финансовое решение', meeting: 'Личная встреча или срок',
+        commitment: 'Обещание или договорённость', conflict: 'Личный конфликт', sensitive: 'Личные данные',
+        uncertain: 'Нужно уточнить важные сведения', model_unavailable: 'Модель сейчас недоступна', rate_limit: 'Лимит автоматических ответов'
+    };
+    for (const [code, label] of Object.entries(reasons)) {
+        const data = selectedData({ messages: [message({ approvalId: APPROVAL })], approvals: [approval({ reason: code })] });
+        const html = renderInboxConversation({ data, drafts: new Map(), actions: new Set() });
+        assert.match(html, new RegExp(`<p class="ws-inbox-review-reason">${label}</p>`));
+        assert.doesNotMatch(html, new RegExp(`<p class="ws-inbox-review-reason">${code}</p>`));
+    }
+    for (const code of ['future_policy_code', 'meeting_v2', 'служебный_код', '', 'toString']) assert.equal(inboxApprovalReason(code), 'Нужно ваше решение');
+    assert.equal(inboxApprovalReason('Нужно проверить время встречи'), 'Нужно проверить время встречи');
+    const data = selectedData({ messages: [message({ approvalId: APPROVAL })], approvals: [approval({ reason: 'Нужно проверить <img src=x onerror=alert(1)>' })] });
+    const html = renderInboxConversation({ data, drafts: new Map(), actions: new Set() });
+    assert.match(html, /Нужно проверить &lt;img src=x onerror=alert\(1\)&gt;/);
+    assert.doesNotMatch(html, /<img/);
+});
+
+test('Back from the browser cache reloads a disposed workspace to revalidate identity and restart Chats', () => {
+    const events = new Map(); let reloads = 0; let disposals = 0; let stops = 0;
+    const source = readFileSync(new URL('../js/workspace.js', import.meta.url), 'utf8').replace(/^import .*;\n/, '').replace(/\ninit\(\);\s*$/, '');
+    runInNewContext(`${source}\ninboxController = { destroy() { disposed(); } }; bindEvents();`, {
+        document: { querySelectorAll: () => [], getElementById: () => ({ addEventListener() {} }), addEventListener() {} },
+        window: { addEventListener: (name, callback) => events.set(name, callback) },
+        location: { reload: () => { reloads++; } }, disposed: () => { disposals++; }, clearInterval: () => { stops++; }
+    });
+    events.get('pageshow')({ persisted: false }); assert.equal(reloads, 0);
+    events.get('pagehide')(); assert.equal(disposals, 1); assert.equal(stops, 1);
+    events.get('pageshow')({ persisted: true }); assert.equal(reloads, 1);
 });
 
 test('polling runs only while Chats is active and visible, and resumes with the current search', async () => {
@@ -258,7 +292,7 @@ test('workspace exposes Chats on desktop and phone without a manual-send compose
     const module = readFileSync(new URL('../js/whatsapp-inbox.js', import.meta.url), 'utf8');
     const workspace = readFileSync(new URL('../js/workspace.js', import.meta.url), 'utf8');
     assert.equal((html.match(/href="#chats" data-view="chats"/g) || []).length, 2);
-    assert.match(html, /id="view-chats"/); assert.match(html, /20261031c/);
-    assert.match(workspace, /await import\('\.\/whatsapp-inbox\.js\?v=20261031c'\)/);
+    assert.match(html, /id="view-chats"/); assert.match(html, /20261031d/);
+    assert.match(workspace, /await import\('\.\/whatsapp-inbox\.js\?v=20261031d'\)/);
     assert.doesNotMatch(module, /sessionStorage|localStorage|indexedDB|document\.cookie|data-inbox-action="send"/);
 });
