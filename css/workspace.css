@@ -144,6 +144,20 @@
 .ws-approval-actions { display: flex; align-items: center; justify-content: flex-end; gap: 13px; margin-top: 16px; }
 .ws-approval-actions .ws-text-button { margin-right: auto; color: var(--ws-muted); }
 .ws-agent-limit { margin-top: 18px; }
+.ws-self-check-button { flex-basis: 100%; white-space: normal; }
+.ws-self-check { margin-top: 22px; padding: 22px; border-radius: 23px; }
+.ws-self-check .ws-section-heading { margin-top: 0; }
+.ws-self-check > p { color: var(--ws-muted); font-size: .72rem; line-height: 1.8; }
+.ws-self-check-facts { display: grid; gap: 13px; margin: 20px 0; }
+.ws-self-check-facts > div { min-width: 0; padding-top: 13px; border-top: 1px solid #ffffff10; }
+.ws-self-check-facts dt { color: var(--ws-quiet); font-size: .62rem; }
+.ws-self-check-facts dd { margin: 5px 0 0; color: var(--ws-muted); font-size: .7rem; line-height: 1.8; overflow-wrap: anywhere; }
+.ws-self-check details { border-top: 1px solid #ffffff12; padding-top: 10px; }
+.ws-self-check summary { min-height: 44px; padding-block: 8px; cursor: pointer; font-size: .7rem; color: var(--ws-muted); }
+.ws-self-check summary:focus-visible { outline: 2px solid var(--client-accent); outline-offset: 4px; border-radius: 3px; }
+.ws-self-check blockquote { margin: 12px 0; color: var(--ws-muted); font-size: .72rem; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ws-self-check-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.ws-self-check-actions .ws-secondary { white-space: normal; }
 .ws-approval-paging { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; }
 .ws-decision-section { margin-top: 36px; }
 .ws-decisions { display: grid; gap: 12px; }

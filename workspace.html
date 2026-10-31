@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="./css/client-glass.css?v=20261027c">
-    <link rel="stylesheet" href="./css/workspace.css?v=20261031a">
+    <link rel="stylesheet" href="./css/workspace.css?v=20261031b">
 </head>
 <body class="client-page workspace-page">
     <a class="ws-skip" href="#workspace-main">К содержанию</a>
@@ -79,6 +79,8 @@
                 <div class="ws-heading"><div><span class="ws-label">Помощники под ваши задачи</span><h1 id="agents-title">Делегируйте по-своему.</h1><p>Создавайте агентов, задавайте им роль и учите отвечать на своих примерах.</p></div><button class="ws-primary" id="new-agent-button" type="button"><span aria-hidden="true">+</span> Создать агента</button></div>
                 <div class="ws-agents" id="agents-list"></div>
                 <p class="ws-footnote ws-agent-limit">Один личный номер — один включённый WhatsApp-агент. Остальных можно сохранить как роли и включить позже. Сначала остановите текущего агента в кабинете.</p>
+                <p class="ws-footnote" id="self-check-intro">Самопроверка — два теста в вашем собственном чате. Приём сообщений от других людей проверяется отдельно.</p>
+                <section class="ws-self-check client-glass-panel" id="self-check-panel" aria-labelledby="self-check-title" hidden><div class="ws-section-heading"><div><span class="ws-label">Только в ваш собственный чат</span><h2 id="self-check-title" tabindex="-1">Самопроверка WhatsApp</h2></div></div><p id="self-check-status" role="status"></p><div id="self-check-result"></div><div class="ws-self-check-actions"><button class="ws-secondary" id="self-check-retry" type="button" hidden>Повторить тот же запрос</button><button class="ws-secondary" id="self-check-approval" type="button" hidden>Открыть тестовое согласование</button></div></section>
                 <div class="ws-approval-section" id="approval-section"><div class="ws-section-heading"><div><span class="ws-label">Решение остаётся за вами</span><h2 id="approval-title" tabindex="-1">Нужно ваше согласование</h2></div><span class="ws-muted" id="approval-total"></span></div><p class="ws-section-copy">В личных чатах AI самостоятельно отвечает на общие вопросы и общается в вашем стиле. Личные встречи, платежи, обещания, конфликты и чувствительные сведения передаёт вам на согласование. После передачи предупреждает собеседника, что нужно личное подтверждение. Группы, статусы и каналы игнорирует.</p><div id="approvals-list" class="ws-approvals" aria-busy="false"></div><nav class="ws-approval-paging" id="approval-paging" aria-label="Страницы согласований" hidden><button class="ws-secondary" id="approval-previous" type="button" disabled>← Предыдущие</button><button class="ws-secondary" id="approval-next" type="button" disabled>Следующие →</button></nav></div>
                 <section class="ws-decision-section" aria-labelledby="approval-history-title"><div class="ws-section-heading"><div><span class="ws-label">После вашего решения</span><h2 id="approval-history-title">Что с отправкой</h2></div><span class="ws-muted" id="approval-history-total"></span></div><p class="ws-section-copy">Здесь видно ожидание Mac, результат отправки и отклонённые ответы. Передача WhatsApp не означает доставку на телефон. При неизвестном исходе сначала проверьте сам чат.</p><div id="approval-history-list" class="ws-decisions" aria-live="polite"></div><button class="ws-secondary ws-history-more" id="approval-history-more" type="button" hidden>Показать ещё</button></section>
                 <div class="ws-whatsapp-note client-glass-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.66 15L2 22l5-1.34A10 10 0 1 0 12 2ZM8 8c0 4 4 8 8 8M8 8l2 2-1 2M16 16l-2-2-2 1"/></svg><div><strong>Ваш WhatsApp остаётся с вами</strong><p>Номер и обычное приложение сохраняются. Для тестового подключения понадобится ваш QR-скан с телефона. Агент работает, пока Mac включён и не спит. Неофициальное подключение несёт риск блокировки номера.</p></div></div>
@@ -102,6 +104,6 @@
     <div class="ws-toast" id="workspace-toast" role="status" aria-live="polite" hidden></div>
     <noscript><p class="ws-noscript">Для работы личного пространства нужен JavaScript. Включите его в настройках браузера.</p></noscript>
     <script src="./js/client-glass.js?v=20261027c" defer></script>
-    <script type="module" src="./js/workspace.js?v=20261031a"></script>
+    <script type="module" src="./js/workspace.js?v=20261031b"></script>
 </body>
 </html>

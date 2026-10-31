@@ -38,7 +38,11 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     journal.conversations ||= {};
     journal.handoffs ||= {};
     journal.handoffNotices ||= {};
+    journal.selfChecks ||= {};
     let recoveredJournal = false;
+    for (const check of Object.values(journal.selfChecks)) {
+        if (check.ordinaryStatus === 'sending') { check.ordinaryStatus = 'uncertain'; recoveredJournal = true; }
+    }
     for (const [id, status] of Object.entries(journal.approvals)) {
         if (status === 'sending') { journal.approvals[id] = 'uncertain'; recoveredJournal = true; }
         if ((recoverLegacyDeliveryAcks || status === 'sending') && ['sent', 'uncertain', 'cancelled', 'failed', 'sending'].includes(status)) {
@@ -68,7 +72,9 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     let journalWrites = Promise.resolve();
     let activeWrites = Promise.resolve();
     const handoffFlights = new Map();
+    const selfCheckFlights = new Map();
     const counts = [];
+    let normalizeOwnJid;
     let localDraftModel;
     const draftLocally = localGenerate || (payload => {
         localDraftModel ||= new LocalWhatsAppModel({ url: config.modelURL, model: config.model });
@@ -124,8 +130,15 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             try {
                 const response = await request(payload);
                 const notice = journal.handoffs[id];
+                const selfChecks = Object.values(journal.selfChecks).filter(check => check.externalId === id);
+                const confirmed = typeof response?.approval?.id === 'string' && response.approval.id.trim() && response.approval.id.length <= 128
+                    && ['pending', 'approved', 'dispatching', 'sent', 'failed', 'uncertain', 'rejected', 'expired'].includes(response.approval.status)
+                    && (!selfChecks.length || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(response.approval.id));
+                if (confirmed) {
+                    for (const check of selfChecks) { check.approvalId = response.approval.id; check.approvalSaved = true; }
+                }
                 if (notice?.status === 'waiting') {
-                    if (typeof response?.approval?.id === 'string' && response.approval.status === 'pending') {
+                    if (confirmed && response.approval.status === 'pending') {
                         notice.approvalId = response.approval.id;
                         notice.status = 'pending';
                     } else notice.status = 'cancelled';
@@ -192,7 +205,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         }
     }
 
-    async function queueApproval(agent, message, draft, reason, externalId) {
+    async function queueApproval(agent, message, draft, reason, externalId, { synthetic = false } = {}) {
         if (!personalJid(message.key?.remoteJid)) return;
         const chat = conversation(agent, message.key.remoteJid);
         chat.pendingImportant = { reason, externalId, expiresAt: now() + 24 * 3_600_000 };
@@ -201,10 +214,125 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
             draft: String(draft || '').slice(0, 2500), reason, externalId };
         journal.handoffs[externalId] ||= { agentId: agent.id, recipient: message.key.remoteJid,
             text: approvalNotice(whatsappMessageText(message.message)), createdAt: now(), expiresAt: now() + 10 * 60_000, status: 'waiting' };
-        journal.inbound[externalId] = 'approval';
+        if (!synthetic) journal.inbound[externalId] = 'approval';
         await persist();
         await flushApprovalOutbox();
         await flushHandoffs();
+    }
+
+    async function generateDraft(agent, text, history) {
+        let result;
+        try {
+            const greeting = explicitOwnerReply(text, agent) || simpleGreeting(text);
+            result = greeting ? { draft: greeting, requiresApproval: false, reason: 'simple' }
+                : await request({ action: 'generate_whatsapp', agentId: agent.id, text, history });
+        } catch { result = { draft: '', requiresApproval: true, reason: 'model_unavailable' }; }
+        if (!result?.draft?.trim() && (result?.provider === 'none'
+            || ['model_unavailable', 'free_limit'].includes(result?.reason))) {
+            // The zero-budget fallback sees only this chat and explicit owner
+            // instructions. Self-checks call it with an empty history.
+            try { count('model.localStarted'); result = await draftLocally({ agent, text, history }); }
+            catch { count('model.localFailed'); }
+        }
+        const automatic = explicitOwnerReply(text, agent) || simpleGreeting(text);
+        return { result, checked: assessDraft(text, result, { agent, trustedAutomatic: Boolean(automatic && result.draft === automatic) }) };
+    }
+
+    function ownPersonalRecipient(checkSocket) {
+        const raw = String(checkSocket?.user?.id || '');
+        if (!/^[0-9]{5,30}(?::[0-9]{1,10})?@(s\.whatsapp\.net|lid)$/u.test(raw)) throw new Error('Не удалось определить собственный чат WhatsApp.');
+        const strict = raw.replace(/:[0-9]+@/u, '@');
+        const normalized = normalizeOwnJid ? normalizeOwnJid(raw) : strict;
+        if (normalized !== strict || !personalJid(normalized)) throw new Error('Не удалось проверить собственный чат WhatsApp.');
+        return normalized;
+    }
+
+    function selfCheckResult(check, reused) {
+        let message = check.ordinaryStatus === 'sent'
+            ? 'Обычный ответ отправлен в ваш собственный чат WhatsApp.'
+            : check.ordinaryStatus === 'uncertain'
+                ? 'Исход обычной отправки неизвестен; сообщение не отправлялось повторно.'
+                : 'Обычный ответ остановлен правилами агента и не был отправлен.';
+        message += ' Тестовый вопрос сохранён на согласование. Входящее сообщение с другого номера и доставка на телефон этой проверкой не подтверждены.';
+        if (reused) message = 'Использован результат недавней самопроверки. ' + message;
+        return { selfCheck: { agentId: check.agentId, ordinaryStatus: check.ordinaryStatus,
+            ...(['sent', 'uncertain'].includes(check.ordinaryStatus) && check.ordinaryAnswer ? { ordinaryAnswer: check.ordinaryAnswer } : {}),
+            approvalId: check.approvalId, approvalSaved: check.approvalSaved === true,
+            inboundVerified: false, phoneDeliveryVerified: false, ...(reused ? { reused: true } : {}) }, message };
+    }
+
+    async function performSelfCheck(check, agent, checkSocket) {
+        if (!stillActive(agent, checkSocket)) throw new Error('Для самопроверки нужен включённый и подключённый WhatsApp-агент.');
+        if (check.ordinaryStatus === 'pending') {
+            const { result, checked } = await generateDraft(agent, 'Как работает Wi-Fi?', []);
+            if (!result?.draft?.trim() && (result?.provider === 'none'
+                || ['model_unavailable', 'free_limit'].includes(result?.reason))) throw new Error('AI-модель недоступна. Самопроверка будет повторена после восстановления связи.');
+            if (!stillActive(agent, checkSocket)) throw new Error('Самопроверка приостановлена вместе с агентом.');
+            if (checked.requiresApproval || !checked.draft) {
+                check.ordinaryStatus = 'blocked';
+                await persist();
+            } else {
+                while (counts.length && now() - counts[0] > 3_600_000) counts.shift();
+                if (counts.length >= 120) throw new Error('Достигнут лимит автоматических сообщений. Самопроверка ожидает.');
+                check.ordinaryAnswer = checked.draft;
+                check.ordinaryStatus = 'sending';
+                await persist();
+                if (!stillActive(agent, checkSocket)) {
+                    check.ordinaryStatus = 'pending'; await persist();
+                    throw new Error('Самопроверка приостановлена вместе с агентом.');
+                }
+                try {
+                    await checkSocket.sendMessage(check.recipient, { text: `[Самопроверка SHAIKH]\n${checked.draft}` });
+                    check.ordinaryStatus = 'sent'; counts.push(now()); count('selfCheck.sent');
+                } catch { check.ordinaryStatus = 'uncertain'; count('selfCheck.uncertain'); }
+                await persist();
+            }
+        }
+        if (!stillActive(agent, checkSocket)) throw new Error('Для сохранения тестового согласования восстановите подключение агента.');
+        if (!check.approvalSaved || !check.approvalId) {
+            const notice = journal.handoffs[check.externalId];
+            if (notice?.status === 'cancelled' && !notice.approvalId) delete journal.handoffs[check.externalId];
+            const importantText = '[Самопроверка SHAIKH] Давай созвонимся завтра в 15:00?';
+            const reason = approvalReason(importantText);
+            if (!reason) throw new Error('Правила агента не подтвердили необходимость согласования тестового вопроса.');
+            await queueApproval(agent, { key: { remoteJid: check.recipient },
+                message: { conversation: importantText } },
+            'Это тест согласования. Встреча не назначена.', reason, check.externalId, { synthetic: true });
+        } else await flushHandoffs();
+        if (!check.approvalSaved || !check.approvalId) throw new Error('Тестовое согласование ожидает сохранения на платформе.');
+        check.completedAt ||= now();
+        await persist();
+    }
+
+    async function selfCheck(job, payload) {
+        const allowed = new Set(['intent', 'agentId', 'replyPublicKey', 'requestId']);
+        if (!payload || Object.keys(payload).some(key => !allowed.has(key))
+            || typeof job.id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/u.test(job.id)) throw new Error('Самопроверка использует только фиксированные сообщения и собственный чат.');
+        const agent = activeAgent(), checkSocket = socket;
+        if (!agent || payload.agentId !== agent.id || !stillActive(agent, checkSocket)) throw new Error('Для самопроверки нужен текущий включённый и подключённый WhatsApp-агент.');
+        const recipient = ownPersonalRecipient(checkSocket);
+        let checkId = job.id, reused = Object.hasOwn(journal.selfChecks, checkId);
+        if (reused && journal.selfChecks[checkId].reusedFrom) checkId = journal.selfChecks[checkId].reusedFrom;
+        if (!reused) {
+            const recent = Object.entries(journal.selfChecks).filter(([, check]) => !check.reusedFrom
+                && check.agentId === agent.id && check.recipient === recipient && Number.isFinite(check.createdAt)
+                && now() - check.createdAt < 5 * 60_000).sort((a, b) => b[1].createdAt - a[1].createdAt)[0];
+            if (recent) {
+                checkId = recent[0]; reused = true;
+                journal.selfChecks[job.id] = { reusedFrom: checkId, createdAt: now() };
+            } else journal.selfChecks[checkId] = { agentId: agent.id, recipient, createdAt: now(), ordinaryStatus: 'pending',
+                externalId: createHash('sha256').update(`shaikh-owner-self-check:${job.id}`).digest('hex'), approvalSaved: false };
+        }
+        const check = journal.selfChecks[checkId];
+        if (!check || check.agentId !== agent.id || check.recipient !== recipient) throw new Error('Самопроверка принадлежит другому подключению.');
+        const saved = persist();
+        let flight = selfCheckFlights.get(checkId);
+        if (!flight) {
+            flight = (async () => { await saved; await performSelfCheck(check, agent, checkSocket); })();
+            selfCheckFlights.set(checkId, flight);
+        }
+        try { await flight; return selfCheckResult(check, reused); }
+        finally { if (selfCheckFlights.get(checkId) === flight) selfCheckFlights.delete(checkId); }
     }
 
     async function receive(message, admission) {
@@ -234,23 +362,8 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         if (checkedContext) await refreshImportant(agent, message.key.remoteJid, chat);
         const gate = approvalReason(text) || (chat.pendingImportant?.expiresAt > now() && importantFollowup(text) ? chat.pendingImportant.reason : null);
         const history = whatsappHistory(chat.history);
-        let result;
         count('decision.started');
-        try {
-            const greeting = explicitOwnerReply(text, agent) || simpleGreeting(text);
-            result = greeting ? { draft: greeting, requiresApproval: false, reason: 'simple' }
-                : await request({ action: 'generate_whatsapp', agentId: agent.id, text, history });
-        } catch { result = { draft: '', requiresApproval: true, reason: 'model_unavailable' }; }
-        if (!result?.draft?.trim() && (result?.provider === 'none'
-            || ['model_unavailable', 'free_limit'].includes(result?.reason))) {
-            // Budget remains zero when no cloud key/quota is available. The
-            // separate local model sees no Obsidian or imported phone history.
-            try { count('model.localStarted'); result = await draftLocally({ agent, text, history }); }
-            catch { count('model.localFailed'); /* Keep an editable review item if local AI is offline. */ }
-        }
-        // A model or a server response cannot override deterministic boundaries.
-        const automatic = explicitOwnerReply(text, agent) || simpleGreeting(text);
-        const checked = assessDraft(text, result, { agent, trustedAutomatic: Boolean(automatic && result.draft === automatic) });
+        const { checked } = await generateDraft(agent, text, history);
         if (!checkedContext && importantFollowup('', checked.draft)) await refreshImportant(agent, message.key.remoteJid, chat);
         if (!stillActive(agent, receivingSocket)) return;
         remember(chat, 'user', text);
@@ -343,6 +456,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
                 },
                 getMessage: async () => undefined });
             socket = nextSocket;
+            normalizeOwnJid = typeof deps.jidNormalizedUser === 'function' ? deps.jidNormalizedUser : undefined;
             nextSocket.ws?.on?.('CB:message', node => {
                 if (socket !== nextSocket) return;
                 const from = String(node?.attrs?.from || '');
@@ -443,9 +557,10 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
     return {
         get status() { return state; },
         idle: () => chain,
-        async handleJob(job) {
+        async handleJob(job, payload = {}) {
             if (job.kind === 'whatsapp_disconnect') { await pause({ remember: false }); await runtime(); return { message: 'WhatsApp-агент приостановлен. Приложение на телефоне продолжает работать.' }; }
             if (job.kind !== 'whatsapp_connect') throw new Error('Неизвестная команда WhatsApp.');
+            if (payload.intent === 'whatsapp_self_check') return selfCheck(job, payload);
             const enabled = agents.filter(agent => agent.type === 'whatsapp' && agent.enabled);
             if (enabled.length !== 1) return { message: 'Для одного личного номера включи ровно одного WhatsApp-агента.' };
             agentId = enabled[0].id;
@@ -533,6 +648,7 @@ export async function createWhatsAppAdapter({ config = {}, request, stateDirecto
         async stop() {
             await pause();
             await chain;
+            await Promise.allSettled([...selfCheckFlights.values()]);
             await Promise.allSettled([...handoffFlights.values()]);
             await Promise.allSettled([credentialSaves, activeWrites, journalWrites]);
             await writePrivateJSON(diagnosticPath, diagnostics);

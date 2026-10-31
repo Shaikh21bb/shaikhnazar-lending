@@ -2,9 +2,10 @@ import { generateEnvelopeKeyPair, encryptEnvelope, decryptEnvelope } from '../li
 
 const API = '/api/hub/workspace';
 const REPLY_KEY_STORAGE = 'shaikh-private-reply-key-v1';
+const SELF_CHECK_STORAGE = 'shaikh-whatsapp-self-check-v1';
 const VIEWS = new Set(['thoughts', 'reminders', 'agents', 'mac']);
 const POLL_MS = 6000;
-const state = { data: null, keys: null, decrypted: new Map(), approvalDrafts: new Map(), approvalActions: new Set(), approvalDecisions: new Map(), approvalOffset: 0, historyVisible: 20, historyFingerprint: '', pendingThought: null, view: 'thoughts', loading: false, sending: false, clarification: null, pairing: null, qrJobId: null, qrAgentId: null, qrFingerprint: '', user: null };
+const state = { data: null, keys: null, decrypted: new Map(), approvalDrafts: new Map(), approvalActions: new Set(), approvalDecisions: new Map(), approvalOffset: 0, historyVisible: 20, historyFingerprint: '', pendingThought: null, view: 'thoughts', loading: false, sending: false, clarification: null, pairing: null, qrJobId: null, qrAgentId: null, qrFingerprint: '', selfCheck: null, selfCheckBusy: false, selfCheckFingerprint: '', user: null };
 const $ = id => document.getElementById(id);
 let toastTimer;
 let pollingTimer;
@@ -101,6 +102,145 @@ async function enqueueEncrypted(kind, payload, { retry = false } = {}) {
     const result = await api(request);
     if (retry) state.pendingThought = null;
     return result;
+}
+
+function selfCheckAccount() {
+    return state.user?.sub || state.user?.id || state.user?.login || '';
+}
+
+function persistSelfCheck() {
+    if (!state.selfCheck || !selfCheckAccount()) return;
+    try { sessionStorage.setItem(SELF_CHECK_STORAGE, JSON.stringify({ ...state.selfCheck, account: selfCheckAccount() })); }
+    catch { /* The current tab still retains the same encrypted request for retry. */ }
+}
+
+function restoreSelfCheck() {
+    try {
+        const saved = JSON.parse(sessionStorage.getItem(SELF_CHECK_STORAGE) || 'null');
+        if (!saved || saved.account !== selfCheckAccount() || typeof saved.agentId !== 'string') return;
+        const jobId = typeof saved.jobId === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(saved.jobId) ? saved.jobId : null;
+        const request = saved.request;
+        const retryable = request?.action === 'enqueue' && request.kind === 'whatsapp_connect'
+            && /^[A-Za-z0-9_-]{16,128}$/.test(request.request_id || '')
+            && request.envelope?.v === 1 && typeof request.envelope.ciphertext === 'string';
+        if (jobId || retryable) state.selfCheck = { agentId: saved.agentId, jobId, request: jobId ? null : request };
+    } catch { /* Ignore damaged or unavailable browser storage. */ }
+}
+
+function currentSelfCheckResult() {
+    return state.selfCheck?.jobId ? state.decrypted.get(state.selfCheck.jobId)?.result?.selfCheck : null;
+}
+
+function currentSelfCheckApproval() {
+    const id = currentSelfCheckResult()?.approvalId;
+    if (typeof id !== 'string') return null;
+    const remote = (state.data?.approvalHistory || []).find(item => item.id === id)
+        || (state.data?.approvals || []).find(item => item.id === id);
+    const current = remote && !['pending', 'awaiting_approval'].includes(remote.status)
+        ? remote : state.approvalDecisions.get(id) || remote;
+    if (!current) return null;
+    const expired = ['pending', 'awaiting_approval', 'approved'].includes(current.status)
+        && safeDate(current.expires_at)?.getTime() <= Date.now();
+    return expired ? { ...current, status: 'expired' } : current;
+}
+
+async function startSelfCheck(agentId) {
+    if (state.selfCheckBusy || state.selfCheck?.jobId) return;
+    const agent = (state.data?.agents || []).find(item => item.id === agentId);
+    if (!agent || !whatsAppAgentStatus(agent).connected) { toast('Для самопроверки подключите включённого WhatsApp-агента на Mac.'); return; }
+    if (state.selfCheck && state.selfCheck.agentId !== agentId) { toast('Сначала завершите уже созданную самопроверку.'); return; }
+    state.selfCheckBusy = true;
+    state.selfCheck ||= { agentId, jobId: null, request: null };
+    state.selfCheck.error = '';
+    renderAgents(); renderSelfCheck();
+    $('self-check-panel').scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    $('self-check-title').focus({ preventScroll: true });
+    try {
+        if (!state.selfCheck.request) {
+            const publicKey = devicePublicKey();
+            if (!publicKey) throw new Error('Сначала привяжите Mac в разделе «Мой Mac».');
+            const keys = await replyKeys();
+            const requestId = crypto.randomUUID();
+            const envelope = await encryptEnvelope(publicKey, { intent: 'whatsapp_self_check', agentId,
+                replyPublicKey: keys.publicKey, requestId });
+            state.selfCheck.request = { action: 'enqueue', kind: 'whatsapp_connect', envelope, request_id: requestId };
+            persistSelfCheck();
+        }
+        const response = await api(state.selfCheck.request);
+        const id = response.job?.id || response.id;
+        if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw new Error('Номер проверки пока не получен. Повторите тот же запрос ниже.');
+        state.selfCheck.jobId = id;
+        state.selfCheck.request = null;
+        persistSelfCheck();
+        toast('Самопроверка поставлена в очередь Mac. Тестовые сообщения предназначены только вашему собственному чату.');
+        await refresh();
+    } catch (error) { state.selfCheck.error = error?.message || 'Не удалось передать запрос самопроверки.'; }
+    finally { state.selfCheckBusy = false; renderAgents(); renderSelfCheck(); }
+}
+
+function renderSelfCheck() {
+    if (!state.selfCheck) {
+        const known = (state.data?.jobs || []).find(job => state.decrypted.get(job.id)?.result?.selfCheck);
+        if (known) {
+            const result = state.decrypted.get(known.id).result.selfCheck;
+            state.selfCheck = { agentId: result.agentId || enabledWhatsAppAgents()[0]?.id || '', jobId: known.id, request: null };
+            persistSelfCheck();
+        }
+    }
+    const check = state.selfCheck;
+    $('self-check-panel').hidden = !check;
+    if (!check) return;
+    const job = (state.data?.jobs || []).find(item => item.id === check.jobId);
+    const result = currentSelfCheckResult();
+    const review = currentSelfCheckApproval();
+    let status = state.selfCheckBusy ? 'Передаю защищённый запрос вашему Mac…'
+        : check.request ? 'Запрос пока не подтверждён сервером. Можно повторить тот же запрос без создания новой проверки.'
+            : ['failed', 'error'].includes(job?.status) ? 'Mac не завершил самопроверку. Проверьте подключение и сам чат WhatsApp.'
+                : ['complete', 'completed', 'done', 'succeeded'].includes(job?.status) && !result ? 'Проверка завершена на Mac. Зашифрованный результат недоступен в этом сеансе; проверьте тестовое согласование и свой чат.'
+                    : !job && check.jobId ? 'Ожидаю статус созданной проверки. Если она была выполнена раньше, проверьте историю согласований и свой чат.'
+                        : deviceIsOnline() ? 'Mac выполняет самопроверку: готовит AI-ответ и тестовое согласование.' : 'Проверка ждёт подключения Mac.';
+    if (result) status = result.ordinaryStatus === 'sent' && (result.approvalSaved === true || review)
+        ? 'Исходящий AI-ответ принят WhatsApp. Текущее состояние тестового вопроса показано ниже.'
+        : 'Самопроверка требует внимания. Ниже — подтверждённые результаты каждого шага.';
+    if (check.error) status = check.error;
+    if ($('self-check-status').textContent !== status) $('self-check-status').textContent = status;
+    const ordinary = result?.ordinaryStatus === 'sent' ? 'Принят WhatsApp. Доставка на телефон ещё не подтверждена.'
+        : result?.ordinaryStatus === 'uncertain' ? 'Исход отправки неизвестен. Проверьте свой чат перед дальнейшими действиями.'
+            : result?.ordinaryStatus === 'blocked' ? 'Автоматический ответ не отправлен: требуется проверка.' : 'Ожидает выполнения на Mac.';
+    const reviewStates = {
+        pending: 'На согласовании: требуется ваше решение.',
+        awaiting_approval: 'На согласовании: требуется ваше решение.',
+        approved: deviceIsOnline() ? 'Ответ согласован. Ожидает отправки на Mac.' : 'Ответ согласован и ждёт подключения Mac.',
+        dispatching: 'Mac отправляет согласованный ответ. Дождитесь результата.',
+        sent: 'Согласованный ответ принят WhatsApp. Доставка на телефон не подтверждена.',
+        failed: 'Отправка не завершилась. Проверьте свой чат WhatsApp.',
+        uncertain: 'Исход отправки неизвестен. Проверьте чат перед дальнейшими действиями.',
+        rejected: 'Вы отклонили тестовый ответ. Он не будет отправлен.',
+        expired: 'Срок тестового согласования истёк. Ответ не будет отправлен.'
+    };
+    const approval = review ? reviewStates[review.status] || 'Текущий статус тестового согласования уточняется. Проверьте историю.'
+        : result?.approvalSaved === true ? 'Тестовое согласование создано. Текущий статус проверьте в очереди или истории.' : 'Ожидает сохранения на согласование.';
+    const answer = typeof result?.ordinaryAnswer === 'string' ? result.ordinaryAnswer.slice(0, 2500) : '';
+    const html = `<dl class="ws-self-check-facts"><div><dt>Обычный AI-ответ</dt><dd>${escapeHtml(ordinary)}</dd></div><div><dt>Важный вопрос</dt><dd>${escapeHtml(approval)}</dd></div><div><dt>Входящие от другого человека</dt><dd>Ещё не проверено.</dd></div><div><dt>Доставка на телефон</dt><dd>Ожидает вашей проверки в собственном чате WhatsApp.</dd></div></dl>${answer ? `<details><summary>Тестовый ответ AI</summary><blockquote>${escapeHtml(answer)}</blockquote></details>` : ''}`;
+    if (html !== state.selfCheckFingerprint) { $('self-check-result').innerHTML = html; state.selfCheckFingerprint = html; }
+    $('self-check-retry').hidden = !check.request || state.selfCheckBusy;
+    $('self-check-approval').hidden = !(result?.approvalSaved || review) || typeof result?.approvalId !== 'string';
+    $('self-check-approval').textContent = review && ['pending', 'awaiting_approval'].includes(review.status)
+        ? 'Открыть тестовое согласование' : review ? 'Открыть результат согласования' : 'Найти тестовое согласование';
+}
+
+function focusSelfCheckApproval() {
+    const id = currentSelfCheckResult()?.approvalId;
+    if (typeof id !== 'string') return;
+    const review = currentSelfCheckApproval();
+    const input = review && ['pending', 'awaiting_approval'].includes(review.status) ? $(`approval-${id}`) : null;
+    const details = [...document.querySelectorAll('[data-history-details]')].find(item => item.dataset.historyDetails === id);
+    const target = input?.closest('[data-approval]') || details || $('approval-section');
+    if (details) details.open = true;
+    target?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    if (input) input.focus({ preventScroll: true });
+    else if (details) details.querySelector('summary')?.focus({ preventScroll: true });
+    else { $('approval-title').focus({ preventScroll: true }); toast('Найдите тестовый вопрос «Самопроверка SHAIKH» среди согласований или в истории отправки.'); }
 }
 
 function showView(view, updateHash = true) {
@@ -239,7 +379,7 @@ function renderAgents() {
         const status = whatsapp ? whatsAppAgentStatus(agent) : { label: agent.enabled ? 'Включён' : 'Выключен', connected: agent.enabled };
         const onlyEnabled = enabledWhatsAppAgents().length === 1;
         const actions = !whatsapp ? '<span class="ws-muted">Только локальная AI</span>' : agent.enabled
-            ? `${!status.connected && onlyEnabled ? `<button class="ws-text-button" type="button" data-connect-whatsapp="${escapeHtml(agent.id)}">Подключить WhatsApp ↗</button>` : ''}<button class="ws-text-button" type="button" data-pause-whatsapp="${escapeHtml(agent.id)}">Остановить ответы</button>`
+            ? `${!status.connected && onlyEnabled ? `<button class="ws-text-button" type="button" data-connect-whatsapp="${escapeHtml(agent.id)}">Подключить WhatsApp ↗</button>` : ''}<button class="ws-text-button" type="button" data-pause-whatsapp="${escapeHtml(agent.id)}">Остановить ответы</button>${status.connected ? `<button class="ws-secondary ws-self-check-button" type="button" data-self-check-whatsapp="${escapeHtml(agent.id)}" aria-describedby="self-check-intro"${state.selfCheckBusy || state.selfCheck?.jobId || state.selfCheck && state.selfCheck.agentId !== agent.id ? ' disabled' : ''}>${state.selfCheck?.jobId ? 'Самопроверка создана' : 'Проверить отправку себе'}</button>` : ''}`
             : '<span class="ws-muted">Включите в настройках</span>';
         return `<article class="ws-agent"><div class="ws-agent-head"><span class="ws-agent-avatar ${whatsapp ? 'is-whatsapp' : ''}" aria-hidden="true">${whatsapp ? '↗' : '✦'}</span><span class="ws-state ${status.connected ? 'is-online' : ''}">${escapeHtml(status.label)}</span></div><h2>${escapeHtml(agent.name)}</h2><p>${whatsapp ? 'Сам отвечает на общие вопросы и общается в личных чатах в вашем стиле. Личные решения передаёт вам и предупреждает собеседника.' : 'Собирает мысли в заметки и работает с вашей базой Obsidian локально.'}</p><div class="ws-agent-meta"><span>${whatsapp ? `WhatsApp · ${escapeHtml(status.label.toLocaleLowerCase('ru'))}` : 'Obsidian · на Mac'}</span><span>${agent.rules || agent.examples ? 'Ваши инструкции' : 'Правила ещё не заданы'}</span></div><div class="ws-agent-actions"><button class="ws-secondary" type="button" data-edit-agent="${escapeHtml(agent.id)}">Настроить</button>${actions}</div></article>`;
     }).join('') : empty('✦', 'Создайте своего первого агента', 'Задайте ему роль, правила общения и несколько ваших примеров ответов.');
@@ -371,6 +511,7 @@ async function refresh({ quiet = false } = {}) {
         state.data = data.workspace || data;
         for (const item of state.data.approvalHistory || []) state.approvalDecisions.delete(item.id);
         await decryptResults();
+        renderSelfCheck();
         renderDevice(); renderThoughts(); renderReminders(); renderAgents();
         renderApprovals();
         renderQr();
@@ -621,6 +762,8 @@ function bindEvents() {
         if (edit) { openAgent(edit.dataset.editAgent); return; }
         const connect = event.target.closest('[data-connect-whatsapp]');
         if (connect) connectWhatsApp(connect.dataset.connectWhatsapp, connect);
+        const selfCheck = event.target.closest('[data-self-check-whatsapp]');
+        if (selfCheck) startSelfCheck(selfCheck.dataset.selfCheckWhatsapp);
         const pause = event.target.closest('[data-pause-whatsapp]');
         if (pause) pauseWhatsApp(pause.dataset.pauseWhatsapp, pause);
     });
@@ -636,6 +779,8 @@ function bindEvents() {
     $('approval-previous').addEventListener('click', () => changeApprovalPage(-1));
     $('approval-next').addEventListener('click', () => changeApprovalPage(1));
     $('approval-history-more').addEventListener('click', () => { state.historyVisible += 20; renderApprovalHistory(); });
+    $('self-check-retry').addEventListener('click', () => { if (state.selfCheck?.agentId) startSelfCheck(state.selfCheck.agentId); });
+    $('self-check-approval').addEventListener('click', focusSelfCheckApproval);
     $('reminders-list').addEventListener('click', async event => {
         const button = event.target.closest('[data-cancel-reminder]');
         if (!button) return;
@@ -648,9 +793,9 @@ function bindEvents() {
         try {
             const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
             if (!response.ok) throw new Error('Не удалось выйти. Попробуйте ещё раз.');
-            try { sessionStorage.removeItem(REPLY_KEY_STORAGE); } catch { /* Storage may be disabled. */ }
+            try { sessionStorage.removeItem(REPLY_KEY_STORAGE); sessionStorage.removeItem(SELF_CHECK_STORAGE); } catch { /* Storage may be disabled. */ }
             try { localStorage.removeItem('auth_token'); localStorage.removeItem('auth_email'); } catch { /* Storage may be disabled. */ }
-            state.keys = null; state.decrypted.clear(); state.approvalDrafts.clear(); state.approvalDecisions.clear(); state.pendingThought = null;
+            state.keys = null; state.decrypted.clear(); state.approvalDrafts.clear(); state.approvalDecisions.clear(); state.pendingThought = null; state.selfCheck = null;
             location.assign('/login.html');
         } catch (error) { toast(error.message); $('logout-button').disabled = false; }
     });
@@ -667,6 +812,7 @@ async function init() {
         if (!response.ok) throw new Error('Не удалось проверить вход. Обновите страницу.');
         const data = await response.json();
         state.user = data.user;
+        restoreSelfCheck();
         $('account-name').textContent = state.user?.name || state.user?.login || 'Мой кабинет';
         await refresh();
         pollingTimer = setInterval(() => { if (!document.hidden) refresh({ quiet: true }); }, POLL_MS);
