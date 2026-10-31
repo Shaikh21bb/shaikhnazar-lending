@@ -20,11 +20,26 @@ test('local WhatsApp may answer with a supported owner fact from explicit rules'
     assert.equal(result.provider, 'local');
     const request = JSON.parse(calls.at(-1).options.body);
     assert.equal(request.think, false);
+    assert.equal(request.options.num_ctx, 8192);
+    assert.equal(request.options.num_predict, 600);
     assert.equal(request.messages.length, 2);
     assert.equal(request.messages[1].content, 'Чем занимаешься?');
     assert.match(request.messages[0].content, /Я делаю сайты/);
     assert.equal('tools' in request, false);
     assert.equal(JSON.stringify(request).includes('related'), false);
+});
+
+test('OpenAI-compatible local WhatsApp keeps its token limit without Ollama context options', async () => {
+    let request;
+    const model = new LocalWhatsAppModel({ url: 'http://127.0.0.1:1234/v1', model: 'local', fetchImpl: async (url, options = {}) => {
+        if (url.endsWith('/models')) return json({ data: [{ id: 'local' }] });
+        request = JSON.parse(options.body);
+        return json({ choices: [{ message: { content: JSON.stringify({ draft: 'Wi-Fi использует радиоволны.', category: 'knowledge', requiresApproval: false }) } }] });
+    } });
+    await model.generate({ agent: {}, text: 'Как работает Wi-Fi?' });
+    assert.equal(request.max_tokens, 600);
+    assert.equal('options' in request, false);
+    assert.equal('num_ctx' in request, false);
 });
 
 test('cloud aliases and remote-host model metadata never receive a WhatsApp prompt', async () => {

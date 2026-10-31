@@ -27,7 +27,7 @@ export class LocalWhatsAppModel {
                     max_tokens: 600, response_format: { type: 'json_object' } }
                 : { model: status.model, messages, stream: false, format: 'json',
                     ...(this.local.supportsThinking ? { think: false } : {}),
-                    options: { temperature: 0.2, num_predict: 600 } })
+                    options: { temperature: 0.2, num_ctx: 8192, num_predict: 600 } })
         });
         if (!response.ok) throw new Error('Local WhatsApp model unavailable');
         const data = await response.json();
