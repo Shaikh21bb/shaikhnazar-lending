@@ -21,6 +21,8 @@
         let dialogTween;
         let stopped = false;
         let introPlayed = false;
+        let desktopRail;
+        let idlePaused = false;
         const cards = () => [...gallery.querySelectorAll('.project-card')];
 
         function updateGallery() {
@@ -28,7 +30,9 @@
             if (stopped) return;
             const items = cards();
             if (!items.length) return;
-            const bounds = gallery.getBoundingClientRect();
+            // Measure the visible cards after GSAP renders, including refreshes
+            // that restore a tween without running its intermediate callbacks.
+            const bounds = (desktopRail?.stage || gallery).getBoundingClientRect();
             const center = bounds.left + gallery.clientWidth / 2;
             let distance = Infinity;
             items.forEach((card, index) => {
@@ -42,7 +46,7 @@
             if (previous) previous.disabled = activeIndex === 0;
             if (next) next.disabled = activeIndex === items.length - 1;
             if (progress) progress.style.transform = `scaleX(${(activeIndex + 1) / items.length})`;
-            if (mobile.matches) gallery.setAttribute('aria-roledescription', 'карусель');
+            if (mobile.matches || desktopRail) gallery.setAttribute('aria-roledescription', 'карусель');
             else gallery.removeAttribute('aria-roledescription');
         }
         function queueGallery() {
@@ -52,12 +56,20 @@
             const items = cards();
             const target = items[Math.max(0, Math.min(items.length - 1, index))];
             if (!target || !items[0]) return;
+            if (desktopRail) {
+                const trigger = desktopRail.tween.scrollTrigger;
+                const ratio = Math.min(1, (target.offsetLeft - items[0].offsetLeft) / desktopRail.travel());
+                // The rail's scrub supplies the transition; a second native smooth
+                // scroll can be interrupted by image/font-triggered pin refreshes.
+                window.scrollTo({ top: trigger.start + ratio * (trigger.end - trigger.start), behavior: 'instant' });
+                return;
+            }
             gallery.scrollTo({ left: target.offsetLeft - items[0].offsetLeft, behavior: reduced.matches ? 'auto' : 'smooth' });
         }
         const goPrevious = () => goTo(activeIndex - 1);
         const goNext = () => goTo(activeIndex + 1);
         const keyboard = event => {
-            if (!mobile.matches || event.target !== gallery || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            if ((!mobile.matches && !desktopRail) || event.target !== gallery || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
             event.preventDefault();
             goTo(event.key === 'Home' ? 0 : event.key === 'End' ? cards().length - 1 : activeIndex + (event.key === 'ArrowRight' ? 1 : -1));
         };
@@ -68,10 +80,35 @@
             }, 120);
         }
         function rebuildProjects() {
+            const oldTrigger = desktopRail?.tween.scrollTrigger;
+            const restoreProgress = oldTrigger && window.scrollY >= oldTrigger.start && window.scrollY <= oldTrigger.end ? oldTrigger.progress : null;
             projectScene?.revert();
             if (gsap && ScrollTrigger) {
                 projectScene = gsap.matchMedia();
-                projectScene.add('(min-width: 801px) and (prefers-reduced-motion: no-preference)', () => {
+                projectScene.add({ desktop: '(min-width: 801px)', pinned: '(min-width: 1024px) and (min-height: 640px)', reduce: '(prefers-reduced-motion: reduce)' }, context => {
+                    if (!context.conditions.desktop || context.conditions.reduce) return;
+                    const stage = document.querySelector('.projects-stage');
+                    const items = cards();
+                    if (context.conditions.pinned && stage && items.length > 1) {
+                        document.body.classList.add('desktop-portfolio');
+                        gallery.scrollLeft = 0;
+                        const rail = { stage, travel: () => Math.max(1, gallery.scrollWidth - gallery.clientWidth) };
+                        desktopRail = rail;
+                        rail.tween = gsap.to(gallery, { x: () => -rail.travel(), ease: 'none', onUpdate: queueGallery,
+                            scrollTrigger: { trigger: stage, pin: true, start: 'top top', end: () => `+=${Math.max(1600, window.innerHeight * 3.2)}`,
+                                scrub: .65, anticipatePin: 1, invalidateOnRefresh: true, refreshPriority: 1, onRefresh: queueGallery } });
+                        const focusCard = event => {
+                            const index = items.findIndex(card => card.contains(event.target));
+                            if (index >= 0 && index !== activeIndex) goTo(index);
+                        };
+                        gallery.addEventListener('focusin', focusCard);
+                        return () => {
+                            gallery.removeEventListener('focusin', focusCard);
+                            desktopRail = null;
+                            document.body.classList.remove('desktop-portfolio');
+                            queueGallery();
+                        };
+                    }
                     cards().forEach(card => {
                         const image = card.querySelector('.project-media img');
                         if (!image) return;
@@ -81,6 +118,10 @@
                         });
                     });
                 });
+            }
+            if (restoreProgress !== null && desktopRail) {
+                const trigger = desktopRail.tween.scrollTrigger;
+                window.scrollTo({ top: trigger.start + restoreProgress * (trigger.end - trigger.start), behavior: 'instant' });
             }
             const remembered = Number(gallery.dataset.activeIndex) || 0;
             const items = cards();
@@ -114,25 +155,27 @@
             ScrollTrigger.config({ ignoreMobileResize: true });
             document.body.classList.add('motion-ready');
             const setReadingProgress = gsap.quickSetter('.island-progress', 'scaleX');
-            readingTrigger = ScrollTrigger.create({ start: 0, end: 'max', onUpdate: self => setReadingProgress(self.progress), onRefresh: self => setReadingProgress(self.progress) });
+            readingTrigger = ScrollTrigger.create({ start: 0, end: 'max', refreshPriority: -1, onUpdate: self => setReadingProgress(self.progress), onRefresh: self => setReadingProgress(self.progress) });
             scene = gsap.matchMedia();
             scene.add({ mobile: '(max-width: 800px)', desktop: '(min-width: 801px)', reduce: '(prefers-reduced-motion: reduce)' }, context => {
                 if (context.conditions.reduce) return;
                 const phone = context.conditions.mobile;
                 if (!introPlayed && window.scrollY < 40) {
                     introPlayed = true;
-                    gsap.timeline({ defaults: { ease: 'power3.out', duration: .85 } })
-                        .from('.hero-title > span', { y: 28, opacity: 0, stagger: .09, clearProps: 'transform,opacity' }, 0)
+                    const intro = gsap.timeline({ defaults: { ease: 'power3.out', duration: phone ? .85 : 1.25 } })
+                        .from('.hero-title-line > span', { yPercent: phone ? 35 : 115, rotation: phone ? 0 : 3, opacity: 0, stagger: phone ? .09 : .13, clearProps: 'transform,opacity' }, 0)
                         .from('.hero-copy .eyebrow, .hero-lead, .hero-actions', { y: 14, opacity: 0, stagger: .08, clearProps: 'transform,opacity' }, .15)
-                        .from('.hero-showcase', { y: 30, opacity: 0, clearProps: 'transform,opacity' }, .2);
+                        .from('.hero-showcase', { y: phone ? 30 : 0, opacity: 0, clearProps: 'transform,opacity' }, .2);
+                    if (!phone) intro.from('.showcase-main .showcase-arrival', { x: 90, y: 65, rotation: 12, scale: .8, duration: 1.4 }, .25)
+                        .from('.showcase-float .showcase-arrival', { x: -110, y: 110, rotation: -16, scale: .75, duration: 1.5 }, .45);
                 }
                 gsap.timeline({ scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: phone ? .25 : .6 } })
-                    .to('.showcase-main', { y: phone ? -22 : -65, rotation: phone ? -3 : -5, ease: 'none' }, 0)
-                    .to('.showcase-float', { y: phone ? 25 : 70, x: phone ? 8 : -25, rotation: phone ? 8 : 9, ease: 'none' }, 0);
+                    .to('.showcase-main', { y: phone ? -22 : -130, x: phone ? 0 : 75, rotation: phone ? -3 : -10, ease: 'none' }, 0)
+                    .to('.showcase-float', { y: phone ? 25 : 100, x: phone ? 8 : -75, rotation: phone ? 8 : 13, ease: 'none' }, 0);
                 document.querySelectorAll('.capability-card').forEach(card => {
                     ScrollTrigger.create({ trigger: card, start: 'top 75%', end: 'bottom 30%', toggleClass: 'is-engaged' });
                 });
-                gsap.from('.workspace-preview', { y: phone ? 22 : 42, scale: .965, rotation: phone ? 0 : -2,
+                gsap.from('.workspace-preview', { y: phone ? 22 : 80, x: phone ? 0 : 65, scale: phone ? .965 : .85, rotation: phone ? 0 : 5,
                     ease: 'none', scrollTrigger: { trigger: '.platform-section', start: 'top 85%', end: 'center 65%', scrub: .45 } });
                 gsap.fromTo('.workspace-chart i', { scaleY: .15 }, { scaleY: 1, duration: .8, stagger: .06, ease: 'power2.out', scrollTrigger: { trigger: '.workspace-preview', start: 'top 80%', once: true } });
                 gsap.fromTo('.approach-list', { '--route-progress': 0 }, { '--route-progress': 1, ease: 'none',
@@ -140,6 +183,45 @@
                 document.querySelectorAll('.approach-list > li').forEach(step => {
                     ScrollTrigger.create({ trigger: step, start: 'top 65%', end: 'bottom 40%', toggleClass: 'is-active' });
                 });
+                if (!phone) {
+                    document.querySelectorAll('.capabilities-section h2, .platform-copy h2, .approach-section h2, .contact-copy h2').forEach(title => {
+                        gsap.from(title, { y: 45, clipPath: 'inset(0 0 100% 0)', duration: 1, ease: 'power3.out', clearProps: 'transform,clipPath', scrollTrigger: { trigger: title, start: 'top 90%', once: true } });
+                    });
+                    document.querySelectorAll('.capability-card').forEach(card => {
+                        gsap.from(card.querySelectorAll('.capability-top, h3, p, .tag-list'), { x: 50, opacity: 0, stagger: .1, duration: .8, ease: 'power3.out', clearProps: 'transform,opacity', scrollTrigger: { trigger: card, start: 'top 85%', once: true } });
+                    });
+                    const showcase = document.querySelector('.hero-showcase');
+                    const pauseButton = document.getElementById('hero-motion-toggle');
+                    const float = gsap.timeline({ repeat: -1, yoyo: true, defaults: { ease: 'sine.inOut', duration: 4.5 } })
+                        .to('.showcase-main .showcase-surface', { y: -22, rotation: 1.4 }, 0)
+                        .to('.showcase-float .showcase-surface', { y: 26, rotation: -2 }, 0);
+                    const orbit = gsap.to('.showcase-orbit', { rotation: 360, duration: 32, ease: 'none', repeat: -1 });
+                    let visible = window.scrollY < (showcase?.offsetHeight || 800);
+                    const syncIdle = () => { const paused = idlePaused || !visible || document.hidden; float.paused(paused); orbit.paused(paused); };
+                    const toggleIdle = () => { idlePaused = !idlePaused; pauseButton?.setAttribute('aria-pressed', String(idlePaused)); syncIdle(); };
+                    pauseButton?.setAttribute('aria-pressed', String(idlePaused));
+                    pauseButton?.addEventListener('click', toggleIdle);
+                    document.addEventListener('visibilitychange', syncIdle);
+                    ScrollTrigger.create({ trigger: '.hero', start: 'top bottom', end: 'bottom top', onToggle: self => { visible = self.isActive; syncIdle(); } });
+                    syncIdle();
+                    const tiltX = showcase && gsap.quickTo(showcase, 'rotationX', { duration: .8, ease: 'power3.out' });
+                    const tiltY = showcase && gsap.quickTo(showcase, 'rotationY', { duration: .8, ease: 'power3.out' });
+                    const pointer = event => {
+                        if (event.pointerType !== 'mouse') return;
+                        const bounds = showcase.getBoundingClientRect();
+                        tiltX((.5 - (event.clientY - bounds.top) / bounds.height) * 10);
+                        tiltY(((event.clientX - bounds.left) / bounds.width - .5) * 14);
+                    };
+                    const resetTilt = () => { tiltX?.(0); tiltY?.(0); };
+                    showcase?.addEventListener('pointermove', pointer, { passive: true });
+                    showcase?.addEventListener('pointerleave', resetTilt);
+                    return () => {
+                        pauseButton?.removeEventListener('click', toggleIdle);
+                        document.removeEventListener('visibilitychange', syncIdle);
+                        showcase?.removeEventListener('pointermove', pointer);
+                        showcase?.removeEventListener('pointerleave', resetTilt);
+                    };
+                }
             });
         }
         rebuildProjects();

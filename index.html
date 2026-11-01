@@ -16,8 +16,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./css/style.css?v=20261101b">
-    <link rel="stylesheet" href="./css/landing-story.css?v=20261101b">
+    <link rel="stylesheet" href="./css/style.css?v=20261101c">
+    <link rel="stylesheet" href="./css/landing-story.css?v=20261101c">
     <meta name="theme-color" content="#09110d">
     <link rel="icon" href="/icons/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -77,9 +77,9 @@
                         <span data-i18n="hero.eyebrow">Открыт к новым проектам · Казахстан</span>
                     </div>
                     <h1 class="hero-title reveal">
-                        <span data-i18n="hero.title1">Сайты и AI.</span>
-                        <span data-i18n="hero.title2">От идеи</span>
-                        <span data-i18n="hero.title3">до запуска.</span>
+                        <span class="hero-title-line"><span data-i18n="hero.title1">Сайты и AI.</span></span>
+                        <span class="hero-title-line"><span data-i18n="hero.title2">От идеи</span></span>
+                        <span class="hero-title-line"><span data-i18n="hero.title3">до запуска.</span></span>
                     </h1>
                     <p class="hero-lead reveal" data-i18n="hero.lead">Помогаю бизнесу расти с помощью сайтов, AI и цифровых платформ. Здесь — мои проекты, интерфейсы и работающие продукты.</p>
                     <div class="hero-actions reveal">
@@ -88,32 +88,34 @@
                     </div>
                 </div>
                 <div class="hero-showcase reveal" aria-label="Превью избранных проектов">
-                    <div class="showcase-frame showcase-main">
+                    <span class="showcase-orbit" aria-hidden="true"></span>
+                    <div class="showcase-layer showcase-main"><div class="showcase-arrival"><div class="showcase-frame showcase-surface">
                         <div class="frame-topbar"><span></span><span></span><span></span><b>urpaq.ai</b></div>
                         <picture><source media="(max-width: 800px)" srcset="./images/portfolio/urpaq-mobile.jpg"><img src="./images/project1.jpg" alt="Интерфейс образовательной платформы Urpaq.ai" fetchpriority="high"></picture>
-                    </div>
-                    <div class="showcase-frame showcase-float">
+                    </div></div></div>
+                    <div class="showcase-layer showcase-float"><div class="showcase-arrival"><div class="showcase-frame showcase-surface">
                         <div class="frame-topbar"><span></span><span></span><span></span><b>binom.ai</b></div>
                         <picture><source media="(max-width: 800px)" srcset="./images/portfolio/binom-ai-mobile.jpg"><img src="./images/portfolio/binom-ai.jpg" alt="Интерфейс рабочей платформы BINOM AI"></picture>
-                    </div>
+                    </div></div></div>
                     <div class="showcase-note"><span class="note-index">2026</span><span data-i18n="hero.note">Избранные продукты. От дизайна до кода.</span></div>
                 </div>
             </div>
             <div class="container hero-footer">
                 <a class="scroll-cue" href="#projects"><span class="scroll-cue-line" aria-hidden="true"></span><span data-i18n="hero.scroll">Листайте — покажу проекты</span><span aria-hidden="true">↓</span></a>
+                <button class="hero-motion-toggle" id="hero-motion-toggle" type="button" aria-pressed="false"><span aria-hidden="true">Ⅱ</span><span data-i18n="hero.pause">Пауза фонового движения</span></button>
                 <span class="hero-footer-note">Design. Code. Launch.</span>
             </div>
         </section>
 
         <section class="section projects-section" id="projects">
-            <div class="container">
+            <div class="container projects-stage">
                 <div class="section-heading reveal">
                     <div><p class="section-kicker" data-i18n="projects.kicker">Мои работы</p><h2 data-i18n="projects.title">Избранные проекты</h2></div>
                     <p data-i18n="projects.intro">Реальные продукты с работающими интерфейсами. Откройте карточку, чтобы увидеть мою роль, ключевые функции и результат.</p>
                 </div>
                 <div class="project-grid" id="project-grid" tabindex="0" role="region" aria-label="Проекты портфолио" data-i18n-aria="projects.gallery" aria-live="polite"></div>
                 <div class="project-navigation" aria-label="Листать проекты" data-i18n-aria="projects.navigation">
-                    <span class="project-swipe-hint" data-i18n="projects.swipe">Листайте свайпом</span>
+                    <span class="project-swipe-hint"><span class="mobile-project-hint" data-i18n="projects.swipe">Листайте свайпом</span><span class="desktop-project-hint" data-i18n="projects.scroll">Листайте вниз, чтобы смотреть проекты</span></span>
                     <span class="project-position" id="project-position" role="status" aria-live="polite">01 / 06</span>
                     <div class="project-arrow-group"><button type="button" class="project-arrow" id="project-previous" aria-label="Предыдущий проект" data-i18n-aria="projects.previous" disabled>←</button><button type="button" class="project-arrow" id="project-next" aria-label="Следующий проект" data-i18n-aria="projects.next">→</button></div>
                     <span class="project-scroll-track" aria-hidden="true"><i id="project-scroll-progress"></i></span>
@@ -216,7 +218,7 @@
     <script src="./js/portfolio-data.js?v=20261022c" defer></script>
     <script src="./js/vendor/gsap-3.15.0.min.js" defer></script>
     <script src="./js/vendor/ScrollTrigger-3.15.0.min.js" defer></script>
-    <script src="./js/main.js?v=20261101b" defer></script>
-    <script src="./js/landing-story.js?v=20261101b" defer></script>
+    <script src="./js/main.js?v=20261101c" defer></script>
+    <script src="./js/landing-story.js?v=20261101c" defer></script>
 </body>
 </html>
