@@ -8,14 +8,23 @@ const UI_TRANSLATIONS = {
         'nav.clients': 'Клиентам',
         'nav.clientPlatform': 'Клиентская платформа',
         'hero.eyebrow': 'Открыт к новым проектам · Казахстан',
-        'hero.title1': 'Создаю цифровые',
-        'hero.title2': 'продукты, которые работают.',
-        'hero.lead': 'Сайты, AI-инструменты и внутренние платформы — от идеи и интерфейса до работающего релиза.',
+        'hero.title1': 'Сайты и AI.',
+        'hero.title2': 'От идеи',
+        'hero.title3': 'до запуска.',
+        'hero.lead': 'Помогаю бизнесу расти с помощью сайтов, AI и цифровых платформ. Здесь — мои проекты, интерфейсы и работающие продукты.',
         'hero.primary': 'Смотреть проекты',
         'hero.secondary': 'Обсудить задачу',
-        'hero.note': 'Только работающие продукты и платформы',
+        'hero.note': 'Избранные продукты. От дизайна до кода.',
+        'hero.scroll': 'Листайте — покажу проекты',
+        'projects.kicker': 'Мои работы',
+        'projects.gallery': 'Проекты портфолио',
+        'projects.navigation': 'Листать проекты',
+        'projects.swipe': 'Листайте свайпом',
+        'projects.previous': 'Предыдущий проект',
+        'projects.next': 'Следующий проект',
         'projects.title': 'Избранные проекты',
         'projects.intro': 'Реальные продукты с работающими интерфейсами. Откройте карточку, чтобы увидеть мою роль, ключевые функции и результат.',
+        'capabilities.kicker': 'Для вашего бизнеса',
         'capabilities.title': 'Что я создаю',
         'capabilities.intro': 'Не набор технологий ради технологий, а понятный цифровой инструмент под задачу бизнеса.',
         'capabilities.web.title': 'Сайты и продукты',
@@ -24,6 +33,7 @@ const UI_TRANSLATIONS = {
         'capabilities.ai.text': 'Ассистенты, анализ данных и сценарии обработки заявок с проверяемой логикой и передачей человеку.',
         'capabilities.platform.title': 'Личные AI-кабинеты',
         'capabilities.platform.text': 'Закрытые кабинеты с персональным агентом: заметки, календарь, расходы и подключение Telegram.',
+        'platform.kicker': 'Ваша платформа',
         'platform.title': 'Портфолио снаружи. Личный агент внутри.',
         'platform.text': 'Каждый клиент получает отдельный вход к своему агенту: пишет ему на сайте или в Telegram, сохраняет заметки, планирует события и ведёт доходы и расходы.',
         'platform.point1': 'Персональный доступ без открытой регистрации',
@@ -32,6 +42,7 @@ const UI_TRANSLATIONS = {
         'platform.cta': 'Войти в платформу',
         'platform.disclaimer': 'Доступ выдаётся подключённым клиентам. Открытой регистрации нет.',
         'platform.previewTitle': 'Личный Agent Hub',
+        'approach.kicker': 'Как работаем',
         'approach.title': 'От задачи до работающего релиза',
         'approach.intro': 'Сначала определяем, что должно измениться для пользователя или бизнеса. Затем собираем, проверяем и запускаем.',
         'approach.step1.title': 'Разобраться',
@@ -42,6 +53,7 @@ const UI_TRANSLATIONS = {
         'approach.step3.text': 'Интерфейс, логика, интеграции и адаптация под устройства.',
         'approach.step4.title': 'Проверить и запустить',
         'approach.step4.text': 'Тесты, реальный пользовательский путь и понятная передача результата.',
+        'contact.kicker': 'Следующий шаг',
         'contact.title': 'Есть задача? Давайте превратим её в работающий продукт.',
         'contact.text': 'Напишите, чем занимается ваш бизнес, что хотите улучшить и какой результат считаете успешным.',
         'contact.note': 'Отвечу лично и сначала уточню задачу.',
@@ -73,14 +85,23 @@ const UI_TRANSLATIONS = {
         'nav.clients': 'Клиенттерге',
         'nav.clientPlatform': 'Клиент платформасы',
         'hero.eyebrow': 'Жаңа жобаларға ашық · Қазақстан',
-        'hero.title1': 'Жұмыс істейтін',
-        'hero.title2': 'цифрлық өнімдер жасаймын.',
-        'hero.lead': 'Сайттар, AI-құралдар және ішкі платформалар — идея мен интерфейстен жұмыс істейтін релизге дейін.',
+        'hero.title1': 'Сайттар мен AI.',
+        'hero.title2': 'Идеядан',
+        'hero.title3': 'іске қосуға.',
+        'hero.lead': 'Сайттар, AI және цифрлық платформалар арқылы бизнестің өсуіне көмектесемін. Мұнда — менің жобаларым, интерфейстерім және жұмыс істейтін өнімдерім.',
         'hero.primary': 'Жобаларды көру',
         'hero.secondary': 'Міндетті талқылау',
-        'hero.note': 'Тек жұмыс істейтін өнімдер мен платформалар',
+        'hero.note': 'Таңдаулы өнімдер. Дизайннан кодқа дейін.',
+        'hero.scroll': 'Төмен қарай — жобаларды көрсетемін',
+        'projects.kicker': 'Менің жұмыстарым',
+        'projects.gallery': 'Портфолио жобалары',
+        'projects.navigation': 'Жобаларды парақтау',
+        'projects.swipe': 'Свайппен парақтаңыз',
+        'projects.previous': 'Алдыңғы жоба',
+        'projects.next': 'Келесі жоба',
         'projects.title': 'Таңдаулы жобалар',
         'projects.intro': 'Жұмыс істейтін интерфейстері бар нақты өнімдер. Менің рөлімді, негізгі функциялар мен нәтижені көру үшін карточканы ашыңыз.',
+        'capabilities.kicker': 'Бизнесіңіз үшін',
         'capabilities.title': 'Мен не жасаймын',
         'capabilities.intro': 'Технология үшін технология емес, бизнес міндетіне арналған түсінікті цифрлық құрал.',
         'capabilities.web.title': 'Сайттар мен өнімдер',
@@ -89,6 +110,7 @@ const UI_TRANSLATIONS = {
         'capabilities.ai.text': 'Тексерілетін логикасы және адамға беру мүмкіндігі бар ассистенттер, деректерді талдау және өтінім сценарийлері.',
         'capabilities.platform.title': 'Жеке AI-кабинеттер',
         'capabilities.platform.text': 'Жеке агенті бар жабық кабинеттер: жазбалар, күнтізбе, шығындар және Telegram қосылымы.',
+        'platform.kicker': 'Сіздің платформаңыз',
         'platform.title': 'Сыртында портфолио. Ішінде жеке агент.',
         'platform.text': 'Әр клиент өз агентіне жеке қолжетімділік алады: сайтта немесе Telegram-да жазады, жазбаларды сақтайды, оқиғаларды жоспарлайды және кіріс пен шығысты жүргізеді.',
         'platform.point1': 'Ашық тіркеусіз жеке қолжетімділік',
@@ -97,6 +119,7 @@ const UI_TRANSLATIONS = {
         'platform.cta': 'Платформаға кіру',
         'platform.disclaimer': 'Қолжетімділік қосылған клиенттерге беріледі. Ашық тіркелу жоқ.',
         'platform.previewTitle': 'Жеке Agent Hub',
+        'approach.kicker': 'Жұмыс барысы',
         'approach.title': 'Міндеттен жұмыс істейтін релизге дейін',
         'approach.intro': 'Алдымен пайдаланушы немесе бизнес үшін не өзгеруі керегін анықтаймыз. Содан кейін жинап, тексеріп, іске қосамыз.',
         'approach.step1.title': 'Түсіну',
@@ -107,6 +130,7 @@ const UI_TRANSLATIONS = {
         'approach.step3.text': 'Интерфейс, логика, интеграциялар және құрылғыларға бейімдеу.',
         'approach.step4.title': 'Тексеру және іске қосу',
         'approach.step4.text': 'Тесттер, нақты пайдаланушы жолы және нәтижені түсінікті тапсыру.',
+        'contact.kicker': 'Келесі қадам',
         'contact.title': 'Бизнес міндетіңіз бар ма? Оны жұмыс істейтін өнімге айналдырайық.',
         'contact.text': 'Бизнесіңіз немен айналысатынын, нені жақсартқыңыз келетінін және қандай нәтижені сәтті деп санайтыныңызды жазыңыз.',
         'contact.note': 'Өзім жауап беріп, алдымен міндетті нақтылаймын.',
@@ -141,9 +165,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const heroShowcase = document.querySelector('.hero-showcase');
     const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
     const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
-    let currentLang = localStorage.getItem('shaikh-portfolio-lang') === 'kk' ? 'kk' : 'ru';
+    let savedLang;
+    try { savedLang = localStorage.getItem('shaikh-portfolio-lang'); } catch { /* Storage may be disabled. */ }
+    let currentLang = savedLang === 'kk' ? 'kk' : 'ru';
     let currentProjectId = null;
-    let revealObserver;
     let menuAnimation;
 
     const tr = (key) => UI_TRANSLATIONS[currentLang][key] || UI_TRANSLATIONS.ru[key] || key;
@@ -177,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="project-action" type="button" data-project-open="${escapeHtml(project.id)}">${escapeHtml(tr('dialog.more'))} ↗</button>
                 </div>
             </article>`).join('');
-        observeReveals(projectGrid);
+        window.dispatchEvent(new CustomEvent('portfolio:rendered'));
         projectGrid.querySelectorAll('[data-project-open]').forEach((button) => {
             button.addEventListener('click', () => openProject(button.dataset.projectOpen));
         });
@@ -218,17 +243,22 @@ document.addEventListener('DOMContentLoaded', () => {
         dialog.scrollTop = 0;
         if (typeof dialog.showModal === 'function') dialog.showModal();
         else dialog.setAttribute('open', '');
+        document.body.classList.add('project-open');
+        window.dispatchEvent(new CustomEvent('portfolio:opened'));
     }
 
     function applyLanguage(lang) {
         currentLang = lang;
-        localStorage.setItem('shaikh-portfolio-lang', lang);
+        try { localStorage.setItem('shaikh-portfolio-lang', lang); } catch { /* Language still works in this tab. */ }
         document.documentElement.lang = lang;
         document.title = tr('meta.title');
         const description = document.querySelector('meta[name="description"]');
         if (description) description.setAttribute('content', tr('meta.description'));
         document.querySelectorAll('[data-i18n]').forEach((element) => {
             element.textContent = tr(element.dataset.i18n);
+        });
+        document.querySelectorAll('[data-i18n-aria]').forEach((element) => {
+            element.setAttribute('aria-label', tr(element.dataset.i18nAria));
         });
         document.querySelectorAll('[data-lang]').forEach((button) => {
             const active = button.dataset.lang === lang;
@@ -260,25 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!open && restoreFocus) menuButton.focus({ preventScroll: true });
     }
 
-    function observeReveals(root = document) {
-        if (!revealObserver) return;
-        root.querySelectorAll('.reveal:not([data-observed])').forEach((element) => {
-            element.dataset.observed = 'true';
-            revealObserver.observe(element);
-        });
-    }
-
-    if ('IntersectionObserver' in window) {
-        document.documentElement.classList.add('reveal-enabled');
-        revealObserver = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (!entry.isIntersecting) return;
-                entry.target.classList.add('is-visible');
-                revealObserver.unobserve(entry.target);
-            });
-        }, { threshold: 0.08, rootMargin: '0px 0px -40px' });
-    }
-
     document.querySelectorAll('[data-lang]').forEach((button) => {
         button.addEventListener('click', () => applyLanguage(button.dataset.lang));
     });
@@ -304,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dialog?.addEventListener('click', (event) => {
         if (event.target === dialog) dialog.close();
     });
-    dialog?.addEventListener('close', () => { currentProjectId = null; });
+    dialog?.addEventListener('close', () => { currentProjectId = null; document.body.classList.remove('project-open'); });
 
     const updateHeader = () => siteHeader.classList.toggle('scrolled', window.scrollY > 24);
     window.addEventListener('scroll', updateHeader, { passive: true });
@@ -329,17 +340,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let pointerFrame = 0;
     let pointerPosition = null;
-    let tiltFrame = 0;
-    let tiltPosition = null;
     const motionAllowed = () => finePointer.matches && !motionPreference.matches;
     const resetMotion = () => {
         menuAnimation?.cancel();
         if (pointerFrame) cancelAnimationFrame(pointerFrame);
-        if (tiltFrame) cancelAnimationFrame(tiltFrame);
         pointerFrame = 0;
-        tiltFrame = 0;
         pointerPosition = null;
-        tiltPosition = null;
         document.documentElement.style.removeProperty('--pointer-x');
         document.documentElement.style.removeProperty('--pointer-y');
         heroShowcase?.style.setProperty('--tilt-x', '0deg');
@@ -356,38 +362,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.documentElement.style.setProperty('--pointer-y', `${pointerPosition.y}px`);
         });
     }, { passive: true });
-    heroShowcase?.addEventListener('pointermove', (event) => {
-        if (!motionAllowed() || event.pointerType === 'touch') return;
-        tiltPosition = { x: event.clientX, y: event.clientY };
-        if (tiltFrame) return;
-        tiltFrame = requestAnimationFrame(() => {
-            tiltFrame = 0;
-            if (!tiltPosition || !motionAllowed()) return;
-            const rect = heroShowcase.getBoundingClientRect();
-            if (!rect.width || !rect.height) return;
-            const x = Math.max(-1, Math.min(1, (tiltPosition.x - rect.left) / rect.width * 2 - 1));
-            const y = Math.max(-1, Math.min(1, (tiltPosition.y - rect.top) / rect.height * 2 - 1));
-            heroShowcase.style.setProperty('--tilt-x', `${(-y * 3).toFixed(2)}deg`);
-            heroShowcase.style.setProperty('--tilt-y', `${(x * 3).toFixed(2)}deg`);
-        });
-    }, { passive: true });
-    heroShowcase?.addEventListener('pointerleave', () => {
-        if (tiltFrame) cancelAnimationFrame(tiltFrame);
-        tiltFrame = 0;
-        tiltPosition = null;
-        heroShowcase.style.setProperty('--tilt-x', '0deg');
-        heroShowcase.style.setProperty('--tilt-y', '0deg');
-    });
     motionPreference.addEventListener('change', resetMotion);
     finePointer.addEventListener('change', resetMotion);
     window.addEventListener('blur', resetMotion);
 
     applyLanguage(currentLang);
-    observeReveals();
-    requestAnimationFrame(() => {
-        document.querySelectorAll('.hero .reveal').forEach((element, index) => {
-            window.setTimeout(() => element.classList.add('is-visible'), motionPreference.matches ? 0 : index * 90);
-        });
-    });
 
 });

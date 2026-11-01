@@ -1,0 +1,154 @@
+/* The public portfolio: native scrolling first, motion as an enhancement. */
+.scroll-landing { --bg: #09110d; --surface: #16251c; --muted: #afbbb1; --quiet: #8fa395; --text: #f3f5ed; }
+.scroll-landing .container { width: min(100% - 64px, 1440px); }
+.scroll-landing .reveal { opacity: 1; transform: none; }
+.scroll-landing .section-kicker { color: var(--accent); text-transform: none; letter-spacing: .01em; font-size: .82rem; }
+.scroll-landing .button { text-transform: none; letter-spacing: -.01em; font-size: .85rem; }
+.scroll-landing .eyebrow { padding: 0; border: 0; background: none; text-transform: none; letter-spacing: 0; font-size: .76rem; }
+.scroll-landing .eyebrow .availability-dot { animation: none; }
+.island-progress { position: absolute; bottom: 0; left: 12%; width: 76%; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; opacity: .7; pointer-events: none; }
+.scroll-landing .hero { padding: 152px 0 28px; background: radial-gradient(ellipse at 78% 38%, #527a3924, transparent 53%); }
+.scroll-landing .hero-grid { grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 48px; }
+.scroll-landing .hero-title { margin: 27px 0 25px; font-size: clamp(3.4rem, 6.5vw, 6.5rem); line-height: .98; letter-spacing: -.065em; font-weight: 600; }
+.scroll-landing .hero-title span:last-child { color: var(--accent); }
+.scroll-landing .hero-lead { max-width: 450px; font-size: 1.04rem; line-height: 1.8; }
+.scroll-landing .hero-actions { margin-top: 28px; }
+.scroll-landing .hero-showcase { min-height: clamp(430px, 42vw, 610px); }
+.scroll-landing .hero-showcase::before { border-color: #d5ff5422; background: radial-gradient(circle, #4b71342c, transparent 68%); }
+.scroll-landing .showcase-main { top: 8%; width: 92%; transform: rotate(-2deg); }
+.scroll-landing .showcase-float { width: 60%; bottom: 9%; left: -5%; transform: rotate(5deg); }
+.scroll-landing .showcase-frame { animation: none; transition: none; }
+.scroll-landing .showcase-note { right: 0; bottom: -6px; border-radius: 50px; width: auto; max-width: 84%; padding: 12px 18px; font-size: .7rem; }
+.scroll-landing .hero-glow { animation: none; opacity: .4; }
+.scroll-landing .glow-one { background: #6eaa4b23; }
+.scroll-landing .glow-two { background: #d5ff5412; }
+.hero-footer { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-top: 50px; }
+.scroll-cue { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; color: var(--muted); font-size: .73rem; }
+.scroll-cue-line { width: 42px; height: 1px; background: var(--accent); }
+.scroll-cue > span:last-child { color: var(--accent); font-size: 1.1rem; }
+.hero-footer-note { color: var(--quiet); font-size: .73rem; }
+.scroll-landing .section-heading { margin-bottom: 46px; }
+.scroll-landing .projects-section { background: linear-gradient(180deg, #15241b40, transparent); }
+.scroll-landing .project-card { background: #10201777; border-color: #b7d2bd24; border-radius: 24px; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.scroll-landing .project-card:first-child, .scroll-landing .project-card:last-child { grid-column: span 12; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); }
+.scroll-landing .project-card:last-child .project-media { aspect-ratio: auto; }
+.scroll-landing .project-media { overflow: hidden; }
+.scroll-landing .project-body h3 { margin-top: 20px; font-size: clamp(2rem, 3.1vw, 3.1rem); }
+.scroll-landing .project-action { text-transform: none; letter-spacing: 0; min-height: 48px; }
+.scroll-landing .project-overline { text-transform: none; letter-spacing: 0; font-size: .73rem; }
+.scroll-landing .project-status { text-transform: none; letter-spacing: 0; }
+.project-navigation { display: none; }
+.scroll-landing .capability-grid { grid-template-columns: 1fr; gap: 0; }
+.scroll-landing .capability-card { display: grid; grid-template-columns: 52px minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: 18px 30px; min-height: 200px; padding: 32px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; transform: none; }
+.scroll-landing .capability-top { justify-content: center; color: var(--accent); font-size: 1.7rem; }
+.scroll-landing .capability-top > span:last-child { display: none; }
+.scroll-landing .capability-card h3 { margin: 0; font-size: clamp(1.8rem, 2.6vw, 2.5rem); }
+.scroll-landing .capability-card p { min-height: 0; margin: 0; }
+.scroll-landing .capability-card .tag-list { grid-column: 2 / -1; margin: 0; }
+.scroll-landing .capability-card.is-engaged { border-top-color: #d5ff5475; }
+.scroll-landing .platform-section { background: radial-gradient(ellipse at 95% 50%, #7cb36c17, transparent 65%); }
+.scroll-landing .workspace-preview { transform: none; }
+.scroll-landing .workspace-chart i { animation: none; }
+.scroll-landing .approach-section > .container { display: grid; grid-template-columns: .9fr 1.1fr; gap: clamp(48px, 7vw, 100px); }
+.scroll-landing .approach-section .section-heading { display: block; position: sticky; top: 132px; align-self: start; }
+.scroll-landing .approach-section .section-heading > p { margin-top: 24px; }
+.scroll-landing .approach-list { position: relative; gap: 0; }
+.scroll-landing .approach-list::before, .scroll-landing .approach-list::after { content: ""; position: absolute; top: 56px; bottom: 130px; left: 24px; width: 1px; background: var(--line); transform-origin: top; }
+.scroll-landing .approach-list::after { background: var(--accent); transform: scaleY(var(--route-progress, 1)); }
+.scroll-landing .approach-list li { position: relative; display: block; padding: 32px 0 42px 82px; min-height: 205px; border: 0; border-bottom: 1px solid #ffffff0c; border-radius: 0; background: none; box-shadow: none; }
+.scroll-landing .approach-list > li > span { position: absolute; z-index: 1; left: 0; top: 32px; width: 49px; height: 49px; background: var(--bg); border-color: #95b09852; color: var(--quiet); transition: background .3s, color .3s, border-color .3s; }
+.scroll-landing .approach-list > li.is-active > span { background: var(--accent); color: #15210c; border-color: var(--accent); }
+.scroll-landing .approach-list h3 { font-size: 1.8rem; margin-bottom: 14px; }
+.scroll-landing .contact-section { background: radial-gradient(ellipse at 15% 95%, #7dba4226, transparent 60%); }
+.scroll-landing .contact-panel { background: #18332344; }
+.scroll-landing.project-open { overflow: hidden; }
+.scroll-landing .project-dialog { overscroll-behavior: contain; }
+.scroll-landing .reveal-enabled .reveal { opacity: 1; transform: none; }
+
+@media (min-width: 801px) {
+    .scroll-landing.motion-ready .project-media img { transition: none; }
+}
+@media (max-width: 1100px) and (min-width: 801px) {
+    .scroll-landing .hero-grid { gap: 20px; }
+    .scroll-landing .hero-title { font-size: clamp(3rem, 6vw, 5rem); }
+    .scroll-landing .hero-showcase { min-height: 400px; }
+    .scroll-landing .project-card:first-child, .scroll-landing .project-card:last-child { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 800px) {
+    .scroll-landing .container { width: calc(100% - 32px); }
+    .scroll-landing .hero { min-height: auto; padding: calc(122px + env(safe-area-inset-top, 0px)) 0 26px; }
+    .scroll-landing .hero-grid { grid-template-columns: 1fr; gap: 32px; }
+    .scroll-landing .hero-copy { max-width: 600px; }
+    .scroll-landing .hero-title { margin: 22px 0; font-size: clamp(2.8rem, 9.2vw, 4.8rem); line-height: 1; }
+    .scroll-landing .hero-lead { max-width: 490px; font-size: 1rem; line-height: 1.7; }
+    .scroll-landing .hero-showcase { width: min(520px, 100%); min-height: 350px; margin: 0 auto; }
+    .scroll-landing .showcase-main { position: absolute; top: 0; right: 0; width: 91%; height: 240px; padding: 7px; transform: rotate(-2deg); }
+    .scroll-landing .showcase-main picture { height: calc(100% - 28px); }
+    .scroll-landing .showcase-main img { height: 100%; object-fit: cover; object-position: top; aspect-ratio: auto; }
+    .scroll-landing .showcase-float { display: block; position: absolute; width: 55%; height: 190px; left: 0; top: 125px; bottom: auto; padding: 6px; transform: rotate(5deg); }
+    .scroll-landing .showcase-float picture { height: calc(100% - 28px); }
+    .scroll-landing .showcase-float img { height: 100%; aspect-ratio: auto; }
+    .scroll-landing .frame-topbar { height: 28px; padding-inline: 5px; }
+    .scroll-landing .showcase-note { display: flex; max-width: 79%; bottom: 0; font-size: .63rem; padding: 9px 12px; }
+    .hero-footer { margin-top: 22px; }
+    .hero-footer-note { display: none; }
+    .scroll-landing .section { padding: 76px 0; }
+    .scroll-landing .section-heading { margin-bottom: 30px; gap: 18px; }
+    .scroll-landing .section-heading h2, .scroll-landing .platform-copy h2, .scroll-landing .contact-copy h2 { font-size: clamp(2.25rem, 9.4vw, 4rem); line-height: 1.06; letter-spacing: -.05em; }
+    .scroll-landing .projects-section { overflow: hidden; }
+    .scroll-landing .project-grid { display: flex; gap: 16px; width: calc(100% + 32px); margin-inline: -16px; padding: 6px 16px 16px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; scrollbar-width: none; }
+    .scroll-landing .project-grid::-webkit-scrollbar { display: none; }
+    .scroll-landing .project-card, .scroll-landing .project-card:first-child, .scroll-landing .project-card:last-child { flex: 0 0 min(84vw, 420px); display: flex; flex-direction: column; scroll-snap-align: start; min-width: 0; transform: none; transition: border-color .3s; }
+    .scroll-landing .project-card .project-media, .scroll-landing .project-card:first-child .project-media, .scroll-landing .project-card:last-child .project-media { aspect-ratio: 4 / 3; min-height: 0; }
+    .scroll-landing .project-media img { transform: scale(1.04); transition: transform .65s var(--ease); }
+    .scroll-landing .project-card.is-current .project-media img { transform: scale(1); }
+    .scroll-landing .project-body { padding: 22px; }
+    .scroll-landing .project-body h3 { margin: 17px 0 12px; font-size: 2rem; }
+    .scroll-landing .project-body > p { font-size: .86rem; line-height: 1.65; }
+    .scroll-landing .project-result { font-size: .7rem; }
+    .scroll-landing .project-tags { margin: 15px 0; }
+    .project-navigation { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; margin-top: 6px; }
+    .project-swipe-hint { color: var(--muted); font-size: .72rem; }
+    .project-position { color: var(--quiet); font-size: .7rem; font-variant-numeric: tabular-nums; }
+    .project-arrow-group { display: flex; gap: 7px; }
+    .project-arrow { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--line-strong); border-radius: 50%; background: #ffffff06; color: var(--text); font-size: 1.1rem; cursor: pointer; }
+    .project-arrow:disabled { opacity: .3; cursor: default; }
+    .project-scroll-track { grid-column: 1 / -1; height: 2px; background: #ffffff13; overflow: hidden; margin-top: 6px; }
+    .project-scroll-track i { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(.1667); transition: transform .3s; }
+    .scroll-landing .capability-card { grid-template-columns: 34px 1fr; gap: 16px; padding: 28px 0; min-height: 0; }
+    .scroll-landing .capability-top { align-self: start; font-size: 1.5rem; }
+    .scroll-landing .capability-card h3 { font-size: 1.8rem; }
+    .scroll-landing .capability-card p, .scroll-landing .capability-card .tag-list { grid-column: 2; }
+    .scroll-landing .platform-grid { gap: 40px; }
+    .scroll-landing .workspace-preview { min-height: 390px; }
+    .scroll-landing .approach-section > .container { display: block; }
+    .scroll-landing .approach-section .section-heading { position: static; margin-bottom: 35px; }
+    .scroll-landing .approach-list li { padding: 27px 0 32px 65px; min-height: 180px; }
+    .scroll-landing .approach-list > li > span { width: 43px; height: 43px; top: 27px; }
+    .scroll-landing .approach-list::before, .scroll-landing .approach-list::after { left: 21px; top: 48px; bottom: 125px; }
+    .scroll-landing .approach-list h3 { font-size: 1.55rem; }
+    .scroll-landing .approach-list p { font-size: .9rem; }
+    .scroll-landing .ambient-field span { animation: none; opacity: .2; }
+    .scroll-landing .ambient-field::after { display: none; }
+    .scroll-landing .hero-glow { display: none; }
+}
+@media (max-width: 560px) {
+    .scroll-landing .hero { padding-top: calc(112px + env(safe-area-inset-top, 0px)); }
+    .scroll-landing .hero-title { font-size: clamp(2.5rem, 11.2vw, 3.7rem); }
+    .scroll-landing .hero-lead { font-size: .94rem; }
+    .scroll-landing .hero-actions { flex-direction: row; align-items: center; gap: 6px; margin-top: 22px; }
+    .scroll-landing .hero-actions .button { width: auto; padding-inline: 13px; min-height: 49px; font-size: .72rem; }
+    .scroll-landing .hero-actions .button-primary { flex: 1; }
+    .scroll-landing .hero-actions .button-quiet::after { display: none; }
+    .scroll-landing .hero-showcase { min-height: 300px; }
+    .scroll-landing .showcase-main { height: 205px; }
+    .scroll-landing .showcase-float { height: 150px; top: 120px; }
+    .scroll-landing .lang-btn { height: 44px; }
+    .scroll-landing .menu-toggle { width: 44px; height: 44px; }
+    .scroll-landing .project-dialog { max-height: calc(100dvh - 8px - env(safe-area-inset-top, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .scroll-landing .project-media img { transform: none !important; }
+    .scroll-landing .project-grid { scroll-behavior: auto; }
+    .scroll-landing .ambient-field span { animation: none; }
+}

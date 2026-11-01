@@ -16,8 +16,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./css/style.css?v=20261027a">
-    <meta name="theme-color" content="#080806">
+    <link rel="stylesheet" href="./css/style.css?v=20261101b">
+    <link rel="stylesheet" href="./css/landing-story.css?v=20261101b">
+    <meta name="theme-color" content="#09110d">
     <link rel="icon" href="/icons/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <script type="application/ld+json">
@@ -34,7 +35,7 @@
     }
     </script>
 </head>
-<body>
+<body class="scroll-landing">
     <a class="skip-link" href="#main" data-i18n="a11y.skip">Перейти к содержанию</a>
     <div class="ambient-field" aria-hidden="true"><span></span><span></span><span></span></div>
 
@@ -55,6 +56,7 @@
                 </button>
             </div>
         </div>
+        <span class="island-progress" aria-hidden="true"></span>
         <nav class="mobile-menu" id="mobile-menu" aria-label="Навигация" hidden>
             <a href="#projects" data-i18n="nav.projects">Проекты</a>
             <a href="#capabilities" data-i18n="nav.capabilities">Направления</a>
@@ -75,10 +77,11 @@
                         <span data-i18n="hero.eyebrow">Открыт к новым проектам · Казахстан</span>
                     </div>
                     <h1 class="hero-title reveal">
-                        <span data-i18n="hero.title1">Создаю цифровые</span>
-                        <span class="accent-text" data-i18n="hero.title2">продукты, которые работают.</span>
+                        <span data-i18n="hero.title1">Сайты и AI.</span>
+                        <span data-i18n="hero.title2">От идеи</span>
+                        <span data-i18n="hero.title3">до запуска.</span>
                     </h1>
-                    <p class="hero-lead reveal" data-i18n="hero.lead">Сайты, AI-инструменты и внутренние платформы — от идеи и интерфейса до работающего релиза.</p>
+                    <p class="hero-lead reveal" data-i18n="hero.lead">Помогаю бизнесу расти с помощью сайтов, AI и цифровых платформ. Здесь — мои проекты, интерфейсы и работающие продукты.</p>
                     <div class="hero-actions reveal">
                         <a class="button button-primary" href="#projects"><span data-i18n="hero.primary">Смотреть проекты</span><span aria-hidden="true">↓</span></a>
                         <a class="button button-quiet" href="#contact" data-i18n="hero.secondary">Обсудить задачу</a>
@@ -93,21 +96,28 @@
                         <div class="frame-topbar"><span></span><span></span><span></span><b>binom.ai</b></div>
                         <picture><source media="(max-width: 800px)" srcset="./images/portfolio/binom-ai-mobile.jpg"><img src="./images/portfolio/binom-ai.jpg" alt="Интерфейс рабочей платформы BINOM AI"></picture>
                     </div>
-                    <div class="showcase-note"><span class="note-index">01—06</span><span data-i18n="hero.note">Только работающие продукты и платформы</span></div>
+                    <div class="showcase-note"><span class="note-index">2026</span><span data-i18n="hero.note">Избранные продукты. От дизайна до кода.</span></div>
                 </div>
             </div>
-            <div class="container hero-strip" aria-label="Ключевые направления">
-                <span>WEB PRODUCTS</span><span>AI SYSTEMS</span><span>INTERNAL TOOLS</span><span>RU / KZ</span>
+            <div class="container hero-footer">
+                <a class="scroll-cue" href="#projects"><span class="scroll-cue-line" aria-hidden="true"></span><span data-i18n="hero.scroll">Листайте — покажу проекты</span><span aria-hidden="true">↓</span></a>
+                <span class="hero-footer-note">Design. Code. Launch.</span>
             </div>
         </section>
 
         <section class="section projects-section" id="projects">
             <div class="container">
                 <div class="section-heading reveal">
-                    <div><p class="section-kicker">01 / PORTFOLIO</p><h2 data-i18n="projects.title">Избранные проекты</h2></div>
+                    <div><p class="section-kicker" data-i18n="projects.kicker">Мои работы</p><h2 data-i18n="projects.title">Избранные проекты</h2></div>
                     <p data-i18n="projects.intro">Реальные продукты с работающими интерфейсами. Откройте карточку, чтобы увидеть мою роль, ключевые функции и результат.</p>
                 </div>
-                <div class="project-grid" id="project-grid" aria-live="polite"></div>
+                <div class="project-grid" id="project-grid" tabindex="0" role="region" aria-label="Проекты портфолио" data-i18n-aria="projects.gallery" aria-live="polite"></div>
+                <div class="project-navigation" aria-label="Листать проекты" data-i18n-aria="projects.navigation">
+                    <span class="project-swipe-hint" data-i18n="projects.swipe">Листайте свайпом</span>
+                    <span class="project-position" id="project-position" role="status" aria-live="polite">01 / 06</span>
+                    <div class="project-arrow-group"><button type="button" class="project-arrow" id="project-previous" aria-label="Предыдущий проект" data-i18n-aria="projects.previous" disabled>←</button><button type="button" class="project-arrow" id="project-next" aria-label="Следующий проект" data-i18n-aria="projects.next">→</button></div>
+                    <span class="project-scroll-track" aria-hidden="true"><i id="project-scroll-progress"></i></span>
+                </div>
                 <noscript><p class="noscript-note">Для просмотра интерактивного портфолио включите JavaScript.</p></noscript>
             </div>
         </section>
@@ -115,13 +125,13 @@
         <section class="section capabilities-section" id="capabilities">
             <div class="container">
                 <div class="section-heading reveal">
-                    <div><p class="section-kicker">02 / CAPABILITIES</p><h2 data-i18n="capabilities.title">Что я создаю</h2></div>
+                    <div><p class="section-kicker" data-i18n="capabilities.kicker">Для вашего бизнеса</p><h2 data-i18n="capabilities.title">Что я создаю</h2></div>
                     <p data-i18n="capabilities.intro">Не набор технологий ради технологий, а понятный цифровой инструмент под задачу бизнеса.</p>
                 </div>
                 <div class="capability-grid">
-                    <article class="capability-card reveal"><div class="capability-top"><span>01</span><span aria-hidden="true">↗</span></div><h3 data-i18n="capabilities.web.title">Сайты и продукты</h3><p data-i18n="capabilities.web.text">Лендинги, продуктовые страницы и интерфейсы, которые ясно объясняют ценность и ведут к действию.</p><div class="tag-list"><span>UX/UI</span><span>Frontend</span><span>Launch</span></div></article>
-                    <article class="capability-card reveal"><div class="capability-top"><span>02</span><span aria-hidden="true">↗</span></div><h3 data-i18n="capabilities.ai.title">AI и автоматизация</h3><p data-i18n="capabilities.ai.text">Ассистенты, анализ данных и сценарии обработки заявок с проверяемой логикой и передачей человеку.</p><div class="tag-list"><span>AI</span><span>Automation</span><span>Integrations</span></div></article>
-                    <article class="capability-card reveal"><div class="capability-top"><span>03</span><span aria-hidden="true">↗</span></div><h3 data-i18n="capabilities.platform.title">Личные AI-кабинеты</h3><p data-i18n="capabilities.platform.text">Закрытые кабинеты с персональным агентом: заметки, календарь, расходы и подключение Telegram.</p><div class="tag-list"><span>Agent Hub</span><span>Telegram</span><span>BYOK</span></div></article>
+                    <article class="capability-card reveal"><div class="capability-top"><span aria-hidden="true">↗</span><span aria-hidden="true">↗</span></div><h3 data-i18n="capabilities.web.title">Сайты и продукты</h3><p data-i18n="capabilities.web.text">Лендинги, продуктовые страницы и интерфейсы, которые ясно объясняют ценность и ведут к действию.</p><div class="tag-list"><span>UX/UI</span><span>Frontend</span><span>Launch</span></div></article>
+                    <article class="capability-card reveal"><div class="capability-top"><span aria-hidden="true">✳</span><span aria-hidden="true">↗</span></div><h3 data-i18n="capabilities.ai.title">AI и автоматизация</h3><p data-i18n="capabilities.ai.text">Ассистенты, анализ данных и сценарии обработки заявок с проверяемой логикой и передачей человеку.</p><div class="tag-list"><span>AI</span><span>Automation</span><span>Integrations</span></div></article>
+                    <article class="capability-card reveal"><div class="capability-top"><span aria-hidden="true">◎</span><span aria-hidden="true">↗</span></div><h3 data-i18n="capabilities.platform.title">Личные AI-кабинеты</h3><p data-i18n="capabilities.platform.text">Закрытые кабинеты с персональным агентом: заметки, календарь, расходы и подключение Telegram.</p><div class="tag-list"><span>Agent Hub</span><span>Telegram</span><span>BYOK</span></div></article>
                 </div>
             </div>
         </section>
@@ -129,7 +139,7 @@
         <section class="section platform-section" id="platform">
             <div class="container platform-grid">
                 <div class="platform-copy reveal">
-                    <p class="section-kicker">03 / CLIENT SPACE</p>
+                    <p class="section-kicker" data-i18n="platform.kicker">Ваша платформа</p>
                     <h2 data-i18n="platform.title">Портфолио снаружи. Личный агент внутри.</h2>
                     <p data-i18n="platform.text">Каждый клиент получает отдельный вход к своему агенту: пишет ему на сайте или в Telegram, сохраняет заметки, планирует события и ведёт доходы и расходы.</p>
                     <ul class="platform-points"><li data-i18n="platform.point1">Персональный доступ без открытой регистрации</li><li data-i18n="platform.point2">Собственный API-ключ и данные клиента</li><li data-i18n="platform.point3">Работа на сайте и в Telegram</li></ul>
@@ -151,7 +161,7 @@
         <section class="section approach-section" id="approach">
             <div class="container">
                 <div class="section-heading reveal">
-                    <div><p class="section-kicker">04 / APPROACH</p><h2 data-i18n="approach.title">От задачи до работающего релиза</h2></div>
+                    <div><p class="section-kicker" data-i18n="approach.kicker">Как работаем</p><h2 data-i18n="approach.title">От задачи до работающего релиза</h2></div>
                     <p data-i18n="approach.intro">Сначала определяем, что должно измениться для пользователя или бизнеса. Затем собираем, проверяем и запускаем.</p>
                 </div>
                 <ol class="approach-list">
@@ -165,7 +175,7 @@
 
         <section class="contact-section" id="contact">
             <div class="container contact-grid">
-                <div class="contact-copy reveal"><p class="section-kicker">05 / CONTACT</p><h2 data-i18n="contact.title">Есть задача? Давайте превратим её в работающий продукт.</h2></div>
+                <div class="contact-copy reveal"><p class="section-kicker" data-i18n="contact.kicker">Следующий шаг</p><h2 data-i18n="contact.title">Есть задача? Давайте превратим её в работающий продукт.</h2></div>
                 <div class="contact-panel reveal">
                     <p data-i18n="contact.text">Напишите, чем занимается ваш бизнес, что хотите улучшить и какой результат считаете успешным.</p>
                     <div class="contact-actions"><a class="button button-primary" href="https://t.me/Shaqtg" target="_blank" rel="noopener noreferrer">Telegram <span aria-hidden="true">↗</span></a><a class="button button-outline" href="https://www.instagram.com/shaikhhnazar" target="_blank" rel="noopener noreferrer">Instagram <span aria-hidden="true">↗</span></a></div>
@@ -203,7 +213,10 @@
         </div>
     </dialog>
 
-    <script src="./js/portfolio-data.js?v=20261022c"></script>
-    <script src="./js/main.js?v=20261027a"></script>
+    <script src="./js/portfolio-data.js?v=20261022c" defer></script>
+    <script src="./js/vendor/gsap-3.15.0.min.js" defer></script>
+    <script src="./js/vendor/ScrollTrigger-3.15.0.min.js" defer></script>
+    <script src="./js/main.js?v=20261101b" defer></script>
+    <script src="./js/landing-story.js?v=20261101b" defer></script>
 </body>
 </html>
