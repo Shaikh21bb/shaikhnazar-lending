@@ -15,6 +15,8 @@
 .showcase-layer { animation: none; }
 .showcase-arrival, .showcase-surface { width: 100%; height: 100%; }
 .showcase-orbit, .hero-motion-toggle, .desktop-project-hint { display: none; }
+.motion-ribbon { display: none; }
+.ambient-paused .ambient-field span { animation-play-state: paused; }
 .scroll-landing .hero-lead { max-width: 450px; font-size: 1.04rem; line-height: 1.8; }
 .scroll-landing .hero-actions { margin-top: 28px; }
 .scroll-landing .hero-showcase { min-height: clamp(430px, 42vw, 610px); }
@@ -168,6 +170,18 @@
     .motion-ready .hero-motion-toggle { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 24px; background: #ffffff04; color: var(--muted); font: inherit; font-size: .7rem; cursor: pointer; }
     .hero-motion-toggle[aria-pressed="true"] { color: var(--accent); }
     .scroll-landing .hero-footer-note { display: none; }
+    .motion-ready [data-magnetic] > span:first-child { display: inline-block; will-change: transform; }
+    .scroll-landing .approach-list > li { perspective: 800px; }
+    .scroll-landing .approach-list > li > div { transform-origin: center bottom; }
+}
+
+@media (min-width: 801px) {
+    .motion-ribbon { display: grid; gap: 6px; overflow: clip; padding-block: clamp(36px, 4vw, 64px); margin-top: 30px; border-block: 1px solid #b7d2bd18; background: #14251b66; }
+    .ribbon-line { display: flex; align-items: center; gap: .38em; width: max-content; font-family: var(--font-display); font-size: clamp(4.5rem, 8vw, 9rem); font-weight: 600; line-height: 1.15; letter-spacing: -.055em; white-space: nowrap; }
+    .ribbon-line i { color: var(--accent); font-size: .7em; font-style: normal; line-height: 1; }
+    .ribbon-line-two { color: transparent; -webkit-text-stroke: 1px #a7c172; }
+    .ribbon-line-two i { color: transparent; }
+    .scroll-landing .contact-section { overflow: clip; }
 }
 
 @media (min-width: 1024px) and (min-height: 640px) and (prefers-reduced-motion: no-preference) {

@@ -1,6 +1,29 @@
 /* Native touch scrolling and accessible controls also work without GSAP. */
 (() => {
     if (window.gsap && window.ScrollTrigger) window.gsap.registerPlugin(window.ScrollTrigger);
+    function createMagneticLabel(button, gsap) {
+        const label = button.querySelector('span');
+        if (!label) return () => {};
+        const xTo = gsap.quickTo(label, 'x', { duration: .45, ease: 'power3.out' });
+        const yTo = gsap.quickTo(label, 'y', { duration: .45, ease: 'power3.out' });
+        const move = event => {
+            if (event.pointerType !== 'mouse') return;
+            const bounds = button.getBoundingClientRect();
+            if (!bounds.width || !bounds.height) return;
+            const clamp = value => Math.max(-.5, Math.min(.5, value));
+            xTo(clamp((event.clientX - bounds.left) / bounds.width - .5) * 18);
+            yTo(clamp((event.clientY - bounds.top) / bounds.height - .5) * 12);
+        };
+        const reset = () => { xTo(0); yTo(0); };
+        button.setAttribute('data-magnetic', '');
+        button.addEventListener('pointermove', move, { passive: true });
+        ['pointerleave', 'pointercancel', 'blur'].forEach(name => button.addEventListener(name, reset));
+        return () => {
+            button.removeEventListener('pointermove', move);
+            ['pointerleave', 'pointercancel', 'blur'].forEach(name => button.removeEventListener(name, reset));
+            button.removeAttribute('data-magnetic');
+        };
+    }
     function createExperience() {
         const gallery = document.getElementById('project-grid');
         if (!gallery) return () => {};
@@ -76,7 +99,7 @@
         function refresh() {
             clearTimeout(refreshTimer);
             refreshTimer = setTimeout(() => {
-                if (!stopped) { ScrollTrigger?.refresh(); queueGallery(); }
+                if (!stopped) { ScrollTrigger?.refresh(true); queueGallery(); }
             }, 120);
         }
         function rebuildProjects() {
@@ -157,7 +180,7 @@
             const setReadingProgress = gsap.quickSetter('.island-progress', 'scaleX');
             readingTrigger = ScrollTrigger.create({ start: 0, end: 'max', refreshPriority: -1, onUpdate: self => setReadingProgress(self.progress), onRefresh: self => setReadingProgress(self.progress) });
             scene = gsap.matchMedia();
-            scene.add({ mobile: '(max-width: 800px)', desktop: '(min-width: 801px)', reduce: '(prefers-reduced-motion: reduce)' }, context => {
+            scene.add({ mobile: '(max-width: 800px)', desktop: '(min-width: 801px)', pointer: '(hover: hover) and (pointer: fine)', reduce: '(prefers-reduced-motion: reduce)' }, context => {
                 if (context.conditions.reduce) return;
                 const phone = context.conditions.mobile;
                 if (!introPlayed && window.scrollY < 40) {
@@ -184,6 +207,20 @@
                     ScrollTrigger.create({ trigger: step, start: 'top 65%', end: 'bottom 40%', toggleClass: 'is-active' });
                 });
                 if (!phone) {
+                    gsap.fromTo('.ribbon-line-one', { x: 0 }, { x: () => -window.innerWidth * .35, ease: 'none',
+                        scrollTrigger: { trigger: '.motion-ribbon', start: 'top bottom', end: 'bottom top', scrub: .6, invalidateOnRefresh: true } });
+                    gsap.fromTo('.ribbon-line-two', { x: () => -window.innerWidth * .35 }, { x: 0, ease: 'none',
+                        scrollTrigger: { trigger: '.motion-ribbon', start: 'top bottom', end: 'bottom top', scrub: .6, invalidateOnRefresh: true } });
+                    gsap.to('.ribbon-line i', { rotation: 100, ease: 'none', scrollTrigger: { trigger: '.motion-ribbon', start: 'top bottom', end: 'bottom top', scrub: .6 } });
+                    document.querySelectorAll('.approach-list > li').forEach(step => {
+                        gsap.timeline({ scrollTrigger: { trigger: step, start: 'top 90%', end: 'top 55%', scrub: .45 } })
+                            .fromTo(step.querySelector('div'), { y: 65, rotationX: -32, opacity: .15 }, { y: 0, rotationX: 0, opacity: 1, ease: 'none' }, 0)
+                            .fromTo(step.querySelector('span'), { scale: .6, rotation: -35 }, { scale: 1, rotation: 0, ease: 'none' }, 0);
+                    });
+                    gsap.from('.contact-panel', { y: 65, scale: .94, rotation: -2, duration: 1, ease: 'power3.out', clearProps: 'transform',
+                        scrollTrigger: { trigger: '.contact-panel', start: 'top 90%', once: true } });
+                    const removeMagnets = context.conditions.pointer
+                        ? [...document.querySelectorAll('.button-primary')].map(button => createMagneticLabel(button, gsap)) : [];
                     document.querySelectorAll('.capabilities-section h2, .platform-copy h2, .approach-section h2, .contact-copy h2').forEach(title => {
                         gsap.from(title, { y: 45, clipPath: 'inset(0 0 100% 0)', duration: 1, ease: 'power3.out', clearProps: 'transform,clipPath', scrollTrigger: { trigger: title, start: 'top 90%', once: true } });
                     });
@@ -197,7 +234,11 @@
                         .to('.showcase-float .showcase-surface', { y: 26, rotation: -2 }, 0);
                     const orbit = gsap.to('.showcase-orbit', { rotation: 360, duration: 32, ease: 'none', repeat: -1 });
                     let visible = window.scrollY < (showcase?.offsetHeight || 800);
-                    const syncIdle = () => { const paused = idlePaused || !visible || document.hidden; float.paused(paused); orbit.paused(paused); };
+                    const syncIdle = () => {
+                        const paused = idlePaused || !visible || document.hidden;
+                        float.paused(paused); orbit.paused(paused);
+                        document.body.classList.toggle('ambient-paused', idlePaused || document.hidden);
+                    };
                     const toggleIdle = () => { idlePaused = !idlePaused; pauseButton?.setAttribute('aria-pressed', String(idlePaused)); syncIdle(); };
                     pauseButton?.setAttribute('aria-pressed', String(idlePaused));
                     pauseButton?.addEventListener('click', toggleIdle);
@@ -216,6 +257,8 @@
                     showcase?.addEventListener('pointermove', pointer, { passive: true });
                     showcase?.addEventListener('pointerleave', resetTilt);
                     return () => {
+                        removeMagnets.forEach(remove => remove());
+                        document.body.classList.remove('ambient-paused');
                         pauseButton?.removeEventListener('click', toggleIdle);
                         document.removeEventListener('visibilitychange', syncIdle);
                         showcase?.removeEventListener('pointermove', pointer);

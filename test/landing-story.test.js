@@ -19,13 +19,16 @@ class Surface {
     removeAttribute(name) { delete this.attributes[name]; }
     querySelectorAll() { return []; }
     querySelector() { return null; }
-    getBoundingClientRect() { return { left: 0, width: 360, height: 60 }; }
+    getBoundingClientRect() { return { left: 0, top: 0, width: 360, height: 60 }; }
 }
-function fixture({ reduced = false, withGsap = false, desktop = false } = {}) {
+function fixture({ reduced = false, withGsap = false, desktop = false, finePointer = desktop, magnetic = false } = {}) {
     const window = new Surface(); const document = new Surface();
     document.body = new Surface(); document.documentElement = { lang: 'ru' };
     const elements = Object.fromEntries(['project-grid','project-previous','project-next','project-position','project-scroll-progress','menu-toggle','mobile-menu','site-header','project-dialog'].map(id => [id, new Surface()]));
     const stage = new Surface();
+    const magneticButton = new Surface(); const magneticLabel = new Surface(); const quickMoves = [];
+    magneticButton.querySelector = selector => selector === 'span' ? magneticLabel : null;
+    document.querySelectorAll = selector => magnetic && selector === '.button-primary' ? [magneticButton] : [];
     document.getElementById = id => elements[id] || null;
     document.querySelector = selector => selector === '.projects-stage' ? stage : null;
     const gallery = elements['project-grid']; gallery.clientWidth = 360;
@@ -41,6 +44,8 @@ function fixture({ reduced = false, withGsap = false, desktop = false } = {}) {
     gallery.scrollTo = options => { scrolls.push(options); gallery.scrollLeft = options.left; gallery.dispatchEvent({ type: 'scroll' }); };
     const frames = new Map(); const timers = new Map(); let sequence = 0;
     const flush = () => { for (const [id, fn] of frames) { frames.delete(id); fn(); } };
+    const flushTimers = () => { for (const [id, fn] of timers) { timers.delete(id); fn(); } };
+    const refreshModes = [];
     const media = query => Object.assign(new Surface(), { media: query, matches: query.includes('prefers-reduced-motion') ? reduced : query.includes('max-width') ? !desktop : desktop });
     window.matchMedia = media; window.scrollY = 0; window.innerHeight = 720;
     let railTween;
@@ -55,10 +60,10 @@ function fixture({ reduced = false, withGsap = false, desktop = false } = {}) {
         window.gsap = { registerPlugin() {}, quickSetter: () => () => {}, timeline: forbiddenMotion, from: forbiddenMotion, fromTo: forbiddenMotion, set() {},
             matchMedia: () => {
                 let cleanup;
-                return { add: (condition, fn) => { if (typeof condition === 'object') cleanup = fn({ conditions: { mobile: !desktop, desktop, pinned: desktop, reduce: reduced } }); }, revert: () => cleanup?.() };
+                return { add: (condition, fn) => { if (typeof condition === 'object') cleanup = fn({ conditions: { mobile: !desktop, desktop, pointer: finePointer, pinned: desktop, reduce: reduced } }); }, revert: () => cleanup?.() };
             } };
         if (desktop && !reduced) Object.assign(window.gsap, {
-            timeline: tween, from: tween, fromTo: tween, quickTo: () => () => {},
+            timeline: tween, from: tween, fromTo: tween, quickTo: (target, property) => value => quickMoves.push({ target, property, value }),
             to: (target, vars) => {
                 if (target !== gallery) return tween();
                 railTween = { scrollTrigger: { start: 1000, end: 3304, progress: 0 },
@@ -66,7 +71,7 @@ function fixture({ reduced = false, withGsap = false, desktop = false } = {}) {
                 return railTween;
             }
         });
-        window.ScrollTrigger = { config() {}, create: () => ({ kill() {} }), refresh() {} };
+        window.ScrollTrigger = { config() {}, create: () => ({ kill() {} }), refresh: safe => refreshModes.push(safe) };
     }
     const context = vm.createContext({ window, document, matchMedia: media, console,
         requestAnimationFrame: fn => { const id = ++sequence; frames.set(id, fn); return id; }, cancelAnimationFrame: id => frames.delete(id),
@@ -74,7 +79,7 @@ function fixture({ reduced = false, withGsap = false, desktop = false } = {}) {
         localStorage: { getItem() { throw new Error('Storage blocked'); }, setItem() { throw new Error('Storage blocked'); } },
         CustomEvent: class { constructor(type) { this.type = type; } }
     });
-    return { context, window, document, elements, gallery, scrolls, pageScrolls, flush, cards: () => items, replaceCards: () => { items = makeCards(); } };
+    return { context, window, document, elements, gallery, scrolls, pageScrolls, flush, flushTimers, refreshModes, magneticButton, magneticLabel, quickMoves, cards: () => items, replaceCards: () => { items = makeCards(); } };
 }
 
 test('native project navigation survives unavailable animation libraries and supports keyboard boundaries', () => {
@@ -156,4 +161,42 @@ test('desktop reduced-motion preference keeps all projects in the static grid', 
     assert.equal(f.document.body.classList.contains('desktop-portfolio'), false);
     assert.equal(f.pageScrolls.length, 0);
     f.window.dispatchEvent({ type: 'pagehide' });
+});
+
+test('mouse attraction is bounded to the inner label and resets and removes its listeners', () => {
+    const f = fixture({ desktop: true, withGsap: true, magnetic: true }); vm.runInContext(motionSource, f.context);
+    f.document.dispatchEvent({ type: 'DOMContentLoaded' });
+    assert.equal(f.magneticButton.attributes['data-magnetic'], '');
+    f.magneticButton.dispatchEvent({ type: 'pointermove', pointerType: 'touch', clientX: 360, clientY: 60 });
+    assert.equal(f.quickMoves.length, 0);
+    f.magneticButton.dispatchEvent({ type: 'pointermove', pointerType: 'mouse', clientX: 900, clientY: 100 });
+    assert.deepEqual(f.quickMoves.map(move => [move.property, move.value]), [['x', 9], ['y', 6]]);
+    assert.ok(f.quickMoves.every(move => move.target === f.magneticLabel), 'the link hit area stays fixed');
+    f.magneticButton.dispatchEvent({ type: 'blur' });
+    assert.deepEqual(f.quickMoves.slice(-2).map(move => move.value), [0, 0]);
+    f.window.dispatchEvent({ type: 'pagehide' });
+    assert.equal(f.magneticButton.events.get('pointermove').size, 0);
+    assert.equal(f.magneticButton.events.get('blur').size, 0);
+    assert.equal(f.magneticButton.attributes['data-magnetic'], undefined);
+});
+
+test('coarse pointer and reduced motion do not install magnetic label handlers', () => {
+    for (const preferences of [{ finePointer: false }, { reduced: true }]) {
+        const f = fixture({ desktop: true, withGsap: true, magnetic: true, ...preferences }); vm.runInContext(motionSource, f.context);
+        f.document.dispatchEvent({ type: 'DOMContentLoaded' });
+        assert.equal(f.magneticButton.attributes['data-magnetic'], undefined);
+        assert.equal(f.magneticButton.events.has('pointermove'), false);
+        f.window.dispatchEvent({ type: 'pagehide' });
+    }
+});
+
+test('layout refresh requests use the safe deferred mode without interrupting navigation', () => {
+    const f = fixture({ withGsap: true, reduced: true }); vm.runInContext(motionSource, f.context);
+    f.document.dispatchEvent({ type: 'DOMContentLoaded' });
+    f.window.dispatchEvent({ type: 'portfolio:rendered' });
+    f.flushTimers();
+    assert.deepEqual(f.refreshModes, [true]);
+    f.window.dispatchEvent({ type: 'pagehide' });
+    f.flushTimers();
+    assert.deepEqual(f.refreshModes, [true], 'disposed pages must not request another refresh');
 });
