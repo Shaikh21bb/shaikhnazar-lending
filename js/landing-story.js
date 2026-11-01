@@ -44,7 +44,6 @@
         let dialogTween;
         let stopped = false;
         let introPlayed = false;
-        let desktopRail;
         let idlePaused = false;
         const cards = () => [...gallery.querySelectorAll('.project-card')];
 
@@ -53,9 +52,12 @@
             if (stopped) return;
             const items = cards();
             if (!items.length) return;
-            // Measure the visible cards after GSAP renders, including refreshes
-            // that restore a tween without running its intermediate callbacks.
-            const bounds = (desktopRail?.stage || gallery).getBoundingClientRect();
+            if (!mobile.matches) {
+                items.forEach(card => card.classList.remove('is-current'));
+                gallery.removeAttribute('aria-roledescription');
+                return;
+            }
+            const bounds = gallery.getBoundingClientRect();
             const center = bounds.left + gallery.clientWidth / 2;
             let distance = Infinity;
             items.forEach((card, index) => {
@@ -69,30 +71,22 @@
             if (previous) previous.disabled = activeIndex === 0;
             if (next) next.disabled = activeIndex === items.length - 1;
             if (progress) progress.style.transform = `scaleX(${(activeIndex + 1) / items.length})`;
-            if (mobile.matches || desktopRail) gallery.setAttribute('aria-roledescription', 'карусель');
-            else gallery.removeAttribute('aria-roledescription');
+            gallery.setAttribute('aria-roledescription', 'карусель');
         }
         function queueGallery() {
             if (!frame) frame = requestAnimationFrame(updateGallery);
         }
         function goTo(index) {
+            if (!mobile.matches) return;
             const items = cards();
             const target = items[Math.max(0, Math.min(items.length - 1, index))];
             if (!target || !items[0]) return;
-            if (desktopRail) {
-                const trigger = desktopRail.tween.scrollTrigger;
-                const ratio = Math.min(1, (target.offsetLeft - items[0].offsetLeft) / desktopRail.travel());
-                // The rail's scrub supplies the transition; a second native smooth
-                // scroll can be interrupted by image/font-triggered pin refreshes.
-                window.scrollTo({ top: trigger.start + ratio * (trigger.end - trigger.start), behavior: 'instant' });
-                return;
-            }
             gallery.scrollTo({ left: target.offsetLeft - items[0].offsetLeft, behavior: reduced.matches ? 'auto' : 'smooth' });
         }
         const goPrevious = () => goTo(activeIndex - 1);
         const goNext = () => goTo(activeIndex + 1);
         const keyboard = event => {
-            if ((!mobile.matches && !desktopRail) || event.target !== gallery || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            if (!mobile.matches || event.target !== gallery || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
             event.preventDefault();
             goTo(event.key === 'Home' ? 0 : event.key === 'End' ? cards().length - 1 : activeIndex + (event.key === 'ArrowRight' ? 1 : -1));
         };
@@ -103,48 +97,25 @@
             }, 120);
         }
         function rebuildProjects() {
-            const oldTrigger = desktopRail?.tween.scrollTrigger;
-            const restoreProgress = oldTrigger && window.scrollY >= oldTrigger.start && window.scrollY <= oldTrigger.end ? oldTrigger.progress : null;
             projectScene?.revert();
             if (gsap && ScrollTrigger) {
                 projectScene = gsap.matchMedia();
-                projectScene.add({ desktop: '(min-width: 801px)', pinned: '(min-width: 1024px) and (min-height: 640px)', reduce: '(prefers-reduced-motion: reduce)' }, context => {
+                projectScene.add({ desktop: '(min-width: 801px)', reduce: '(prefers-reduced-motion: reduce)' }, context => {
                     if (!context.conditions.desktop || context.conditions.reduce) return;
-                    const stage = document.querySelector('.projects-stage');
-                    const items = cards();
-                    if (context.conditions.pinned && stage && items.length > 1) {
-                        document.body.classList.add('desktop-portfolio');
-                        gallery.scrollLeft = 0;
-                        const rail = { stage, travel: () => Math.max(1, gallery.scrollWidth - gallery.clientWidth) };
-                        desktopRail = rail;
-                        rail.tween = gsap.to(gallery, { x: () => -rail.travel(), ease: 'none', onUpdate: queueGallery,
-                            scrollTrigger: { trigger: stage, pin: true, start: 'top top', end: () => `+=${Math.max(1600, window.innerHeight * 3.2)}`,
-                                scrub: .65, anticipatePin: 1, invalidateOnRefresh: true, refreshPriority: 1, onRefresh: queueGallery } });
-                        const focusCard = event => {
-                            const index = items.findIndex(card => card.contains(event.target));
-                            if (index >= 0 && index !== activeIndex) goTo(index);
-                        };
-                        gallery.addEventListener('focusin', focusCard);
-                        return () => {
-                            gallery.removeEventListener('focusin', focusCard);
-                            desktopRail = null;
-                            document.body.classList.remove('desktop-portfolio');
-                            queueGallery();
-                        };
-                    }
                     cards().forEach(card => {
+                        const media = card.querySelector('.project-media');
                         const image = card.querySelector('.project-media img');
-                        if (!image) return;
-                        gsap.fromTo(image, { yPercent: 3, scale: 1.075 }, {
-                            yPercent: -3, scale: 1.075, ease: 'none',
+                        if (!media || !image) return;
+                        gsap.fromTo(media, { clipPath: 'inset(0% 0% 45% 0%)' }, {
+                            clipPath: 'inset(0% 0% 0% 0%)', ease: 'none',
+                            scrollTrigger: { trigger: card, start: 'top 88%', end: 'top 36%', scrub: .35 }
+                        });
+                        gsap.fromTo(image, { yPercent: 4, scale: 1.12 }, {
+                            yPercent: -4, scale: 1.12, ease: 'none',
                             scrollTrigger: { trigger: card, start: 'top bottom', end: 'bottom top', scrub: .5 }
                         });
                     });
                 });
-            }
-            if (restoreProgress !== null && desktopRail) {
-                const trigger = desktopRail.tween.scrollTrigger;
-                window.scrollTo({ top: trigger.start + restoreProgress * (trigger.end - trigger.start), behavior: 'instant' });
             }
             const remembered = Number(gallery.dataset.activeIndex) || 0;
             const items = cards();

@@ -14,7 +14,7 @@
 .hero-title-line { overflow: clip; padding-bottom: .12em; margin-bottom: -.12em; }
 .showcase-layer { animation: none; }
 .showcase-arrival, .showcase-surface { width: 100%; height: 100%; }
-.showcase-orbit, .hero-motion-toggle, .desktop-project-hint { display: none; }
+.showcase-orbit, .hero-motion-toggle { display: none; }
 .motion-ribbon { display: none; }
 .ambient-paused .ambient-field span { animation-play-state: paused; }
 .scroll-landing .hero-lead { max-width: 450px; font-size: 1.04rem; line-height: 1.8; }
@@ -184,43 +184,17 @@
     .scroll-landing .contact-section { overflow: clip; }
 }
 
-@media (min-width: 1024px) and (min-height: 640px) and (prefers-reduced-motion: no-preference) {
-    .desktop-portfolio .projects-section { padding: 0; overflow: clip; }
-    .desktop-portfolio .projects-stage { height: 100svh; padding-block: 102px 24px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 22px; overflow: clip; }
-    .desktop-portfolio .projects-stage .section-heading { margin: 0; gap: 30px; align-items: center; grid-template-columns: 1fr minmax(280px, .65fr); }
-    .desktop-portfolio .projects-stage .section-kicker { margin-bottom: 10px; }
-    .desktop-portfolio .projects-stage h2 { font-size: clamp(2.6rem, 4.2vw, 4.4rem); }
-    .desktop-portfolio .projects-stage .section-heading > p { font-size: .86rem; line-height: 1.6; }
-    .desktop-portfolio .project-grid { display: flex; gap: 28px; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: visible; will-change: transform; }
-    .desktop-portfolio .project-card, .desktop-portfolio .project-card:first-child, .desktop-portfolio .project-card:last-child { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); flex: 0 0 min(82vw, 1120px); height: 100%; min-height: 0; transition: border-color .35s; transform: none; }
-    .desktop-portfolio .project-card.is-current { border-color: #d5ff5466; }
-    .desktop-portfolio .project-card .project-media { aspect-ratio: auto; min-height: 0; }
-    .desktop-portfolio .project-card .project-media img { transform: none; }
-    .desktop-portfolio .project-body { min-width: 0; padding: clamp(22px, 2.2vw, 36px); }
-    .desktop-portfolio .project-body h3 { margin: 13px 0; font-size: clamp(2rem, 3vw, 3.2rem); }
-    .desktop-portfolio .project-body > p { font-size: .87rem; line-height: 1.6; }
-    .desktop-portfolio .project-result { margin-top: 14px; font-size: .7rem; }
-    .desktop-portfolio .project-tags { margin: 14px 0; gap: 5px; }
-    .desktop-portfolio .project-tags > span { padding: 5px 9px; font-size: .65rem; }
-    .desktop-portfolio .project-action { min-height: 44px; }
-    .desktop-portfolio .project-navigation { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px 20px; }
-    .desktop-portfolio .mobile-project-hint { display: none; }
-    .desktop-portfolio .desktop-project-hint { display: inline; }
-    .desktop-portfolio .project-swipe-hint { color: var(--muted); font-size: .75rem; }
-    .desktop-portfolio .project-position { color: var(--accent); font-size: .8rem; font-variant-numeric: tabular-nums; }
-    .desktop-portfolio .project-arrow-group { display: flex; gap: 8px; }
-    .desktop-portfolio .project-arrow { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--line-strong); border-radius: 50%; background: #ffffff08; color: var(--text); font-size: 1.1rem; cursor: pointer; }
-    .desktop-portfolio .project-arrow:disabled { opacity: .25; cursor: default; }
-    .desktop-portfolio .project-scroll-track { grid-column: 1 / -1; height: 2px; background: #ffffff13; overflow: hidden; }
-    .desktop-portfolio .project-scroll-track i { display: block; height: 100%; background: var(--accent); transform-origin: left; }
-}
-
-@media (min-width: 1024px) and (min-height: 640px) and (max-height: 760px) and (prefers-reduced-motion: no-preference) {
-    .desktop-portfolio .projects-stage { padding-block: 94px 18px; gap: 16px; }
-    .desktop-portfolio .projects-stage h2 { font-size: 2.8rem; }
-    .desktop-portfolio .project-body { padding: 22px; }
-    .desktop-portfolio .project-body h3 { margin: 10px 0; font-size: 2.2rem; }
-    .desktop-portfolio .project-body > p { font-size: .81rem; line-height: 1.5; }
-    .desktop-portfolio .project-result { margin-top: 10px; font-size: .65rem; }
-    .desktop-portfolio .project-tags { margin: 10px 0; }
+@media (min-width: 801px) {
+    .scroll-landing .project-grid { grid-template-columns: minmax(0, 1fr); gap: clamp(36px, 5vw, 80px); }
+    .scroll-landing .project-card, .scroll-landing .project-card:first-child, .scroll-landing .project-card:last-child { grid-column: auto; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); min-height: clamp(380px, 33vw, 520px); transform: none; transition: border-color .3s; }
+    .scroll-landing .project-card:nth-child(even) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+    .scroll-landing .project-card:nth-child(even) .project-media { order: 2; }
+    .scroll-landing .project-card:nth-child(even) .project-body { order: 1; }
+    .scroll-landing .project-card .project-media { aspect-ratio: auto; min-height: 360px; }
+    .scroll-landing .project-media > picture { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .scroll-landing .project-media img { object-position: left top; }
+    .scroll-landing .project-body { min-width: 0; padding: clamp(28px, 3.2vw, 48px); }
+    .scroll-landing .project-body h3 { margin: 18px 0; }
+    .scroll-landing .project-tags { margin: 22px 0; }
+    .scroll-landing .project-card:hover .project-media img { transform: none; }
 }

@@ -25,17 +25,17 @@ function fixture({ reduced = false, withGsap = false, desktop = false, finePoint
     const window = new Surface(); const document = new Surface();
     document.body = new Surface(); document.documentElement = { lang: 'ru' };
     const elements = Object.fromEntries(['project-grid','project-previous','project-next','project-position','project-scroll-progress','menu-toggle','mobile-menu','site-header','project-dialog'].map(id => [id, new Surface()]));
-    const stage = new Surface();
     const magneticButton = new Surface(); const magneticLabel = new Surface(); const quickMoves = [];
     magneticButton.querySelector = selector => selector === 'span' ? magneticLabel : null;
     document.querySelectorAll = selector => magnetic && selector === '.button-primary' ? [magneticButton] : [];
     document.getElementById = id => elements[id] || null;
-    document.querySelector = selector => selector === '.projects-stage' ? stage : null;
     const gallery = elements['project-grid']; gallery.clientWidth = 360;
-    let left = 0; let railShift = 0; let items;
+    let left = 0; let items;
     const makeCards = () => Array.from({ length: 6 }, (_, index) => {
         const card = new Surface(); card.offsetLeft = 16 + 316 * index; card.offsetWidth = 300; card.contains = target => target === card;
-        card.getBoundingClientRect = () => ({ left: card.offsetLeft - gallery.scrollLeft - railShift, width: 300 }); return card;
+        card.media = new Surface(); card.image = new Surface();
+        card.querySelector = selector => selector === '.project-media' ? card.media : selector === '.project-media img' ? card.image : null;
+        card.getBoundingClientRect = () => ({ left: card.offsetLeft - gallery.scrollLeft, width: 300 }); return card;
     });
     items = makeCards(); gallery.querySelectorAll = () => items;
     Object.defineProperty(gallery, 'scrollLeft', { get: () => left, set: value => { left = Math.max(0, Math.min(1552, value)); } });
@@ -48,11 +48,10 @@ function fixture({ reduced = false, withGsap = false, desktop = false, finePoint
     const refreshModes = [];
     const media = query => Object.assign(new Surface(), { media: query, matches: query.includes('prefers-reduced-motion') ? reduced : query.includes('max-width') ? !desktop : desktop });
     window.matchMedia = media; window.scrollY = 0; window.innerHeight = 720;
-    let railTween;
+    const animations = [];
     const pageScrolls = [];
     window.scrollTo = options => {
         pageScrolls.push(options); window.scrollY = options.top;
-        if (railTween) { railTween.scrollTrigger.progress = Math.max(0, Math.min(1, (options.top - 1000) / 2304)); railTween.update(); }
     };
     if (withGsap) {
         const forbiddenMotion = () => { throw new Error('Reduced motion must not create a tween'); };
@@ -60,16 +59,12 @@ function fixture({ reduced = false, withGsap = false, desktop = false, finePoint
         window.gsap = { registerPlugin() {}, quickSetter: () => () => {}, timeline: forbiddenMotion, from: forbiddenMotion, fromTo: forbiddenMotion, set() {},
             matchMedia: () => {
                 let cleanup;
-                return { add: (condition, fn) => { if (typeof condition === 'object') cleanup = fn({ conditions: { mobile: !desktop, desktop, pointer: finePointer, pinned: desktop, reduce: reduced } }); }, revert: () => cleanup?.() };
+                return { add: (condition, fn) => { if (typeof condition === 'object') cleanup = fn({ conditions: { mobile: !desktop, desktop, pointer: finePointer, reduce: reduced } }); }, revert: () => cleanup?.() };
             } };
         if (desktop && !reduced) Object.assign(window.gsap, {
-            timeline: tween, from: tween, fromTo: tween, quickTo: (target, property) => value => quickMoves.push({ target, property, value }),
-            to: (target, vars) => {
-                if (target !== gallery) return tween();
-                railTween = { scrollTrigger: { start: 1000, end: 3304, progress: 0 },
-                    progress() { return this.scrollTrigger.progress; }, update: () => { railShift = railTween.scrollTrigger.progress * 1552; vars.onUpdate(); } };
-                return railTween;
-            }
+            timeline: tween, from: tween, to: tween,
+            fromTo: (target, from, to) => { animations.push({ target, from, to }); return tween(); },
+            quickTo: (target, property) => value => quickMoves.push({ target, property, value })
         });
         window.ScrollTrigger = { config() {}, create: () => ({ kill() {} }), refresh: safe => refreshModes.push(safe) };
     }
@@ -79,7 +74,7 @@ function fixture({ reduced = false, withGsap = false, desktop = false, finePoint
         localStorage: { getItem() { throw new Error('Storage blocked'); }, setItem() { throw new Error('Storage blocked'); } },
         CustomEvent: class { constructor(type) { this.type = type; } }
     });
-    return { context, window, document, elements, gallery, scrolls, pageScrolls, flush, flushTimers, refreshModes, magneticButton, magneticLabel, quickMoves, cards: () => items, replaceCards: () => { items = makeCards(); } };
+    return { context, window, document, elements, gallery, scrolls, pageScrolls, animations, flush, flushTimers, refreshModes, magneticButton, magneticLabel, quickMoves, cards: () => items, replaceCards: () => { items = makeCards(); } };
 }
 
 test('native project navigation survives unavailable animation libraries and supports keyboard boundaries', () => {
@@ -135,30 +130,30 @@ test('blocked browser storage does not prevent the landing or language switch fr
     assert.equal(headline.textContent, 'Сайттар мен AI.');
 });
 
-test('desktop exhibition maps navigation and focus to page scroll, retaining its place after language rerender', () => {
+test('desktop previews animate in normal document flow without pinning, rail translation or scroll interception', () => {
     const f = fixture({ desktop: true, withGsap: true }); vm.runInContext(motionSource, f.context);
     f.document.dispatchEvent({ type: 'DOMContentLoaded' }); f.flush();
-    assert.equal(f.document.body.classList.contains('desktop-portfolio'), true);
+    assert.ok(f.cards().every(card => f.animations.some(animation => animation.target === card.media)));
+    assert.ok(f.animations.every(animation => !animation.to.scrollTrigger?.pin));
+    assert.ok(f.animations.every(animation => animation.target !== f.gallery));
     f.elements['project-next'].dispatchEvent({ type: 'click' }); f.flush();
-    assert.equal(f.elements['project-position'].textContent, '02 / 06');
-    assert.equal(f.scrolls.length, 0, 'desktop navigation must move the document, not a hidden native scroll area');
-    assert.ok(f.pageScrolls[0].top > 1000);
-    assert.equal(f.pageScrolls[0].behavior, 'instant', 'the scrub transition must own animation instead of competing with native smooth scroll');
+    let prevented = false;
+    f.gallery.dispatchEvent({ type: 'keydown', key: 'End', preventDefault: () => { prevented = true; } });
+    assert.equal(prevented, false);
+    assert.equal(f.scrolls.length, 0);
+    f.window.scrollY = 2400;
     f.replaceCards(); f.window.dispatchEvent({ type: 'portfolio:rendered' }); f.flush();
-    assert.equal(f.elements['project-position'].textContent, '02 / 06');
-    assert.equal(f.gallery.events.get('focusin').size, 1);
-    f.gallery.dispatchEvent({ type: 'focusin', target: f.cards()[5] }); f.flush();
-    assert.equal(f.elements['project-position'].textContent, '06 / 06');
-    assert.equal(f.elements['project-next'].disabled, true);
+    assert.equal(f.window.scrollY, 2400);
+    assert.equal(f.pageScrolls.length, 0);
+    assert.ok(f.cards().every(card => f.animations.some(animation => animation.target === card.media)));
+    assert.equal(f.gallery.events.has('focusin'), false);
     f.window.dispatchEvent({ type: 'pagehide' });
-    assert.equal(f.gallery.events.get('focusin').size, 0);
-    assert.equal(f.document.body.classList.contains('desktop-portfolio'), false);
 });
 
 test('desktop reduced-motion preference keeps all projects in the static grid', () => {
     const f = fixture({ desktop: true, reduced: true, withGsap: true }); vm.runInContext(motionSource, f.context);
     f.document.dispatchEvent({ type: 'DOMContentLoaded' }); f.flush();
-    assert.equal(f.document.body.classList.contains('desktop-portfolio'), false);
+    assert.equal(f.animations.length, 0);
     assert.equal(f.pageScrolls.length, 0);
     f.window.dispatchEvent({ type: 'pagehide' });
 });
