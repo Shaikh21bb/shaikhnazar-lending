@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { assertInboxSchema, INBOX_RESPONSE_SCHEMA } from '../lib/whatsapp-inbox-contract.mjs';
-import { createInboxController, effectiveInboxApproval, inboxMessageStatus, inboxApprovalReason, renderInboxThreads, renderInboxConversation } from '../js/whatsapp-inbox.js';
+import { createInboxController, effectiveInboxApproval, inboxMessageStatus, inboxApprovalReason, renderInboxThreads, renderInboxConversation, mountWhatsAppInbox } from '../js/whatsapp-inbox.js';
 
 const THREAD_A = '11111111-1111-4111-8111-111111111111';
 const THREAD_B = '22222222-2222-4222-8222-222222222222';
@@ -27,6 +27,62 @@ function harness({ handler = () => jsonResponse(responseData()), ...options } = 
         setIntervalImpl: callback => { timers.add(callback); return callback; }, clearIntervalImpl: callback => timers.delete(callback), ...options
     });
     return { controller, calls, renders, notices, timers };
+}
+
+function requestClock() {
+    const deadlines = new Map(); let nextId = 0;
+    return {
+        deadlines,
+        setTimeoutImpl: (callback, delay) => { deadlines.set(++nextId, { callback, delay }); return nextId; },
+        clearTimeoutImpl: id => deadlines.delete(id),
+        expire() {
+            assert.equal(deadlines.size, 1, 'one deadline spans the entire current request');
+            const [id, deadline] = [...deadlines][0]; deadlines.delete(id); deadline.callback();
+        }
+    };
+}
+
+function mountedInbox(handler) {
+    const nodes = new Map();
+    const doc = { hidden: false, activeElement: null, addEventListener() {}, removeEventListener() {} };
+    const node = id => {
+        if (nodes.has(id)) return nodes.get(id);
+        let html = ''; let top = 0;
+        const item = { id, events: new Map(), dataset: {}, disabled: false, hidden: false, value: '', textContent: '', scrollHeight: 0, clientHeight: 200,
+            classList: { toggle() {} }, setAttribute() {}, querySelector: () => null,
+            addEventListener: (name, callback, capture = false) => item.events.set(`${name}:${capture}`, callback),
+            removeEventListener: (name, callback, capture = false) => { if (item.events.get(`${name}:${capture}`) === callback) item.events.delete(`${name}:${capture}`); },
+            contains: active => active?.owner === item,
+            focus: () => { doc.activeElement = item; },
+            setSelectionRange: (start, end, direction) => { item.selectionStart = start; item.selectionEnd = end; item.selectionDirection = direction; },
+            get scrollTop() { return top; }, set scrollTop(value) { top = Math.min(Math.max(0, value), Math.max(0, item.scrollHeight - item.clientHeight)); },
+            get innerHTML() { return html; }, set innerHTML(value) {
+                html = value;
+                if (id !== 'inbox-conversation') return;
+                for (const [key, element] of nodes) if (element.owner === item) nodes.delete(key);
+                if (value.includes('id="inbox-message-scroll"')) {
+                    const scroll = node('inbox-message-scroll'); scroll.owner = item;
+                    scroll.scrollHeight = 1000 + [...value.matchAll(/data-inbox-message=/g)].length * 100;
+                    node('inbox-contact-title').owner = item;
+                }
+                for (const match of value.matchAll(/<textarea id="([^"]+)" data-inbox-draft="([^"]+)"[^>]*>([\s\S]*?)<\/textarea>/g)) {
+                    const editor = node(match[1]); editor.owner = item; editor.dataset.inboxDraft = match[2]; editor.value = match[3];
+                }
+            }
+        };
+        nodes.set(id, item); return item;
+    };
+    for (const id of ['inbox-layout', 'inbox-conversation', 'inbox-thread-list', 'inbox-error', 'inbox-error-copy', 'inbox-status', 'inbox-capture-since', 'inbox-previous', 'inbox-next', 'inbox-thread-paging', 'inbox-search', 'inbox-retry']) node(id);
+    doc.getElementById = id => nodes.get(id) || null;
+    const controller = mountWhatsAppInbox({ document: doc, fetchImpl: handler });
+    return {
+        controller, node, document: doc,
+        scrollTo(top) { const scroll = node('inbox-message-scroll'); scroll.scrollTop = top; node('inbox-conversation').events.get('scroll:true')({ target: scroll }); },
+        async click(action) {
+            const target = { disabled: false, dataset: { inboxAction: action }, closest: selector => selector === '[data-inbox-action]' ? target : null };
+            await node('inbox-layout').events.get('click:false')({ target });
+        }
+    };
 }
 
 test('serialized fixtures use the shared contract and rendering escapes private text and captions', () => {
@@ -135,6 +191,169 @@ test('thread and older-message pagination keep opaque cursors across polling and
     await h.controller.threadPage(-1);
     assert.equal(new URL(h.calls.at(-1).url, 'https://local.test').searchParams.has('threadsCursor'), false);
     h.controller.destroy();
+});
+
+test('failed Next leaves page history intact; Next or explicit Retry succeeds and Back returns to page one', async () => {
+    for (const retry of ['next', 'retry']) {
+        let fail = true;
+        const h = harness({ handler: url => {
+            if (url.includes('threadsCursor=page-2') && fail) { fail = false; return jsonResponse({}, 503); }
+            return jsonResponse(responseData({ threads: [thread(url.includes('threadsCursor=page-2') ? THREAD_B : THREAD_A)], threadPage: { nextCursor: url.includes('threadsCursor=page-2') ? null : 'page-2' } }));
+        } });
+        h.controller.setActive(true); await settle();
+        await h.controller.threadPage(1);
+        assert.equal(h.controller.snapshot().threadsCursor, null); assert.deepEqual(h.controller.snapshot().threadBack, []);
+        assert.equal(h.controller.snapshot().data.threads[0].id, THREAD_A);
+        const navigationError = h.controller.snapshot().error;
+        await h.controller.refresh({ quiet: true });
+        assert.equal(h.controller.snapshot().error, navigationError, 'a successful background refresh must keep the failed navigation retry available');
+        assert.equal(h.controller.snapshot().threadsCursor, null);
+        if (retry === 'next') await h.controller.threadPage(1); else await h.controller.refresh();
+        assert.equal(h.controller.snapshot().data.threads[0].id, THREAD_B); assert.deepEqual(h.controller.snapshot().threadBack, [null]);
+        await h.controller.threadPage(-1);
+        assert.equal(h.controller.snapshot().data.threads[0].id, THREAD_A); assert.deepEqual(h.controller.snapshot().threadBack, []);
+        h.controller.destroy();
+    }
+});
+
+test('failed Older retains latest messages and label, then Retry loads the intended older page', async () => {
+    let fail = true;
+    const h = harness({ handler: url => {
+        if (url.includes('messagesCursor=older') && fail) { fail = false; return jsonResponse({}, 503); }
+        return jsonResponse(selectedData({ messages: [message({ text: url.includes('messagesCursor=older') ? 'Старое сообщение' : 'Последнее сообщение' })], messagePage: { olderCursor: 'older' } }));
+    } });
+    h.controller.setActive(true); await settle(); await h.controller.selectThread(THREAD_A);
+    await h.controller.messagePage(true);
+    assert.equal(h.controller.snapshot().messagesCursor, null); assert.match(renderInboxConversation(h.controller.snapshot()), /Последние сообщения/);
+    assert.equal(h.controller.snapshot().data.messages[0].text, 'Последнее сообщение');
+    await h.controller.refresh();
+    assert.equal(h.controller.snapshot().messagesCursor, 'older'); assert.equal(h.controller.snapshot().data.messages[0].text, 'Старое сообщение');
+    await h.controller.messagePage(false); assert.equal(h.controller.snapshot().messagesCursor, null);
+    h.controller.destroy();
+});
+
+test('failed Back retains its history and can be retried without skipping a page', async () => {
+    let failBack = false;
+    const h = harness({ handler: url => {
+        if (!url.includes('threadsCursor') && failBack) { failBack = false; return jsonResponse({}, 503); }
+        return jsonResponse(responseData({ threadPage: { nextCursor: 'page-2' } }));
+    } });
+    h.controller.setActive(true); await settle(); await h.controller.threadPage(1); failBack = true;
+    await h.controller.threadPage(-1);
+    assert.equal(h.controller.snapshot().threadsCursor, 'page-2'); assert.deepEqual(h.controller.snapshot().threadBack, [null]);
+    await h.controller.refresh();
+    assert.equal(h.controller.snapshot().threadsCursor, null); assert.deepEqual(h.controller.snapshot().threadBack, []);
+    h.controller.destroy();
+});
+
+test('an obsolete navigation failure cannot roll back a newer selection or poison its Retry', async () => {
+    const oldPage = deferred();
+    const h = harness({ handler: url => url.includes('threadsCursor') ? oldPage.promise : jsonResponse(responseData({ threadPage: { nextCursor: 'page-2' }, ...(url.includes(THREAD_B) ? { selectedThread: thread(THREAD_B) } : {}) })) });
+    h.controller.setActive(true); await settle();
+    const old = h.controller.threadPage(1); await settle();
+    await h.controller.selectThread(THREAD_B); oldPage.reject(new Error('Old failure')); await old;
+    await h.controller.refresh();
+    assert.equal(h.controller.snapshot().selectedId, THREAD_B); assert.equal(h.controller.snapshot().threadsCursor, null);
+    assert.equal(h.controller.snapshot().error, ''); assert.doesNotMatch(h.calls.at(-1).url, /threadsCursor/);
+    h.controller.destroy();
+});
+
+test('one finite read deadline covers session checks, API fetch and each JSON body, and polling recovers', async () => {
+    for (const phase of ['session-before-fetch', 'session-before-json', 'inbox-fetch', 'inbox-json', 'session-after-fetch', 'session-after-json']) {
+        const clock = requestClock(); let stall = true; let sessions = 0;
+        const never = new Promise(() => {});
+        const h = harness({ accountId: 'owner', requestTimeoutMs: 37, ...clock, handler: url => {
+            const session = url === '/api/auth/session';
+            const step = session ? `session-${++sessions === 1 ? 'before' : 'after'}` : 'inbox';
+            if (stall && phase === `${step}-fetch`) return never;
+            if (stall && phase === `${step}-json`) return { status: 200, ok: true, json: () => never };
+            return jsonResponse(session ? { user: { sub: 'owner' } } : responseData());
+        } });
+        h.controller.setActive(true); await settle();
+        assert.equal(h.controller.snapshot().loading, true, phase); assert.equal([...clock.deadlines.values()][0].delay, 37);
+        clock.expire(); await settle();
+        assert.equal(h.controller.snapshot().loading, false, phase); assert.match(h.controller.snapshot().error, /не ответил вовремя/, phase);
+        assert.ok(h.calls.every(call => call.init.signal.aborted));
+        stall = false; [...h.timers][0](); await settle();
+        assert.equal(h.controller.snapshot().loaded, true, phase); assert.equal(h.controller.snapshot().error, '', phase); assert.equal(clock.deadlines.size, 0);
+        h.controller.destroy();
+    }
+});
+
+test('a stalled refresh retains the last conversation and edited draft, then allows another poll', async () => {
+    const clock = requestClock(); let stall = false;
+    const data = selectedData({ approvals: [approval()], messages: [message({ approvalId: APPROVAL })] });
+    const h = harness({ ...clock, handler: () => stall ? new Promise(() => {}) : jsonResponse(data) });
+    h.controller.setActive(true); await settle(); await h.controller.selectThread(THREAD_A);
+    h.controller.setDraft(APPROVAL, 'Мой текст'); stall = true;
+    const read = h.controller.refresh({ quiet: true }); await settle(); clock.expire(); await read;
+    assert.equal(h.controller.snapshot().data.messages[0].text, 'Тестовое сообщение'); assert.equal(h.controller.snapshot().drafts.get(APPROVAL), 'Мой текст');
+    stall = false; [...h.timers][0](); await settle(); assert.equal(h.controller.snapshot().error, '');
+    h.controller.destroy();
+});
+
+test('a decision timeout releases controls, keeps the draft, explains uncertainty and reconciles without replaying POST', async () => {
+    const clock = requestClock(); const delayedPost = deferred(); let status = 'pending'; let notifications = 0;
+    const h = harness({ ...clock, onDecision: () => { notifications++; }, handler: (_url, init) => init.method === 'POST' ? delayedPost.promise : jsonResponse(selectedData({ approvals: [approval({ status })], messages: [message({ approvalId: APPROVAL })] })) });
+    h.controller.setActive(true); await settle(); await h.controller.selectThread(THREAD_A);
+    const action = h.controller.decide('approve', APPROVAL, 'Мой текст'); await settle(); clock.expire();
+    assert.equal(await action, false); await settle();
+    assert.equal(h.controller.snapshot().actions.size, 0); assert.equal(h.controller.snapshot().drafts.get(APPROVAL), 'Мой текст');
+    assert.match(h.notices.at(-1), /Статус пока неизвестен/); assert.equal(notifications, 0);
+    assert.equal(h.controller.snapshot().data.approvals[0].status, 'pending');
+    delayedPost.resolve(jsonResponse({ approval: { status: 'sent' } })); await settle();
+    assert.equal(h.controller.snapshot().data.approvals[0].status, 'pending'); assert.equal(h.controller.snapshot().decisions.size, 0);
+    status = 'approved'; [...h.timers][0](); await settle();
+    assert.equal(h.controller.snapshot().data.approvals[0].status, 'approved'); assert.equal(h.controller.snapshot().drafts.size, 0);
+    assert.equal(h.calls.filter(call => call.init.method === 'POST').length, 1); assert.equal(clock.deadlines.size, 0);
+    h.controller.destroy();
+});
+
+test('new message IDs while reading above the bottom produce a counted jump; status updates do not count', async () => {
+    let messages = [message()];
+    const ui = mountedInbox(() => jsonResponse(selectedData({ messages })));
+    try {
+        ui.controller.setActive(true); await settle(); await ui.controller.selectThread(THREAD_A);
+        assert.doesNotMatch(ui.node('inbox-conversation').innerHTML, /data-inbox-action="new-messages"/);
+        ui.scrollTo(100); messages = [...messages, message({ id: 'b'.repeat(64), text: 'Новое' })];
+        await ui.controller.refresh({ quiet: true });
+        assert.equal(ui.node('inbox-message-scroll').scrollTop, 100); assert.match(ui.node('inbox-conversation').innerHTML, /Новые сообщения · 1 ↓/);
+        assert.match(ui.node('inbox-conversation').innerHTML, /id="inbox-message-scroll"[^>]*>[\s\S]*class="ws-inbox-new-messages"[^>]*>[^<]*<\/button><\/div><p class="ws-inbox-delivery-note"/, 'the sticky jump belongs inside the message scrollport');
+        messages = messages.map(item => ({ ...item, status: 'answered' })); await ui.controller.refresh({ quiet: true });
+        assert.match(ui.node('inbox-conversation').innerHTML, /Новые сообщения · 1 ↓/);
+        messages = [...messages, message({ id: 'c'.repeat(64) })]; await ui.controller.refresh({ quiet: true });
+        assert.match(ui.node('inbox-conversation').innerHTML, /Новые сообщения · 2 ↓/);
+        await ui.click('new-messages');
+        const scroll = ui.node('inbox-message-scroll'); assert.equal(scroll.scrollTop, scroll.scrollHeight - scroll.clientHeight);
+        assert.doesNotMatch(ui.node('inbox-conversation').innerHTML, /data-inbox-action="new-messages"/); assert.equal(ui.document.activeElement, scroll);
+    } finally { ui.controller.destroy(); }
+});
+
+test('new IDs auto-scroll at the bottom; returning to latest or changing contact never creates a false jump', async () => {
+    let messages = [message()];
+    const ui = mountedInbox(url => jsonResponse(selectedData({ selectedThread: thread(url.includes(THREAD_B) ? THREAD_B : THREAD_A), messages: messages.map(item => ({ ...item, threadId: url.includes(THREAD_B) ? THREAD_B : THREAD_A })), messagePage: { olderCursor: 'older' } })));
+    try {
+        ui.controller.setActive(true); await settle(); await ui.controller.selectThread(THREAD_A);
+        messages = [...messages, message({ id: 'b'.repeat(64) })]; await ui.controller.refresh({ quiet: true });
+        let scroll = ui.node('inbox-message-scroll'); assert.equal(scroll.scrollTop, scroll.scrollHeight - scroll.clientHeight);
+        assert.doesNotMatch(ui.node('inbox-conversation').innerHTML, /data-inbox-action="new-messages"/);
+        ui.scrollTo(0); await ui.controller.messagePage(true);
+        messages = [...messages, message({ id: 'c'.repeat(64) })]; await ui.controller.refresh({ quiet: true });
+        assert.doesNotMatch(ui.node('inbox-conversation').innerHTML, /data-inbox-action="new-messages"/);
+        await ui.controller.messagePage(false); assert.doesNotMatch(ui.node('inbox-conversation').innerHTML, /data-inbox-action="new-messages"/);
+        ui.scrollTo(0); await ui.controller.selectThread(THREAD_B);
+        assert.doesNotMatch(ui.node('inbox-conversation').innerHTML, /data-inbox-action="new-messages"/);
+    } finally { ui.controller.destroy(); }
+});
+
+test('scrolling manually to the bottom clears the jump and disposal removes its scroll listener', async () => {
+    let messages = [message()]; const ui = mountedInbox(() => jsonResponse(selectedData({ messages })));
+    ui.controller.setActive(true); await settle(); await ui.controller.selectThread(THREAD_A);
+    ui.scrollTo(0); messages = [...messages, message({ id: 'b'.repeat(64) })]; await ui.controller.refresh({ quiet: true });
+    assert.match(ui.node('inbox-conversation').innerHTML, /Новые сообщения · 1 ↓/);
+    ui.scrollTo(ui.node('inbox-message-scroll').scrollHeight);
+    assert.doesNotMatch(ui.node('inbox-conversation').innerHTML, /data-inbox-action="new-messages"/);
+    ui.controller.destroy(); assert.equal(ui.node('inbox-conversation').events.has('scroll:true'), false);
 });
 
 test('edits survive polling and a repeated click cannot submit the same approval twice', async () => {

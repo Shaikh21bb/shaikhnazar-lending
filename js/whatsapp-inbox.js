@@ -28,12 +28,13 @@ export function inboxApprovalReason(reason) {
 }
 
 /** State stays in this tab. Requests never write chat text to browser storage. */
-export function createInboxController({ fetchImpl = globalThis.fetch, accountId = '', render = () => {}, notice = () => {}, onAuth = () => {}, onDecision = () => {}, now = Date.now, setIntervalImpl = globalThis.setInterval, clearIntervalImpl = globalThis.clearInterval, pollMs = 6000, visible = true } = {}) {
+export function createInboxController({ fetchImpl = globalThis.fetch, accountId = '', render = () => {}, notice = () => {}, onAuth = () => {}, onDecision = () => {}, now = Date.now, setIntervalImpl = globalThis.setInterval, clearIntervalImpl = globalThis.clearInterval, setTimeoutImpl = globalThis.setTimeout, clearTimeoutImpl = globalThis.clearTimeout, requestTimeoutMs = 15000, pollMs = 6000, visible = true } = {}) {
     const state = { data: emptyData(), active: false, visible, loaded: false, loading: false, quietLoading: false, sessionReady: !accountId, error: '', search: '', selectedId: null, detailOpen: false, threadsCursor: null, threadBack: [], messagesCursor: null, drafts: new Map(), actions: new Set(), decisions: new Map() };
     let revision = 0;
     let timer = null;
     let destroyed = false;
     let authExpired = false;
+    let failedNavigation = null;
     const requests = new Map();
     const snapshot = () => ({ ...state, loaded: state.loaded && state.sessionReady, loading: state.loading && !state.quietLoading, data: { ...(state.sessionReady ? state.data : emptyData()), approvals: (state.sessionReady ? state.data.approvals : []).map(item => {
         const local = state.decisions.get(item.id);
@@ -48,6 +49,7 @@ export function createInboxController({ fetchImpl = globalThis.fetch, accountId 
         state.active = false; state.data = emptyData(); state.drafts.clear(); state.decisions.clear(); state.actions.clear();
         state.selectedId = null; state.search = ''; state.loaded = false; state.loading = false; state.sessionReady = false;
         state.detailOpen = false; state.threadsCursor = null; state.threadBack = []; state.messagesCursor = null; state.error = '';
+        failedNavigation = null;
     };
     function expireSession() {
         if (authExpired || destroyed) return;
@@ -61,6 +63,16 @@ export function createInboxController({ fetchImpl = globalThis.fetch, accountId 
         const controller = new AbortController();
         requests.set(controller, Boolean(body));
         const { signal } = controller;
+        let timedOut = false;
+        const timeoutError = Object.assign(new Error(body
+            ? 'Решение не подтверждено вовремя. Статус пока неизвестен; обновляем данные. Проверьте статус перед повторным решением.'
+            : 'Сервер не ответил вовремя. Повторите загрузку; переписка обновится после восстановления связи.'), { name: 'TimeoutError' });
+        let cancel;
+        const cancelled = new Promise((_, reject) => {
+            cancel = () => reject(timedOut ? timeoutError : new DOMException('Запрос отменён.', 'AbortError'));
+            signal.addEventListener('abort', cancel, { once: true });
+        });
+        const deadline = setTimeoutImpl(() => { timedOut = true; controller.abort(); }, Number.isFinite(requestTimeoutMs) && requestTimeoutMs > 0 ? requestTimeoutMs : 15000);
         const checkAlive = () => { if (destroyed || authExpired || signal.aborted) throw new DOMException('Запрос отменён.', 'AbortError'); };
         const verifyAccount = async () => {
             checkAlive();
@@ -74,39 +86,49 @@ export function createInboxController({ fetchImpl = globalThis.fetch, accountId 
             if (!session.ok) throw new Error('Не удалось проверить вход. Обновите страницу.');
         };
         try {
-            await verifyAccount(); checkAlive();
-            const response = await fetchImpl(url, { method: body ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store', signal, ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
-            const data = await response.json().catch(() => ({}));
-            checkAlive();
-            if (response.status === 401) { expireSession(); throw new Error('Войдите в аккаунт, чтобы открыть чаты.'); }
-            if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Не удалось загрузить переписку. Попробуйте ещё раз.');
-            await verifyAccount(); checkAlive();
-            return data;
+            return await Promise.race([(async () => {
+                await verifyAccount(); checkAlive();
+                const response = await fetchImpl(url, { method: body ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store', signal, ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
+                const data = await response.json().catch(() => ({}));
+                checkAlive();
+                if (response.status === 401) { expireSession(); throw new Error('Войдите в аккаунт, чтобы открыть чаты.'); }
+                if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Не удалось загрузить переписку. Попробуйте ещё раз.');
+                await verifyAccount(); checkAlive();
+                return data;
+            })(), cancelled]);
         } finally {
+            clearTimeoutImpl(deadline);
+            signal.removeEventListener('abort', cancel);
             requests.delete(controller);
         }
     }
-    async function load({ quiet = false } = {}) {
+    async function load({ quiet = false, navigation = null } = {}) {
         if (destroyed || authExpired || !state.active || !state.visible) return;
         const requestRevision = ++revision;
         abortRequests(true);
         const params = new URLSearchParams();
         if (state.search) params.set('search', state.search);
         if (state.selectedId) params.set('threadId', state.selectedId);
-        if (state.threadsCursor) params.set('threadsCursor', state.threadsCursor);
-        if (state.messagesCursor) params.set('messagesCursor', state.messagesCursor);
+        const page = navigation || { threadsCursor: state.threadsCursor, threadBack: state.threadBack, messagesCursor: state.messagesCursor };
+        if (page.threadsCursor) params.set('threadsCursor', page.threadsCursor);
+        if (page.messagesCursor) params.set('messagesCursor', page.messagesCursor);
         state.loading = true; state.quietLoading = quiet;
         if (!quiet) state.error = '';
         emit();
         try {
             const data = assertInboxSchema(INBOX_RESPONSE_SCHEMA, await request(`${INBOX_API}${params.size ? `?${params}` : ''}`));
             if (destroyed || requestRevision !== revision || !state.active) return;
-            state.data = data; state.loaded = true; state.sessionReady = true; state.error = '';
+            state.threadsCursor = page.threadsCursor; state.threadBack = page.threadBack; state.messagesCursor = page.messagesCursor;
+            if (navigation || !quiet || !failedNavigation) { failedNavigation = null; state.error = ''; }
+            state.data = data; state.loaded = true; state.sessionReady = true;
             for (const item of data.approvals) {
                 if (item.status !== 'pending') { state.decisions.delete(item.id); state.drafts.delete(item.id); }
             }
         } catch (error) {
-            if (!destroyed && requestRevision === revision) state.error = error?.message || 'Нет связи с кабинетом. Переписка обновится после восстановления связи.';
+            if (!destroyed && requestRevision === revision) {
+                if (navigation) failedNavigation = navigation;
+                if (!quiet || navigation || !failedNavigation) state.error = error?.message || 'Нет связи с кабинетом. Переписка обновится после восстановления связи.';
+            }
         } finally {
             if (!destroyed && requestRevision === revision) { state.loading = false; emit(); }
         }
@@ -133,6 +155,7 @@ export function createInboxController({ fetchImpl = globalThis.fetch, accountId 
         const search = String(value).slice(0, 120).trim();
         if (state.search === search) return Promise.resolve();
         state.search = search; state.selectedId = null; state.detailOpen = false;
+        failedNavigation = null;
         state.threadsCursor = null; state.threadBack = []; state.messagesCursor = null;
         state.data = emptyData(); state.loaded = false; revision++; emit();
         return load();
@@ -141,6 +164,7 @@ export function createInboxController({ fetchImpl = globalThis.fetch, accountId 
         if (destroyed || authExpired) return Promise.resolve();
         const known = state.data.threads.find(item => item.id === id) || (state.data.selectedThread?.id === id ? state.data.selectedThread : null);
         if (!known) return Promise.resolve();
+        failedNavigation = null;
         state.selectedId = id; state.detailOpen = true; state.messagesCursor = null; revision++;
         state.data = { ...state.data, selectedThread: known, messages: [], approvals: [], messagePage: { olderCursor: null } };
         emit(); return load();
@@ -148,16 +172,18 @@ export function createInboxController({ fetchImpl = globalThis.fetch, accountId 
     function closeThread() { if (!destroyed && !authExpired) { state.detailOpen = false; emit(); } }
     function threadPage(direction) {
         if (destroyed || authExpired || state.loading && !state.quietLoading) return Promise.resolve();
+        const navigation = { threadsCursor: state.threadsCursor, threadBack: [...state.threadBack], messagesCursor: state.messagesCursor };
         if (direction > 0 && state.data.threadPage.nextCursor) {
-            state.threadBack.push(state.threadsCursor); state.threadsCursor = state.data.threadPage.nextCursor;
-        } else if (direction < 0 && state.threadBack.length) state.threadsCursor = state.threadBack.pop();
+            navigation.threadBack.push(state.threadsCursor); navigation.threadsCursor = state.data.threadPage.nextCursor;
+        } else if (direction < 0 && state.threadBack.length) navigation.threadsCursor = navigation.threadBack.pop();
         else return Promise.resolve();
-        revision++; return load();
+        failedNavigation = null;
+        return load({ navigation });
     }
     function messagePage(older) {
         if (destroyed || authExpired || state.loading && !state.quietLoading || !state.selectedId || older && !state.data.messagePage.olderCursor) return Promise.resolve();
-        state.messagesCursor = older ? state.data.messagePage.olderCursor : null;
-        revision++; return load();
+        failedNavigation = null;
+        return load({ navigation: { threadsCursor: state.threadsCursor, threadBack: [...state.threadBack], messagesCursor: older ? state.data.messagePage.olderCursor : null } });
     }
     function setDraft(id, draft) { if (!destroyed && !authExpired) state.drafts.set(id, String(draft).slice(0, 4000)); }
     async function decide(action, id, draft) {
@@ -189,7 +215,8 @@ export function createInboxController({ fetchImpl = globalThis.fetch, accountId 
         if (destroyed) return;
         revision++; stopTimer(); abortRequests(); clearPrivateState(); emit(); destroyed = true;
     }
-    return { snapshot, setActive, setVisible, setSearch, selectThread, closeThread, threadPage, messagePage, setDraft, decide, refresh: load, destroy };
+    const refresh = (options = {}) => load({ ...options, navigation: options.quiet ? null : failedNavigation });
+    return { snapshot, setActive, setVisible, setSearch, selectThread, closeThread, threadPage, messagePage, setDraft, decide, refresh, destroy };
 }
 
 export function renderInboxThreads(view) {
@@ -217,7 +244,9 @@ export function renderInboxConversation(view) {
         return `<li class="ws-inbox-message is-${escapeHtml(message.direction)}" data-inbox-message="${escapeHtml(message.id)}"><div class="ws-inbox-bubble"><div class="ws-inbox-message-by"><strong>${escapeHtml(speaker)}</strong>${message.origin === 'self_check' ? '<span class="ws-inbox-tag is-test">Самопроверка</span>' : ''}</div>${message.kind !== 'text' ? `<p class="ws-inbox-media">${escapeHtml(mediaLabels[message.kind] || mediaLabels.unsupported)}</p>` : ''}${message.text ? `<p class="ws-inbox-text">${escapeHtml(message.text)}</p>` : ''}${message.reason === 'too_long' ? '<p class="ws-inbox-fragment">Показан фрагмент; полный текст — в WhatsApp.</p>' : ''}<div class="ws-inbox-message-meta"><span>${escapeHtml(inboxMessageStatus(message, approval))}</span><time datetime="${escapeHtml(message.occurredAt)}">${escapeHtml(dateLabel(message.occurredAt))}</time></div></div>${showReview ? renderApproval(approval, view) : ''}</li>`;
     }).join('');
     const remaining = [...approvals.values()].filter(item => !shownApprovals.has(item.id)).map(item => renderApproval(item, view)).join('');
-    return `<header class="ws-inbox-conversation-heading"><button type="button" class="ws-icon-button ws-inbox-back" data-inbox-action="back" aria-label="Назад к чатам">←</button><div><h2 id="inbox-contact-title" tabindex="-1">${escapeHtml(thread.name || thread.address)}</h2><p>${escapeHtml(thread.address)}${thread.origin === 'self_check' ? ' · Самопроверка' : ''}</p></div></header><nav class="ws-inbox-message-paging" aria-label="История сообщений"><button type="button" class="ws-text-button" data-inbox-action="older"${view.loading || !view.data.messagePage.olderCursor ? ' disabled' : ''}>← Ранее</button><span>${view.messagesCursor ? 'Предыдущие сообщения' : 'Последние сообщения'}</span>${view.messagesCursor ? `<button type="button" class="ws-text-button" data-inbox-action="latest"${view.loading ? ' disabled' : ''}>К новым →</button>` : ''}</nav><div class="ws-inbox-scroll" id="inbox-message-scroll" tabindex="0" aria-label="Сообщения с ${escapeHtml(thread.name || thread.address)}">${view.loading && !view.data.messages.length ? '<div class="ws-inbox-empty"><p>Загружаю сообщения…</p></div>' : !view.data.messages.length ? '<div class="ws-inbox-empty"><p>Сообщений на этой странице пока нет.</p></div>' : `<ol class="ws-inbox-messages">${messages}</ol>`}${remaining}</div><p class="ws-inbox-delivery-note">«Передано WhatsApp» означает приём отправки сервисом. Доставка и прочтение здесь не отслеживаются.</p>`;
+    const newMessages = !view.messagesCursor && Number.isSafeInteger(view.newMessageCount) && view.newMessageCount > 0
+        ? `<button type="button" class="ws-inbox-new-messages" data-inbox-action="new-messages" aria-live="polite">Новые сообщения · ${view.newMessageCount} ↓</button>` : '';
+    return `<header class="ws-inbox-conversation-heading"><button type="button" class="ws-icon-button ws-inbox-back" data-inbox-action="back" aria-label="Назад к чатам">←</button><div><h2 id="inbox-contact-title" tabindex="-1">${escapeHtml(thread.name || thread.address)}</h2><p>${escapeHtml(thread.address)}${thread.origin === 'self_check' ? ' · Самопроверка' : ''}</p></div></header><nav class="ws-inbox-message-paging" aria-label="История сообщений"><button type="button" class="ws-text-button" data-inbox-action="older"${view.loading || !view.data.messagePage.olderCursor ? ' disabled' : ''}>← Ранее</button><span>${view.messagesCursor ? 'Предыдущие сообщения' : 'Последние сообщения'}</span>${view.messagesCursor ? `<button type="button" class="ws-text-button" data-inbox-action="latest"${view.loading ? ' disabled' : ''}>К новым →</button>` : ''}</nav><div class="ws-inbox-scroll" id="inbox-message-scroll" tabindex="0" aria-label="Сообщения с ${escapeHtml(thread.name || thread.address)}">${view.loading && !view.data.messages.length ? '<div class="ws-inbox-empty"><p>Загружаю сообщения…</p></div>' : !view.data.messages.length ? '<div class="ws-inbox-empty"><p>Сообщений на этой странице пока нет.</p></div>' : `<ol class="ws-inbox-messages">${messages}</ol>`}${remaining}${newMessages}</div><p class="ws-inbox-delivery-note">«Передано WhatsApp» означает приём отправки сервисом. Доставка и прочтение здесь не отслеживаются.</p>`;
 }
 
 export function mountWhatsAppInbox({ document: doc = document, fetchImpl = globalThis.fetch, accountId = '', notice, onAuth, onDecision } = {}) {
@@ -229,7 +258,11 @@ export function mountWhatsAppInbox({ document: doc = document, fetchImpl = globa
     let lastThreadMarkup = '';
     let lastConversationMarkup = '';
     let lastPage = '';
-    const controller = createInboxController({ fetchImpl, accountId, notice, onAuth: () => { controller.destroy(); onAuth?.(); }, onDecision, visible: !doc.hidden, render: view => {
+    let trackedPage = '';
+    let seenMessageIds = null;
+    const newMessageIds = new Set();
+    const nearBottom = scroll => scroll && scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop < 70;
+    const renderView = view => {
         layout.classList.toggle('is-detail-open', view.detailOpen);
         layout.setAttribute('aria-busy', String(view.loading));
         $('inbox-error').hidden = !view.error;
@@ -242,25 +275,37 @@ export function mountWhatsAppInbox({ document: doc = document, fetchImpl = globa
         $('inbox-previous').disabled = view.loading || !view.threadBack.length;
         $('inbox-next').disabled = view.loading || !view.data.threadPage.nextCursor;
         $('inbox-thread-paging').hidden = !view.threadBack.length && !view.data.threadPage.nextCursor;
-        const markup = renderInboxConversation(view);
+        const oldScroll = $('inbox-message-scroll');
+        const page = `${view.selectedId || ''}:${view.messagesCursor || ''}`;
+        const wasNearBottom = nearBottom(oldScroll);
+        if (page !== trackedPage || !view.data.selectedThread || !view.data.messages.length || view.messagesCursor) {
+            seenMessageIds = null; newMessageIds.clear(); trackedPage = page;
+        }
+        if (!view.messagesCursor && view.data.messages.length && !view.loading) {
+            const ids = new Set(view.data.messages.map(message => message.id));
+            if (seenMessageIds && oldScroll && !wasNearBottom) {
+                for (const id of ids) if (!seenMessageIds.has(id)) newMessageIds.add(id);
+            }
+            if (wasNearBottom) newMessageIds.clear();
+            seenMessageIds = ids;
+        }
+        const markup = renderInboxConversation({ ...view, newMessageCount: newMessageIds.size });
         if (markup === lastConversationMarkup) return;
         const active = doc.activeElement;
         const focusedDraft = conversation.contains(active) ? active?.dataset?.inboxDraft : null;
         const selection = focusedDraft ? [active.selectionStart, active.selectionEnd, active.selectionDirection] : null;
-        const oldScroll = $('inbox-message-scroll');
-        const page = `${view.selectedId || ''}:${view.messagesCursor || ''}`;
-        const nearBottom = oldScroll && oldScroll.scrollHeight - oldScroll.clientHeight - oldScroll.scrollTop < 70;
         const previousTop = oldScroll?.scrollTop || 0;
         conversation.innerHTML = markup; lastConversationMarkup = markup;
         const scroll = $('inbox-message-scroll');
-        if (scroll) scroll.scrollTop = page !== lastPage ? view.messagesCursor ? 0 : scroll.scrollHeight : nearBottom ? scroll.scrollHeight : previousTop;
+        if (scroll) scroll.scrollTop = page !== lastPage ? view.messagesCursor ? 0 : scroll.scrollHeight : wasNearBottom ? scroll.scrollHeight : previousTop;
         lastPage = page;
         if (focusedDraft) {
             const editor = doc.getElementById(`inbox-draft-${focusedDraft}`);
             if (editor && !editor.disabled) { editor.focus({ preventScroll: true }); editor.setSelectionRange(...selection); }
             else $('inbox-contact-title')?.focus({ preventScroll: true });
         }
-    } });
+    };
+    const controller = createInboxController({ fetchImpl, accountId, notice, onAuth: () => { controller.destroy(); onAuth?.(); }, onDecision, visible: !doc.hidden, render: renderView });
     const click = async event => {
         const thread = event.target.closest('[data-inbox-thread]');
         if (thread) {
@@ -272,7 +317,12 @@ export function mountWhatsAppInbox({ document: doc = document, fetchImpl = globa
         const button = event.target.closest('[data-inbox-action]');
         if (!button || button.disabled) return;
         const action = button.dataset.inboxAction;
-        if (action === 'back') {
+        if (action === 'new-messages') {
+            const scroll = $('inbox-message-scroll');
+            if (scroll) scroll.scrollTop = scroll.scrollHeight;
+            newMessageIds.clear(); renderView(controller.snapshot());
+            $('inbox-message-scroll')?.focus({ preventScroll: true });
+        } else if (action === 'back') {
             controller.closeThread();
             threadList.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
         } else if (action === 'older' || action === 'latest') await controller.messagePage(action === 'older');
@@ -287,13 +337,20 @@ export function mountWhatsAppInbox({ document: doc = document, fetchImpl = globa
     const previous = () => { void controller.threadPage(-1); };
     const next = () => { void controller.threadPage(1); };
     const visibility = () => controller.setVisible(!doc.hidden);
+    const scrolled = event => {
+        if (event.target === $('inbox-message-scroll') && nearBottom(event.target) && newMessageIds.size) {
+            newMessageIds.clear(); renderView(controller.snapshot());
+        }
+    };
     layout.addEventListener('click', click); layout.addEventListener('input', input);
+    conversation.addEventListener('scroll', scrolled, true);
     $('inbox-search').addEventListener('input', search); $('inbox-retry').addEventListener('click', retry);
     $('inbox-previous').addEventListener('click', previous); $('inbox-next').addEventListener('click', next);
     doc.addEventListener('visibilitychange', visibility);
     const destroy = controller.destroy;
     controller.destroy = () => {
         clearTimeout(searchTimer); layout.removeEventListener('click', click); layout.removeEventListener('input', input);
+        conversation.removeEventListener('scroll', scrolled, true);
         $('inbox-search').removeEventListener('input', search); $('inbox-retry').removeEventListener('click', retry);
         $('inbox-previous').removeEventListener('click', previous); $('inbox-next').removeEventListener('click', next);
         doc.removeEventListener('visibilitychange', visibility); $('inbox-search').value = ''; destroy();

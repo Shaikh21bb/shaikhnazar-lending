@@ -282,6 +282,9 @@
 .ws-inbox-message-paging > span { color: var(--ws-quiet); font-size: .56rem; text-align: center; }
 .ws-inbox-message-paging .ws-text-button { padding-left: 0; font-size: .61rem !important; }
 .ws-inbox-scroll { flex: 1; min-height: 350px; max-height: 630px; overflow-y: auto; overscroll-behavior: contain; padding: 24px 20px; scrollbar-gutter: stable; }
+.ws-inbox-new-messages { position: sticky; bottom: 12px; z-index: 2; display: block; width: fit-content; max-width: 100%; margin: 16px auto 0; padding: 11px 16px; border: 1px solid #d5ff5450; border-radius: 999px; background: #d5ff54; color: #172009; box-shadow: 0 6px 24px #0005; font: inherit; font-size: .7rem; font-weight: 700; cursor: pointer; }
+.ws-inbox-new-messages:hover { background: #e4ff94; }
+.ws-inbox-new-messages[hidden] { display: none; }
 .ws-inbox-messages { display: flex; flex-direction: column; gap: 21px; list-style: none; padding: 0; margin: 0; }
 .ws-inbox-message { min-width: 0; max-width: 100%; }
 .ws-inbox-bubble { width: fit-content; min-width: min(180px,100%); max-width: 93%; padding: 15px 16px 11px; border: 1px solid #ffffff12; border-radius: 18px 18px 18px 5px; background: #ffffff05; }

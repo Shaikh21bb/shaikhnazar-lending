@@ -68,15 +68,19 @@ export async function createWhatsAppInbox({ filename, deviceId, request, now = (
         record.event = event; record.pending = true; record.updatedAt = now();
         await persist();
     };
-    // The ledger keeps only metadata after two days, while unsynced content and
-    // open approvals are retained until acknowledged. No pending event is pruned.
+    // Cloud history owns acknowledged approval content/status after two days.
+    // Keep identities for deduplication/reply links, and never prune unsynced or
+    // actively processing/sending events.
     const prune = () => {
+        let changed = false;
         for (const record of Object.values(state.records)) {
-            if (!record.pending && record.event && !['received', 'processing', 'awaiting_approval', 'sending'].includes(record.event.status)
+            if (!record.pending && record.event && !['received', 'processing', 'sending'].includes(record.event.status)
                 && now() - record.updatedAt > 2 * 24 * 3_600_000) {
                 record.revision = record.event.revision; delete record.event;
+                changed = true;
             }
         }
+        return changed;
     };
     for (const record of Object.values(state.records)) {
         if (record.event) {
@@ -98,6 +102,7 @@ export async function createWhatsAppInbox({ filename, deviceId, request, now = (
         if (flight) return flight;
         flight = (async () => {
             await writes;
+            if (prune()) await persist();
             if (!state.announced) {
                 const result = await request({ action: 'whatsapp_inbox', captureSince: state.captureSince, events: [] });
                 if (result?.ok !== true || result.accepted !== 0) throw new Error('Inbox acknowledgement missing');

@@ -278,7 +278,7 @@ test('a stalled cloud inbox cannot block a real agent send and ambiguous provide
     upload.resolve();
 });
 
-test('synced terminal text is pruned after two days but pending uploads and open approvals survive', async t => {
+test('synced terminal text is pruned after two days but pending uploads and unacknowledged approvals survive', async t => {
     let online = true;
     const f = await helperFixture(t, { upload: async payload => {
         if (!online) throw new Error('synthetic offline');
@@ -294,6 +294,101 @@ test('synced terminal text is pruned after two days but pending uploads and open
     assert.equal(state.records[inboxId('pending')].event.text, outgoing('pending').text);
     assert.equal(state.records[incoming.id].event.status, 'awaiting_approval');
     assert.equal(f.inbox.has(inboxId('synced')), true);
+});
+
+test('idle flush retires old acknowledged approval content without upload or repeated writes, and restart keeps its identity', async t => {
+    const f = await helperFixture(t);
+    const incoming = f.inbox.incoming(message('acknowledged-approval'), { timestamp: start, receivedAt: start, agentId });
+    await incoming.saved;
+    await f.inbox.patch(incoming.id, { status: 'awaiting_approval', approvalId });
+    await f.inbox.flush();
+    assert.equal((await f.read()).records[incoming.id].pending, false);
+    const uploads = f.requests.length;
+    f.clock.value += 3 * 24 * 3_600_000;
+    await f.inbox.flush();
+    assert.deepEqual((await f.read()).records[incoming.id], { pending: false, updatedAt: start, revision: 2 });
+    assert.equal(f.requests.length, uploads);
+    assert.equal(f.inbox.has(incoming.id), true);
+    assert.equal(f.inbox.event(incoming.id), undefined);
+    const unchanged = await fs.stat(f.filename);
+    await f.inbox.flush();
+    assert.equal((await fs.stat(f.filename)).ino, unchanged.ino);
+    await f.restart();
+    assert.equal(f.inbox.has(incoming.id), true);
+    assert.equal(f.inbox.event(incoming.id), undefined);
+    const duplicate = f.inbox.incoming(message('acknowledged-approval'), { timestamp: start, receivedAt: f.clock.value, agentId });
+    await duplicate.saved;
+    assert.equal(duplicate.duplicate, true);
+    await f.inbox.patch(incoming.id, { status: 'answered' });
+    assert.equal((await f.read()).records[incoming.id].event, undefined);
+});
+
+test('an old ACK cannot retire the newer pending approval revision even after the cache window and restart', async t => {
+    const acknowledged = deferred();
+    let batches = 0;
+    const f = await helperFixture(t, { upload: async payload => {
+        if (!payload.events.length) return { ok: true, accepted: 0 };
+        if (++batches === 1) { await acknowledged.promise; return { ok: true, accepted: payload.events.length }; }
+        throw new Error('synthetic offline for newer revision');
+    } });
+    const incoming = f.inbox.incoming(message('pending-approval'), { timestamp: start, receivedAt: start, agentId });
+    await incoming.saved;
+    await f.inbox.patch(incoming.id, { status: 'awaiting_approval', approvalId });
+    const uploading = f.inbox.flush();
+    await until(() => batches === 1);
+    await f.inbox.patch(incoming.id, { reason: 'meeting' });
+    f.clock.value += 3 * 24 * 3_600_000;
+    acknowledged.resolve();
+    await uploading;
+    let record = (await f.read()).records[incoming.id];
+    assert.equal(record.pending, true);
+    assert.equal(record.event.revision, 3);
+    assert.equal(record.event.text, 'Как работает Wi-Fi?');
+    assert.deepEqual(f.requests.flatMap(item => item.events).map(item => item.revision), [2, 3]);
+    await f.restart();
+    await f.inbox.flush();
+    record = (await f.read()).records[incoming.id];
+    assert.equal(record.pending, true);
+    assert.equal(record.event.revision, 3);
+    assert.equal(record.event.status, 'awaiting_approval');
+});
+
+test('idle pruning preserves active sending and processing content before restart recovers them for acknowledgement', async t => {
+    const f = await helperFixture(t);
+    await f.inbox.record(outgoing('active-send', 'sending'));
+    const incoming = f.inbox.incoming(message('active-processing'), { timestamp: start, receivedAt: start, agentId });
+    await incoming.saved;
+    await f.inbox.patch(incoming.id, { status: 'processing' });
+    await f.inbox.flush();
+    f.clock.value += 3 * 24 * 3_600_000;
+    await f.inbox.flush();
+    assert.equal(f.inbox.event(inboxId('active-send')).status, 'sending');
+    assert.equal(f.inbox.event(incoming.id).status, 'processing');
+    await f.restart();
+    const records = (await f.read()).records;
+    assert.equal(records[inboxId('active-send')].event.status, 'uncertain');
+    assert.equal(records[incoming.id].event.status, 'skipped');
+    assert.equal(records[inboxId('active-send')].pending, true);
+    assert.equal(records[incoming.id].pending, true);
+});
+
+test('a late approved reply links to the retired source identity without restoring its text', async t => {
+    const f = await fixture(t);
+    f.emit([message('late-approved', start, { conversation: 'Давай созвонимся завтра в 15:00?' })]);
+    await f.adapter.idle();
+    await until(async () => Object.values((await f.read()).records).every(item => !item.pending));
+    const source = inboxId(`${recipient}:late-approved`);
+    f.clock.value += 3 * 24 * 3_600_000;
+    await f.poll();
+    await until(async () => !(await f.read()).records[source].event);
+    await f.restart();
+    const decision = { id: approvalId, agent_id: agentId, recipient, external_id: source, draft: 'Поздний согласованный ответ.' };
+    await f.poll([decision]);
+    const records = (await f.read()).records;
+    assert.equal(records[source].event, undefined);
+    assert.equal(records[inboxId(`approved:${approvalId}`)].event.replyToId, source);
+    assert.equal(records[inboxId(`approved:${approvalId}`)].event.status, 'sent');
+    assert.equal(f.attempts.filter(item => item.text === decision.draft).length, 1);
 });
 
 test('re-pairing uses a new device ledger and cannot upload the former account pending inbox', async t => {
